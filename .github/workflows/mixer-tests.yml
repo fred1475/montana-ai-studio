@@ -5,6 +5,7 @@ on:
       - 'mixer-8.html'
       - 'mixer-session.js'
       - 'mixer-record.js'
+      - 'mixer-timeline.js'
       - 'tests/mixer-smoke.cjs'
       - '.github/workflows/mixer-tests.yml'
   workflow_dispatch:
@@ -24,6 +25,7 @@ jobs:
           node --check tests/mixer-smoke.cjs
           node --check mixer-session.js
           node --check mixer-record.js
+          node --check mixer-timeline.js
       - name: Install browser tooling
         run: |
           npm install --no-save playwright@1.58.2
