@@ -6,6 +6,7 @@ on:
       - 'mixer-session.js'
       - 'mixer-record.js'
       - 'mixer-meter.js'
+      - 'mixer-pitch.js'
       - 'pitch-lab.html'
       - 'pitch-engine.js'
       - 'pitch-melody.js'
@@ -14,6 +15,7 @@ on:
       - 'tests/pitch-ui.cjs'
       - 'mixer-timeline.js'
       - 'tests/mixer-smoke.cjs'
+      - 'tests/mixer-pitch.cjs'
       - '.github/workflows/mixer-tests.yml'
   workflow_dispatch:
 jobs:
@@ -33,6 +35,8 @@ jobs:
           node --check mixer-session.js
           node --check mixer-record.js
           node --check mixer-meter.js
+          node --check mixer-pitch.js
+          node --check tests/mixer-pitch.cjs
           node --check pitch-engine.js
           node --check pitch-melody.js
           node --check tests/pitch-melody.cjs
@@ -50,11 +54,12 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/studio-server.log 2>&1 &
           sleep 2
           node tests/mixer-smoke.cjs
+          node tests/mixer-pitch.cjs
           node tests/pitch-ui.cjs
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-meter.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -65,7 +70,7 @@ jobs:
             '6. Abra esa sesión JSON para comprobar que se recuperan pistas y posiciones.' \
             '7. La grabación con micrófono puede requerir HTTPS o localhost; no se garantiza desde file://.' \
             '8. Observe niveles por pista y mezcla final durante reproducción.' \
-            '9. La corrección de afinación (Auto-Tune estilo) NO está implementada.' \
+            '9. La afinación vocal experimental se aplica en los canales 2–8 a fragmentos breves; NO es Auto-Tune profesional.' \
             '10. Pruebe pitch-lab.html en modo sostenido o frase experimental de dos notas: NO es Auto-Tune profesional.' \
             '11. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
