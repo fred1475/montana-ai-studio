@@ -5,6 +5,7 @@ on:
       - 'mixer-8.html'
       - 'mixer-session.js'
       - 'mixer-record.js'
+      - 'mixer-meter.js'
       - 'mixer-timeline.js'
       - 'tests/mixer-smoke.cjs'
       - '.github/workflows/mixer-tests.yml'
@@ -25,6 +26,7 @@ jobs:
           node --check tests/mixer-smoke.cjs
           node --check mixer-session.js
           node --check mixer-record.js
+          node --check mixer-meter.js
           node --check mixer-timeline.js
       - name: Install browser tooling
         run: |
@@ -38,7 +40,7 @@ jobs:
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-meter.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -48,7 +50,9 @@ jobs:
             '5. Mueva el bloque en la línea de tiempo con el ratón y guarde la sesión JSON.' \
             '6. Abra esa sesión JSON para comprobar que se recuperan pistas y posiciones.' \
             '7. La grabación con micrófono puede requerir HTTPS o localhost; no se garantiza desde file://.' \
-            '8. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '8. Observe niveles por pista y mezcla final durante reproducción.' \
+            '9. La corrección de afinación (Auto-Tune estilo) NO está implementada.' \
+            '10. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
