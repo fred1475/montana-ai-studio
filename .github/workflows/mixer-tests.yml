@@ -15,6 +15,7 @@ on:
       - 'tests/pitch-ui.cjs'
       - 'mixer-timeline.js'
       - 'mixer-history.js'
+      - 'mixer-metronome.js'
       - 'tests/mixer-smoke.cjs'
       - 'tests/mixer-pitch.cjs'
       - '.github/workflows/mixer-tests.yml'
@@ -47,6 +48,7 @@ jobs:
           node tests/pitch-engine.cjs
           node --check mixer-timeline.js
           node --check mixer-history.js
+          node --check mixer-metronome.js
       - name: Install browser tooling
         run: |
           npm install --no-save playwright@1.58.2
@@ -61,7 +63,7 @@ jobs:
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -75,7 +77,8 @@ jobs:
             '9. La afinación vocal experimental se aplica en los canales 2–8 a fragmentos breves; NO es Auto-Tune profesional.' \
             '10. Pruebe pitch-lab.html en modo sostenido o frase experimental de dos notas: NO es Auto-Tune profesional.' \
             '11. Use Deshacer/Rehacer para ajustar posición y recortes sin destruir audio.' \
-            '12. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '12. Active el metrónomo y ajuste BPM; los clics no están en el WAV exportado.' \
+            '13. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
