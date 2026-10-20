@@ -114,6 +114,20 @@ const path=require('node:path');
   const restored=JSON.parse(fs.readFileSync(againPath,'utf8'));
   assert.equal(restored.tracks[0].data,session.tracks[0].data,'Source bytes survive another save');
   assert.equal(restored.tracks[1].data,session.tracks[1].data,'Vocal bytes survive another save');
+  // Regression: a rejected audio import must NEVER corrupt the next session backup.
+  await page.locator('#file0').setInputFiles({name:'broken.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('not audio')});
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se pudo importar'));
+  assert.equal(await page.locator('#file0').inputValue(),'','Rejected file input should clear');
+  assert((await page.locator('#label0').innerText()).includes('instrumental.wav'));
+  const [safeSession]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const safePath=path.join(process.cwd(),'test-mixer-safe-session.json');
+  await safeSession.saveAs(safePath);
+  const safe=JSON.parse(fs.readFileSync(safePath,'utf8'));
+  assert.equal(safe.tracks[0].name,'instrumental.wav');
+  assert.equal(safe.tracks[0].data,session.tracks[0].data,'Rejected imports must preserve previous audio bytes');
+  await page.reload();
+  await page.locator('#sessionFile').setInputFiles(safePath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
   assert.deepEqual(errors,[]);
   console.log('PASS: 8 tracks, audio import, volume, panorama, mute/solo, playback, PCM WAV export.');
  }finally{await browser.close()}
