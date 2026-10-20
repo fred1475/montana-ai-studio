@@ -8,6 +8,7 @@ $("recordStart").addEventListener("click",async()=>{
  if(!recordingSupported()){report("Grabación no disponible: requiere HTTPS o localhost y un navegador compatible.");return}
  const i=Number($("recordTrack").value);
  if(tracks[i]&&!confirm("El canal seleccionado ya tiene audio. ¿Reemplazarlo cuando termine la nueva toma?"))return;
+ try{tracks.forEach((buffer,index)=>{if(buffer&&index!==i)region(index,buffer)})}catch(e){report("Corrige los recortes antes de grabar: "+e.message);return}
  let stream;
  try{
   stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
@@ -29,7 +30,7 @@ $("recordStart").addEventListener("click",async()=>{
     if(decoded.duration>300)throw Error("La toma supera cinco minutos.");
     const ext=blob.type.includes("mp4")?"m4a":"webm";
     const f=new File([blob],"toma-canal-"+(i+1)+"."+ext,{type:blob.type});
-    tracks[i]=decoded;originalFiles[i]=f;$("file"+i).value="";
+    tracks[i]=decoded;originalFiles[i]=f;$("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;
     $("label"+i).textContent=f.name+" — "+decoded.duration.toFixed(1)+" s";
     report("Toma guardada en canal "+(i+1)+". Descarga el respaldo de sesión para conservarla.");
    }catch(err){report("No se pudo decodificar la grabación: "+err.message+". Intenta importar audio WAV.");}
