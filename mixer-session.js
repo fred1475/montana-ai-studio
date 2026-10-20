@@ -8,8 +8,8 @@ $("saveSession").addEventListener("click",async()=>{
  try{
   const items=[];let total=0;
   for(let i=0;i<8;i++){
-   const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),compEnabled:$("compEnable"+i).checked,compThreshold:Number($("compThreshold"+i).value),compRatio:Number($("compRatio"+i).value),reverb:Number($("reverb"+i).value),delayWet:Number($("delayWet"+i).value),delayMs:Number($("delayMs"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value),alignMs:i===0?0:Number($("alignMs"+i).value),pitch:window.pitchSessionState(i),clean:window.cleanSessionState(i)};
-   if(![state.volume,state.pan,state.lowEQ,state.highEQ,state.compThreshold,state.compRatio,state.reverb,state.delayWet,state.delayMs,state.offset,state.trimStart,state.trimEnd,state.alignMs].every(Number.isFinite)||state.volume<0||state.volume>150||Math.abs(state.pan)>100||Math.abs(state.lowEQ)>12||Math.abs(state.highEQ)>12||state.compThreshold< -36||state.compThreshold> -6||state.compRatio<2||state.compRatio>12||state.reverb<0||state.reverb>50||state.delayWet<0||state.delayWet>50||state.delayMs<100||state.delayMs>750||[state.offset,state.trimStart,state.trimEnd].some(v=>v<0||v>300)||Math.abs(state.alignMs)>250)throw Error("Ajustes inválidos en canal "+(i+1));
+   const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),compEnabled:$("compEnable"+i).checked,compThreshold:Number($("compThreshold"+i).value),compRatio:Number($("compRatio"+i).value),reverb:Number($("reverb"+i).value),delayWet:Number($("delayWet"+i).value),delayMs:Number($("delayMs"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value),fadeIn:Number($("fadeIn"+i).value),fadeOut:Number($("fadeOut"+i).value),alignMs:i===0?0:Number($("alignMs"+i).value),pitch:window.pitchSessionState(i),clean:window.cleanSessionState(i)};
+   if(![state.volume,state.pan,state.lowEQ,state.highEQ,state.compThreshold,state.compRatio,state.reverb,state.delayWet,state.delayMs,state.offset,state.trimStart,state.trimEnd,state.fadeIn,state.fadeOut,state.alignMs].every(Number.isFinite)||state.volume<0||state.volume>150||Math.abs(state.pan)>100||Math.abs(state.lowEQ)>12||Math.abs(state.highEQ)>12||state.compThreshold< -36||state.compThreshold> -6||state.compRatio<2||state.compRatio>12||state.reverb<0||state.reverb>50||state.delayWet<0||state.delayWet>50||state.delayMs<100||state.delayMs>750||[state.offset,state.trimStart,state.trimEnd].some(v=>v<0||v>300)||Math.abs(state.alignMs)>250||state.fadeIn<0||state.fadeIn>5||state.fadeOut<0||state.fadeOut>5)throw Error("Ajustes inválidos en canal "+(i+1));
    if(tracks[i])region(i,tracks[i]); // Never create a backup that the loader cannot restore.
    if(tracks[i]&&f){
     if(f.size>50e6||(total+=f.size)>80e6)throw Error("Máximo 80 MB por sesión.");
@@ -50,6 +50,8 @@ $("sessionFile").addEventListener("change",async(e)=>{
    const reverb=t.reverb===undefined?0:Number(t.reverb),delayWet=t.delayWet===undefined?0:Number(t.delayWet),delayMs=t.delayMs===undefined?300:Number(t.delayMs);
    if(![reverb,delayWet,delayMs].every(Number.isFinite)||reverb<0||reverb>50||delayWet<0||delayWet>50||delayMs<100||delayMs>750)throw Error("Efectos de espacio inválidos.");
    const offset=t.offset===undefined?0:Number(t.offset),trimStart=t.trimStart===undefined?0:Number(t.trimStart),trimEnd=t.trimEnd===undefined?0:Number(t.trimEnd);
+   const fadeIn=t.fadeIn===undefined?0:t.fadeIn,fadeOut=t.fadeOut===undefined?0:t.fadeOut;
+   if(typeof fadeIn!=="number"||typeof fadeOut!=="number"||!Number.isFinite(fadeIn)||!Number.isFinite(fadeOut)||fadeIn<0||fadeIn>5||fadeOut<0||fadeOut>5)throw Error("Fundidos de canal inválidos.");
    const alignMs=t.alignMs===undefined?0:t.alignMs;
    if(typeof alignMs!=="number"||!Number.isFinite(alignMs)||Math.abs(alignMs)>250||(i===0&&alignMs!==0))throw Error("Sincronización manual inválida.");
    if(![offset,trimStart,trimEnd].every(Number.isFinite)||[offset,trimStart,trimEnd].some(x=>x<0||x>300))throw Error("Posición de pista inválida.");
@@ -62,7 +64,7 @@ $("sessionFile").addEventListener("change",async(e)=>{
     if(decoded.duration>300)throw Error("Pista demasiado larga.");
    }
    if(decoded&&(trimStart>=decoded.duration||trimEnd>decoded.duration+.001||(trimEnd!==0&&trimEnd<=trimStart)))throw Error("Recorte de pista inválido.");
-   loaded.push({decoded,source,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd,alignMs,lowEQ,highEQ,compEnabled,compThreshold,compRatio,reverb,delayWet,delayMs});
+   loaded.push({decoded,source,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd,fadeIn,fadeOut,alignMs,lowEQ,highEQ,compEnabled,compThreshold,compRatio,reverb,delayWet,delayMs});
   }
   const preparedPitch=window.preparePitchRestore(loaded,s.tracks);
   const preparedClean=window.prepareCleanRestore(s.tracks);
@@ -83,7 +85,7 @@ $("sessionFile").addEventListener("change",async(e)=>{
    $("compThreshold"+i).value=t.compThreshold;$("compThresholdVal"+i).textContent=t.compThreshold+" dB";
    $("compRatio"+i).value=t.compRatio;$("compRatioVal"+i).textContent=t.compRatio+":1";
    for(const k of ["reverb","delayWet","delayMs"]){$(k+i).value=t[k];$(k+"Val"+i).textContent=t[k]+(k==="delayMs"?" ms":"%");}
-   $("offset"+i).value=t.offset;$("trimStart"+i).value=t.trimStart;$("trimEnd"+i).value=t.trimEnd;
+   $("offset"+i).value=t.offset;$("trimStart"+i).value=t.trimStart;$("trimEnd"+i).value=t.trimEnd;$("fadeIn"+i).value=t.fadeIn;$("fadeOut"+i).value=t.fadeOut;
    if(i>0){$("alignMs"+i).value=t.alignMs;$("alignVal"+i).textContent=t.alignMs+" ms"}
    $("mute"+i).checked=t.mute;$("solo"+i).checked=t.solo;
    $("label"+i).textContent=t.source?t.source.name+" — "+t.decoded.duration.toFixed(1)+" s":"Sin audio";
