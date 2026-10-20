@@ -8,6 +8,8 @@ on:
       - 'mixer-meter.js'
       - 'mixer-stems.js'
       - 'mixer-fades.js'
+      - 'mixer-recovery.js'
+      - 'tests/mixer-recovery.cjs'
       - 'tests/mixer-fades.cjs'
       - 'tests/mixer-stems.cjs'
       - 'mixer-limiter.js'
@@ -51,6 +53,8 @@ jobs:
           node --check mixer-meter.js
           node --check mixer-stems.js
           node --check mixer-fades.js
+          node --check mixer-recovery.js
+          node --check tests/mixer-recovery.cjs
           node --check tests/mixer-fades.cjs
           node --check tests/mixer-stems.cjs
           node --check mixer-limiter.js
@@ -88,13 +92,14 @@ jobs:
           node tests/mixer-sync.cjs
           node tests/mixer-stems.cjs
           node tests/mixer-fades.cjs
+          node tests/mixer-recovery.cjs
           node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
           node tests/pitch-ui.cjs
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-stems.js mixer-fades.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-stems.js mixer-fades.js mixer-recovery.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -115,7 +120,8 @@ jobs:
             '16. Aún falta calibración automática con equipo físico; esta es una beta.' \
             '17. Descargue cada stem WAV o todos en ZIP. Archivos alineados desde 0:00, sin mezcla maestra ni mute/solo.' \
             '18. Ajuste los fundidos de entrada/salida de cada pista. Se aplican al WAV, stems y referencia de grabación.' \
-            '19. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '19. Active el autoguardado local de IndexedDB solo si lo desea; restaure manualmente y conserve un JSON de respaldo.' \
+            '20. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
