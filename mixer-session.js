@@ -3,9 +3,7 @@
 const originalFiles=Array(8).fill(null);
 function to64(bytes){let s="";for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s)}
 function from64(s){if(typeof s!=="string"||s.length>110000000)throw Error("Contenido inválido");const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
-$("saveSession").addEventListener("click",async()=>{
- const btn=$("saveSession");btn.disabled=true;
- try{
+async function createMixerSnapshot(){
   const items=[];let total=0;
   for(let i=0;i<8;i++){
    const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),compEnabled:$("compEnable"+i).checked,compThreshold:Number($("compThreshold"+i).value),compRatio:Number($("compRatio"+i).value),reverb:Number($("reverb"+i).value),delayWet:Number($("delayWet"+i).value),delayMs:Number($("delayMs"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value),fadeIn:Number($("fadeIn"+i).value),fadeOut:Number($("fadeOut"+i).value),alignMs:i===0?0:Number($("alignMs"+i).value),pitch:window.pitchSessionState(i),clean:window.cleanSessionState(i)};
@@ -17,18 +15,19 @@ $("saveSession").addEventListener("click",async()=>{
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
-  const blob=new Blob([JSON.stringify({format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),tracks:items})],{type:"application/json"});
+  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),tracks:items};
+}
+window.createMixerSnapshot=createMixerSnapshot;
+$("saveSession").addEventListener("click",async()=>{
+ const btn=$("saveSession");btn.disabled=true;
+ try{
+  const blob=new Blob([JSON.stringify(await createMixerSnapshot())],{type:"application/json"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-sesion-8-pistas.json";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   report("Sesión guardada en archivo JSON. Consérvalo en privado.");
  }catch(e){report("No se guardó: "+e.message)}finally{btn.disabled=false}
 });
 $("loadSession").addEventListener("click",()=>$("sessionFile").click());
-$("sessionFile").addEventListener("change",async(e)=>{
- const btn=$("loadSession");btn.disabled=true;
- try{
-  const file=e.target.files?.[0];if(!file)return;
-  if(file.size>112e6)throw Error("Archivo demasiado grande.");
-  const s=JSON.parse(await file.text());
+async function restoreMixerSnapshot(s){
   if(s.format!=="montana-mixer-session"||s.version!==1||!Array.isArray(s.tracks)||s.tracks.length!==8)throw Error("Formato de sesión incompatible.");
   const masterGain=s.masterGain===undefined?80:Number(s.masterGain);
   if(!Number.isFinite(masterGain)||masterGain<0||masterGain>100)throw Error("Volumen maestro inválido.");
@@ -95,5 +94,14 @@ $("sessionFile").addEventListener("change",async(e)=>{
   window.resetEditHistory?.();
   window.updateSourceDownload?.();
   report("Sesión restaurada con "+loaded.filter(t=>t.decoded).length+" pista(s) de audio.");
- }catch(err){report("No se restauró la sesión: "+err.message)}finally{btn.disabled=false;e.target.value=""}
+
+}
+window.restoreMixerSnapshot=restoreMixerSnapshot;
+$("sessionFile").addEventListener("change",async(e)=>{
+ const btn=$("loadSession");btn.disabled=true;
+ try{
+  const file=e.target.files?.[0];if(!file)return;
+  if(file.size>112e6)throw Error("Archivo demasiado grande.");
+  const s=JSON.parse(await file.text());
+  await restoreMixerSnapshot(s); }catch(err){report("No se restauró la sesión: "+err.message)}finally{btn.disabled=false;e.target.value=""}
 });
