@@ -1,0 +1,52 @@
+name: Studio 2.0 backup tests
+on:
+  pull_request:
+    paths:
+      - 'studio.html'
+      - 'studio.js'
+      - 'backup.js'
+      - 'tests/**'
+      - '.github/workflows/studio-backup-tests.yml'
+  workflow_dispatch:
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check studio.js
+          node --check backup.js
+          node --check tests/backup-smoke.cjs
+      - name: Install browser test dependency
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Run test server and backup/restore test
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/montana-http.log 2>&1 &
+          sleep 2
+          node tests/backup-smoke.cjs
+      - name: Package separate manual preview
+        run: |
+          mkdir -p manual-preview
+          cp studio.html studio.js backup.js manual-preview/
+          printf '%s\n' \
+            'Montana AI Studio 2.0 - PREVIEW DE PRUEBAS' \
+            '1. Extraiga los tres archivos en una misma carpeta.' \
+            '2. Abra studio.html en Chrome o Edge.' \
+            '3. En Proyectos: Descargar respaldo completo y Restaurar archivo JSON.' \
+            '4. Verifique letras y audios restaurados.' \
+            '5. La grabacion puede requerir HTTPS.' \
+            'No introduzca contenido privado en pruebas compartidas.' > manual-preview/README.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: montana-studio-2-preview
+          path: manual-preview/
+          retention-days: 7
