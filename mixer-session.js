@@ -2,7 +2,7 @@
 // Portable, local-only JSON session with embedded audio and mixer settings.
 const originalFiles=Array(8).fill(null);
 function to64(bytes){let s="";for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s)}
-function from64(s){if(typeof s!=="string"||s.length>100000000)throw Error("Contenido inválido");const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+function from64(s){if(typeof s!=="string"||s.length>110000000)throw Error("Contenido inválido");const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
 $("saveSession").addEventListener("click",async()=>{
  const btn=$("saveSession");btn.disabled=true;
  try{
