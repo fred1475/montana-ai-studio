@@ -21,9 +21,15 @@ La grabación de micrófono utiliza MediaRecorder con guía sonora, **sin compen
 9. Integraciones/plug-ins externos solo si son técnica y legalmente compatibles, con pruebas en sistemas y navegadores concretos.
 10. Calidad y lanzamiento: pruebas de ocho pistas reales en Chrome/Edge/Windows, hardware de audio, rendimiento móvil, accesibilidad y privacidad.
 
+## Hito experimental: primera corrección real (no profesional)
+
+Archivo `pitch-lab.html` junto con `pitch-engine.js` (sin llamadas a servidor). Se implementa estimación de F0 por autocorrelación y síntesis PSOLA por nota monofónica sostenida; objetivo de nota cromática, mayor o menor, tonalidad e intensidad, con exportación WAV. **No admite todavía melodías cambiantes, glides, vibrato complejo, consonantes ni mezclas polifónicas como uso garantizado.** La calidad de timbre y formantes no ha sido validada con voces reales; pueden aparecer artefactos. La prueba sintética de una nota aislada no certifica una canción.
+
+La prueba se somete a GitHub Actions antes de considerarse aprobada. Integración directa a canales del mezclador aún pendiente; usar solo como laboratorio separado.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
-**No implementado ni probado aún.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
+**Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
 
 - Motor de detección de F0 (pitch monofónico) con estimación de confianza, manejo de silencios, vibrato, notas inestables y ruido. No fingir que la detección de voz es compatible con pistas polifónicas.
 - Transposición o *pitch shifting* **real**, independiente del tiempo, con gestión de formantes para preservar el carácter vocal en un modo natural y ofrecer modo efecto robótico marcado.
