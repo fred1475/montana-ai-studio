@@ -255,6 +255,8 @@ const path=require('node:path');
   await page.locator('#lowEQ0').fill('12');
   await page.locator('#lowEQ1').fill('12');
   await page.locator('#highEQ0').fill('0');
+  await page.locator('#compDetails0 summary').click();
+  await page.locator('#spaceDetails0 summary').click();
   await page.locator('#compEnable0').uncheck();
   await page.locator('#reverb0').fill('0');
   await page.locator('#delayWet0').fill('0');
