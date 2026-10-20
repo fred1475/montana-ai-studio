@@ -55,10 +55,9 @@ function frequencyStrength(wav,f,t1,t2){
   await page.locator('#vol1').fill('70');
   await page.locator('#masterGain').fill('20');
   await page.locator('#limiterOn').check();
-  await page.locator('#exportStems').click();
   const [download]=await Promise.all([
    page.waitForEvent('download',{timeout:30000}),
-   (async()=>{await page.locator('#exportStems').click()})()
+   page.locator('#exportStems').click()
   ]);
   const zipPath=path.join(process.cwd(),'mixer-two-stems.zip');await download.saveAs(zipPath);
   const zip=fs.readFileSync(zipPath),files=archiveEntries(zip);
