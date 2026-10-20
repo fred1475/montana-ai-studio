@@ -50,6 +50,12 @@ Pruebas GitHub Actions: audio sintetizado desafinado -> WAV corregido de frecuen
 - Las pruebas de Chromium verifican historial, programación de clics, parada, no contaminación del WAV y conservación del BPM tras guardar/restaurar.
 - Pendiente antes de publicar: pruebas manuales de metrónomo sincronizado con interfaces reales, latencia, temporización prolongada, time stretching, metrónomo con preconteo y automatización.
 
+## Nueva fase: limitador maestro de exportación (muestra, no true-peak)
+
+`mixer-limiter.js` añade un limitador **opcional** y enlazado en estéreo, aplicado al WAV exportado, con techo de picos de muestra de -6 a -0.5 dBFS, preataque y recuperación. Usa el mismo cambio de ganancia en ambos canales para conservar el balance estéreo. Permite conservar y recuperar ajustes desde sesiones anteriores o nuevas. Se desactiva por defecto; no cambia la escucha en vivo ni los originales.
+
+**No constituye masterización ni certifica true peak, LUFS, ausencia de intersample clipping o ausencia de distorsión audible.** La fuente puede saturar antes de entrar al limitador; usar ganancias moderadas y revisar escucha real. Las pruebas objetivas cubren techo PCM, estímulo impulsivo, balance estéreo, comportamiento transparente sin picos excesivos, salida del navegador y respaldo/restauración. La calidad subjetiva y el rendimiento con canciones reales siguen pendientes.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
