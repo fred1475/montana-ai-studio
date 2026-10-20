@@ -8,7 +8,7 @@ $("saveSession").addEventListener("click",async()=>{
  try{
   const items=[];let total=0;
   for(let i=0;i<8;i++){
-   const f=$("file"+i).files?.[0]||originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,mute:$("mute"+i).checked,solo:$("solo"+i).checked};
+   const f=$("file"+i).files?.[0]||originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value)};
    if(tracks[i]&&f){
     if(f.size>50e6||(total+=f.size)>80e6)throw Error("Máximo 80 MB por sesión.");
     items.push({...state,name:f.name,type:f.type,data:to64(new Uint8Array(await f.arrayBuffer()))});
@@ -35,6 +35,8 @@ $("sessionFile").addEventListener("change",async(e)=>{
    const t=s.tracks[i];if(!t||typeof t!=="object")throw Error("Canal corrupto.");
    const v=Number(t.volume),p=Number(t.pan);
    if(!Number.isFinite(v)||v<0||v>150||!Number.isFinite(p)||p< -100||p>100||typeof t.mute!=="boolean"||typeof t.solo!=="boolean")throw Error("Ajustes inválidos.");
+   const offset=t.offset===undefined?0:Number(t.offset),trimStart=t.trimStart===undefined?0:Number(t.trimStart),trimEnd=t.trimEnd===undefined?0:Number(t.trimEnd);
+   if(![offset,trimStart,trimEnd].every(Number.isFinite)||[offset,trimStart,trimEnd].some(x=>x<0||x>300))throw Error("Posición de pista inválida.");
    let decoded=null,source=null;
    if(t.data!==null){
     const raw=from64(t.data);bytes+=raw.byteLength;
@@ -43,7 +45,8 @@ $("sessionFile").addEventListener("change",async(e)=>{
     decoded=await audio().decodeAudioData(raw.buffer.slice(0));
     if(decoded.duration>300)throw Error("Pista demasiado larga.");
    }
-   loaded.push({decoded,source,volume:v,pan:p,mute:t.mute,solo:t.solo});
+   if(decoded&&(trimStart>=decoded.duration||trimEnd>decoded.duration+.001||(trimEnd!==0&&trimEnd<=trimStart)))throw Error("Recorte de pista inválido.");
+   loaded.push({decoded,source,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd});
   }
   stop();
   $("masterGain").value=masterGain;$("masterValue").textContent=masterGain+"%";
@@ -53,6 +56,7 @@ $("sessionFile").addEventListener("change",async(e)=>{
    $("file"+i).value="";
    $("vol"+i).value=t.volume;$("val"+i).textContent=t.volume+"%";
    $("pan"+i).value=t.pan;$("panval"+i).textContent=t.pan===0?"Centro":(t.pan<0?"Izq ":"Der ")+Math.abs(t.pan);
+   $("offset"+i).value=t.offset;$("trimStart"+i).value=t.trimStart;$("trimEnd"+i).value=t.trimEnd;
    $("mute"+i).checked=t.mute;$("solo"+i).checked=t.solo;
    $("label"+i).textContent=t.source?t.source.name+" — "+t.decoded.duration.toFixed(1)+" s":"Sin audio";
   });
