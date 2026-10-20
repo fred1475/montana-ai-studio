@@ -36,27 +36,36 @@
      clip.tabIndex=0;clip.setAttribute("role","slider");
      clip.setAttribute("aria-valuemin","0");clip.setAttribute("aria-valuemax",limit.toFixed(2));
      setPosition(t.offset);
+     // Listen on window so dragging remains reliable when the clip moves
+     // away from the pointer or the browser retargets pointer events.
      clip.addEventListener("pointerdown",e=>{
-       if(e.button!==0)return;
-       drag={x:e.clientX,offset:current};
-       clip.setPointerCapture(e.pointerId);
-       clip.style.cursor="grabbing";
+       if(e.button!==0||drag)return;
        e.preventDefault();
-     });
-     clip.addEventListener("pointermove",e=>{
-       if(!drag)return;
-       const width=bg.getBoundingClientRect().width;
-       if(width<=0)return;
-       setPosition(drag.offset+(e.clientX-drag.x)*end/width);
-     });
-     clip.addEventListener("pointerup",e=>{
-       if(!drag)return;
-       drag=null;clip.style.cursor="grab";
-       if(clip.hasPointerCapture(e.pointerId))clip.releasePointerCapture(e.pointerId);
-       commit();
-     });
-     clip.addEventListener("pointercancel",()=>{
-       if(!drag)return;drag=null;clip.style.cursor="grab";setPosition(Number($("offset"+i).value));
+       clip.focus();
+       drag={pointerId:e.pointerId,x:e.clientX,offset:current};
+       clip.style.cursor="grabbing";
+       const onMove=event=>{
+         if(!drag||event.pointerId!==drag.pointerId)return;
+         const width=bg.getBoundingClientRect().width;
+         if(width>0)setPosition(drag.offset+(event.clientX-drag.x)*end/width);
+       };
+       const cleanup=()=>{
+         window.removeEventListener("pointermove",onMove);
+         window.removeEventListener("pointerup",onUp);
+         window.removeEventListener("pointercancel",onCancel);
+         drag=null;clip.style.cursor="grab";
+       };
+       const onUp=event=>{
+         if(!drag||event.pointerId!==drag.pointerId)return;
+         cleanup();commit();
+       };
+       const onCancel=event=>{
+         if(!drag||event.pointerId!==drag.pointerId)return;
+         cleanup();setPosition(Number($("offset"+i).value));
+       };
+       window.addEventListener("pointermove",onMove);
+       window.addEventListener("pointerup",onUp);
+       window.addEventListener("pointercancel",onCancel);
      });
      clip.addEventListener("keydown",e=>{
        if(!["ArrowLeft","ArrowRight","Home"].includes(e.key))return;
