@@ -56,6 +56,14 @@ Pruebas GitHub Actions: audio sintetizado desafinado -> WAV corregido de frecuen
 
 **No constituye masterización ni certifica true peak, LUFS, ausencia de intersample clipping o ausencia de distorsión audible.** La fuente puede saturar antes de entrar al limitador; usar ganancias moderadas y revisar escucha real. Las pruebas objetivas cubren techo PCM, estímulo impulsivo, balance estéreo, comportamiento transparente sin picos excesivos, salida del navegador y respaldo/restauración. La calidad subjetiva y el rendimiento con canciones reales siguen pendientes.
 
+## Nueva fase: limpieza vocal gate y de-esser — beta verificada
+
+Los archivos `mixer-vocal-dsp.js` y `mixer-vocal-clean.js` permiten activar **puerta de ruido** y **de-esser de banda aguda** por separado en los canales vocales 2–8. La puerta utiliza estimación RMS enlazada entre canales y apertura/cierre suavizados; el de-esser aplica atenuación dinámica de contenido agudo a partir de un umbral. Se procesan copias de audio de forma local y no destructiva antes de reproducir y exportar; los ajustes y su estado se guardan en la sesión JSON.
+
+Pruebas incluidas: reducción medida del ruido de bajo nivel en PCM, reducción real del componente agudo de una señal con sibilancia sintética, preservación comparativa de la fundamental vocal, bypass sin modificaciones, compatibilidad de audio estéreo, exportación WAV, persistencia y rechazo de sesiones inválidas sin destruir el proyecto activo.
+
+**Limitaciones importantes:** no es separación de voz, reparación espectral ni eliminación completa de ruido. El de-esser utiliza una separación simple de frecuencias y puede causar artefactos o pérdida de brillo; la puerta puede cortar consonantes suaves. Falta probar voces humanas reales, ruido ambiental variable, rendimiento con tomas largas y calidad musical mediante escucha. No se han integrado motores IA de limpieza, medición LUFS/true-peak ni latencia calibrada.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
