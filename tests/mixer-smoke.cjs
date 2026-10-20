@@ -94,6 +94,31 @@ const path=require('node:path');
   };
   assert(rmsPCM(compressed)<rmsPCM(out)*0.8,'Compressor must attenuate strong audio in the rendered WAV');
 
+  // Verify real reverb and delay audio rather than decorative controls.
+  await page.locator('#compEnable0').uncheck();
+  await page.locator('#lowEQ0').fill('0');await page.locator('#highEQ0').fill('0');
+  await page.locator('#spaceDetails0 summary').click();
+  await page.locator('#reverb0').fill('40');
+  const [roomDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const roomPath=path.join(process.cwd(),'mixer-room-output.wav');await roomDownload.saveAs(roomPath);
+  const room=fs.readFileSync(roomPath);
+  assert(room.length>flat.length+44100*4,'Reverb must extend export to include tail');
+  assert.notDeepEqual(room.subarray(44,8044),flat.subarray(44,8044),'Room convolution must alter PCM waveform');
+  await page.locator('#reverb0').fill('0');
+  await page.locator('#delayWet0').fill('35');
+  await page.locator('#delayMs0').fill('350');
+  const [echoDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const echoPath=path.join(process.cwd(),'mixer-echo-output.wav');await echoDownload.saveAs(echoPath);
+  const echo=fs.readFileSync(echoPath);
+  assert(echo.length>flat.length+44100*4,'Echo must extend WAV to preserve tail');
+  let echoEnergy=0;
+  for(let j=47000;j<55000;j++){const sample=echo.readInt16LE(44+j*4)/32768;echoEnergy+=sample*sample}
+  assert(echoEnergy>1,'Delay tail must contain audible signal after source ends');
+  await page.locator('#lowEQ0').fill('6');await page.locator('#highEQ0').fill('-3');
+  await page.locator('#compEnable0').check();
+  await page.locator('#reverb0').fill('30');
+  await page.locator('#delayWet0').fill('25');
+
   // Save and restore a session with embedded audio and complete channel state.
   const [sessionDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
   const sessionPath=path.join(process.cwd(),'test-mixer-session.json');
@@ -107,6 +132,9 @@ const path=require('node:path');
   assert.equal(session.tracks[0].compEnabled,true);
   assert.equal(session.tracks[0].compThreshold,-36);
   assert.equal(session.tracks[0].compRatio,12);
+  assert.equal(session.tracks[0].reverb,30);
+  assert.equal(session.tracks[0].delayWet,25);
+  assert.equal(session.tracks[0].delayMs,350);
   assert.equal(session.tracks[1].offset,movedOffset);
   assert.equal(session.tracks[1].trimStart,0.1);
   assert.equal(session.tracks[1].trimEnd,0.9);
@@ -125,6 +153,9 @@ const path=require('node:path');
   assert.equal(await page.locator('#compEnable0').isChecked(),true);
   assert.equal(await page.locator('#compThreshold0').inputValue(),'-36');
   assert.equal(await page.locator('#compRatio0').inputValue(),'12');
+  assert.equal(await page.locator('#reverb0').inputValue(),'30');
+  assert.equal(await page.locator('#delayWet0').inputValue(),'25');
+  assert.equal(await page.locator('#delayMs0').inputValue(),'350');
   assert.equal(await page.locator('#panval1').innerText(),'Izq 30');
   assert.equal(await page.locator('#offset1').inputValue(),String(movedOffset));
   assert.equal(await page.locator('#trimStart1').inputValue(),'0.1');
@@ -167,6 +198,6 @@ const path=require('node:path');
   await validReplacement.saveAs(replacementPath);
   assert.equal(JSON.parse(fs.readFileSync(replacementPath,'utf8')).tracks[1].name,'new-take.wav');
   assert.deepEqual(errors,[]);
-  console.log('PASS: 8 tracks, import, sessions, non-destructive editing, shelf EQ, real compressor PCM attenuation, WAV export, invalid-file regressions.');
+  console.log('PASS: 8 tracks, import, sessions, non-destructive editing, shelf EQ, compression, convolution reverb, delay and real PCM tails, WAV export, invalid-file regressions.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
