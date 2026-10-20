@@ -72,6 +72,16 @@ Pruebas incluidas: reducción medida del ruido de bajo nivel en PCM, reducción 
 - Las pruebas incluyen tiempos exactos +-100ms en WAV, historial, respaldo/restauración, invalidación de ajustes maliciosos, micrófono simulado de Chromium, recuperación byte a byte y rechazo de permisos sin perder la toma previa.
 - **Bloqueadores para producción:** medición real de round-trip, conversores, interfaces de audio y latencia del navegador/dispositivo, pruebas prolongadas, sincronización sample-accurate, respaldo automático persistente fuera del navegador y hardware físico. La grabación guía sigue sin autocompensación. Los botones de descarga requieren acción del usuario y el navegador puede restringirlos.
 
+## Exportación de stems WAV separados (beta)
+
+`mixer-stems.js` ofrece dos acciones manuales: exportar un WAV estéreo de un canal seleccionado y exportar todos los canales cargados como ZIP portable (STORE + CRC32, sin biblioteca externa). Los archivos WAV comienzan todos en 0:00 y terminan en el mismo instante, incluso con recortes, desplazamientos y colas de efectos, para conservar la sincronización en un DAW externo.
+
+**Incluye en cada stem:** audio procesado elegido del canal (incluida afinación y limpieza vocal cuando estén activadas), EQ, compresor, reverb, delay, volumen del propio canal y panorama. **No incluye:** mute/solo, volumen maestro, limitador maestro ni metrónomo. El ZIP incorpora `LEEME-STEMS.txt` para documentarlo. No exporta un master; cada pista es independiente aunque el mixer esté en modo solo o mute.
+
+La exportación ZIP sin compresión tiene un tope de 145 MiB y se comprueba antes de crear los WAV para reducir el riesgo de agotar memoria. Para sesiones que superen el límite, se permite exportar pistas individuales. El WAV individual también tiene límite de 145 MiB, no se garantiza la exportación de material de larga duración en hardware de poca memoria. No hay exportación de buses o stems agrupados, edición avanzada ni masterización profesional.
+
+Las pruebas previstas cubren canales aislados con notas de frecuencias distintas, WAV alineados, offset, silencio previo, mute/solo ignorados por diseño, colas de efectos, descarga individual, estructura del ZIP y rechazo preventivo de archivos excesivamente grandes.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
