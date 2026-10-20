@@ -6,6 +6,10 @@ on:
       - 'mixer-session.js'
       - 'mixer-record.js'
       - 'mixer-meter.js'
+      - 'pitch-lab.html'
+      - 'pitch-engine.js'
+      - 'tests/pitch-engine.cjs'
+      - 'tests/pitch-ui.cjs'
       - 'mixer-timeline.js'
       - 'tests/mixer-smoke.cjs'
       - '.github/workflows/mixer-tests.yml'
@@ -27,6 +31,10 @@ jobs:
           node --check mixer-session.js
           node --check mixer-record.js
           node --check mixer-meter.js
+          node --check pitch-engine.js
+          node --check tests/pitch-engine.cjs
+          node --check tests/pitch-ui.cjs
+          node tests/pitch-engine.cjs
           node --check mixer-timeline.js
       - name: Install browser tooling
         run: |
@@ -37,10 +45,11 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/studio-server.log 2>&1 &
           sleep 2
           node tests/mixer-smoke.cjs
+          node tests/pitch-ui.cjs
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-meter.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-meter.js pitch-lab.html pitch-engine.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -52,7 +61,8 @@ jobs:
             '7. La grabación con micrófono puede requerir HTTPS o localhost; no se garantiza desde file://.' \
             '8. Observe niveles por pista y mezcla final durante reproducción.' \
             '9. La corrección de afinación (Auto-Tune estilo) NO está implementada.' \
-            '10. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '10. Pruebe pitch-lab.html con una sola nota vocal sostenida: afinación experimental, no Auto-Tune profesional.' \
+            '11. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
