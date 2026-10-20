@@ -76,7 +76,7 @@
      });
      clip.addEventListener("keyup",e=>{
        if(keysMoved&&["ArrowLeft","ArrowRight","Home"].includes(e.key)){
-         keysMoved=false; // The numeric offset field is already updated; preserve keyboard focus.
+         keysMoved=false; window.captureTimelineHistory?.(); // Capture one keyboard edit without losing clip focus.
        }
      });
      bg.append(clip);
