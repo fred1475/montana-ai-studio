@@ -217,6 +217,30 @@ const path=require('node:path');
   const replacementPath=path.join(process.cwd(),'test-mixer-new-take.json');
   await validReplacement.saveAs(replacementPath);
   assert.equal(JSON.parse(fs.readFileSync(replacementPath,'utf8')).tracks[1].name,'new-take.wav');
+  // Real browser AudioContext oscillator scheduling, and transport separation from WAV export.
+  await page.locator('#bpm').fill('120');
+  await page.locator('#metronomeOn').check();
+  await page.locator('#play').click();
+  await page.waitForFunction(()=>window.metronomeScheduledBeats?.()>=2,null,{timeout:4000});
+  assert.equal(await page.evaluate(()=>metronomeIsRunning()),true,'Metronome should run during monitored playback');
+  await page.locator('#stop').click();
+  assert.equal(await page.evaluate(()=>metronomeIsRunning()),false,'Stop must stop clicks');
+  const [metroExport]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const metroPath=path.join(process.cwd(),'mixer-metro-on.wav');await metroExport.saveAs(metroPath);
+  await page.locator('#metronomeOn').uncheck();
+  const [cleanExport]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const cleanPath=path.join(process.cwd(),'mixer-metro-off.wav');await cleanExport.saveAs(cleanPath);
+  assert.deepEqual(fs.readFileSync(metroPath),fs.readFileSync(cleanPath),'Metronome clicks must never be printed into WAV export');
+  await page.locator('#metronomeOn').check();
+  const [tempoSession]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const tempoPath=path.join(process.cwd(),'mixer-tempo-session.json');await tempoSession.saveAs(tempoPath);
+  const tempoJSON=JSON.parse(fs.readFileSync(tempoPath,'utf8'));
+  assert.equal(tempoJSON.bpm,120);assert.equal(tempoJSON.metronomeOn,true);
+  await page.reload();await page.locator('#sessionFile').setInputFiles(tempoPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  assert.equal(await page.locator('#bpm').inputValue(),'120');
+  assert.equal(await page.locator('#metronomeOn').isChecked(),true);
+
   assert.deepEqual(errors,[]);
   console.log('PASS: 8 tracks, import, sessions, non-destructive editing, shelf EQ, compression, convolution reverb, delay and real PCM tails, WAV export, invalid-file regressions.');
  }finally{await browser.close()}
