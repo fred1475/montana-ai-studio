@@ -1,0 +1,71 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Montana AI Studio — Mezclador de 8 pistas</title><style>
+:root{color-scheme:dark;font:16px system-ui;background:#090e19;color:#f7f8fb}*{box-sizing:border-box}body{max-width:1180px;margin:auto;padding:20px}h1,a{color:#efc36e}p,small{color:#b9c8d9}button,input{font:inherit}button{padding:10px 14px;border-radius:8px;border:1px solid #ae986d;background:#efc36e;color:#19120a;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px}.track,section{border:1px solid #45526a;border-radius:12px;background:#172132;padding:16px}label{display:block;margin:10px 0}input[type=file],input[type=range]{width:100%;max-width:100%}input[type=range]{accent-color:#efc36e}section{margin:20px 0}.status{white-space:pre-wrap}output{font-variant-numeric:tabular-nums}.muted{opacity:.65}</style></head><body>
+<a href="studio.html">← Volver al estudio</a><h1>Montana AI Studio — Mezclador de 8 pistas</h1>
+<p>Para instrumentales, voces, dobles, coros y efectos. Procesamiento local sin subir archivos. Los cambios no afectan tus archivos originales.</p><main id="tracks"></main>
+<section><button id="play">▶ Reproducir</button> <button id="stop">■ Detener</button> <button id="export">⬇ Descargar mezcla WAV</button><p id="status" class="status" role="status" aria-live="polite">Importa una o más pistas para comenzar.</p><small>Versión de desarrollo: las pistas comienzan alineadas en el segundo 0. Se admite hasta 5 minutos por pista y 50 MB por archivo. Exportación estéreo WAV PCM 16-bit a 44.1 kHz. No se ofrecen aún grabación multipista, edición temporal, plug-ins VST ni masterización IA.</small></section>
+<script>
+"use strict";
+const $=id=>document.getElementById(id),N=8,tracks=Array(N).fill(null),players=[];let ctx=null;
+function report(msg){$("status").textContent=msg}
+function audio(){return ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)())}
+function gain(i){return $("mute"+i).checked||isSoloed()&&!$("solo"+i).checked?0:Number($("vol"+i).value)/100}
+function isSoloed(){return tracks.some((t,i)=>t&&$("solo"+i).checked)}
+function pan(i){return Number($("pan"+i).value)/100}
+const labels=["Instrumental","Voz principal","Doble 1","Doble 2","Coro 1","Coro 2","Adlibs","Efectos"];
+$("tracks").innerHTML=labels.map((name,i)=>`<article class="track"><h2>${i+1}. ${name}</h2><label for="file${i}">Importar audio</label><input id="file${i}" type="file" accept="audio/*"><p id="label${i}">Sin audio</p><label for="vol${i}">Volumen <output id="val${i}">100%</output></label><input id="vol${i}" type="range" min="0" max="150" value="100"><label for="pan${i}">Panorama <output id="panval${i}">Centro</output></label><input id="pan${i}" type="range" min="-100" max="100" value="0"><label><input id="mute${i}" type="checkbox"> Silenciar</label><label><input id="solo${i}" type="checkbox"> Solo</label></article>`).join("");
+function stop(){for(const s of players){try{s.stop()}catch(e){}try{s.disconnect()}catch(e){}}players.length=0}
+for(let i=0;i<N;i++){
+ $("vol"+i).addEventListener("input",()=>{$("val"+i).textContent=$("vol"+i).value+"%"});
+ $("pan"+i).addEventListener("input",()=>{const v=Number($("pan"+i).value);$("panval"+i).textContent=v===0?"Centro":(v<0?"Izq ":"Der ")+Math.abs(v)});
+ $("file"+i).addEventListener("change",async e=>{
+  const file=e.target.files?.[0];if(!file)return;report("Decodificando "+file.name+"...");
+  try{
+   if(file.size>50*1024*1024)throw Error("Archivo mayor de 50 MB");
+   const decoded=await audio().decodeAudioData(await file.arrayBuffer());
+   if(decoded.duration>300)throw Error("Duración mayor de cinco minutos");
+   stop();tracks[i]=decoded;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
+   report("Pista "+(i+1)+" importada");
+  }catch(err){report("No se pudo importar: "+err.message)}
+ });
+}
+$("stop").onclick=()=>{stop();report("Reproducción detenida")};
+$("play").onclick=async()=>{
+ try{
+  if(!tracks.some(Boolean))throw Error("Primero importa audio");
+  stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;
+  tracks.forEach((buf,i)=>{
+   if(!buf)return;const src=ac.createBufferSource(),vol=ac.createGain(),stereo=ac.createStereoPanner();
+   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol).connect(stereo).connect(ac.destination);
+   src.start(at);players.push(src);src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1)};
+  });report("Mezcla reproduciéndose. Para aplicar cambios, pulsa Detener y Reproducir.");
+ }catch(err){report(err.message)}
+};
+function wav(a,b,rate){
+ const frames=a.length,size=44+frames*4;if(size>150*1024*1024)throw Error("Resultado demasiado grande");
+ const arr=new ArrayBuffer(size),dv=new DataView(arr);
+ const str=(p,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(p+i,s.charCodeAt(i))};
+ str(0,"RIFF");dv.setUint32(4,size-8,true);str(8,"WAVE");str(12,"fmt ");dv.setUint32(16,16,true);
+ dv.setUint16(20,1,true);dv.setUint16(22,2,true);dv.setUint32(24,rate,true);dv.setUint32(28,rate*4,true);
+ dv.setUint16(32,4,true);dv.setUint16(34,16,true);str(36,"data");dv.setUint32(40,frames*4,true);
+ for(let i=0;i<frames;i++)for(let c=0;c<2;c++){
+  const x=Math.max(-1,Math.min(1,c===0?a[i]:b[i]));dv.setInt16(44+i*4+c*2,x<0?x*32768:x*32767,true);
+ }
+ return new Blob([arr],{type:"audio/wav"});
+}
+$("export").onclick=async()=>{
+ const btn=$("export");btn.disabled=true;
+ try{
+  if(!tracks.some(Boolean))throw Error("Primero importa audio");
+  report("Creando mezcla WAV...");const rate=44100,frames=Math.ceil(Math.max(...tracks.filter(Boolean).map(b=>b.duration))*rate);
+  const offline=new OfflineAudioContext(2,frames,rate);
+  tracks.forEach((buf,i)=>{
+   if(!buf)return;const src=offline.createBufferSource(),vol=offline.createGain(),stereo=offline.createStereoPanner();
+   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol).connect(stereo).connect(offline.destination);src.start(0);
+  });
+  const rendered=await offline.startRendering();const blob=wav(rendered.getChannelData(0),rendered.getChannelData(1),rate);
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-ai-studio-mezcla.wav";
+  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  report("Archivo WAV creado. Reprodúcelo para comprobar la mezcla.");
+ }catch(err){report("Error al exportar: "+err.message)}finally{btn.disabled=false}
+};
+</script></body></html>
