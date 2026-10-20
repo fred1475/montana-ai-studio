@@ -86,7 +86,7 @@ $("stop").onclick=()=>{stop();report("Reproducción detenida")};
 $("play").onclick=async()=>{
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
-  const clips=tracks.map((b,i)=>b?region(i,b):null);stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(ac.destination);window.attachMasterMeter?.(ac,master);activeOutputs.push(master);
+  const clips=tracks.map((b,i)=>b?region(i,b):null);stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(ac,master).connect(ac.destination);activeOutputs.push(master);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=ac.createBufferSource(),vol=ac.createGain(),stereo=ac.createStereoPanner();
    src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);window.attachTrackMeter(ac,addSpace(ac,addCompressor(ac,addEq(ac,vol,i),i),i),i).connect(stereo).connect(master);
