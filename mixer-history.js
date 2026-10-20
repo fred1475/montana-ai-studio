@@ -2,7 +2,7 @@
 // Non-destructive 8-track offset + trims undo/redo.
 // A history entry records the BEFORE snapshot of an edit, not the audio data.
 (function(){
- const ids=Array.from({length:8},(_,i)=>(i===0?["offset","trimStart","trimEnd"]:["offset","trimStart","trimEnd","alignMs"]).map(k=>k+i)).flat();
+ const ids=Array.from({length:8},(_,i)=>(i===0?["offset","trimStart","trimEnd","fadeIn","fadeOut"]:["offset","trimStart","trimEnd","alignMs","fadeIn","fadeOut"]).map(k=>k+i)).flat();
  const get=()=>ids.map(id=>document.getElementById(id).value);
  const same=(a,b)=>a.every((v,i)=>v===b[i]);
  let previous=get(),undo=[],redo=[],applying=false;
