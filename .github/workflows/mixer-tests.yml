@@ -8,7 +8,9 @@ on:
       - 'mixer-meter.js'
       - 'pitch-lab.html'
       - 'pitch-engine.js'
+      - 'pitch-melody.js'
       - 'tests/pitch-engine.cjs'
+      - 'tests/pitch-melody.cjs'
       - 'tests/pitch-ui.cjs'
       - 'mixer-timeline.js'
       - 'tests/mixer-smoke.cjs'
@@ -32,6 +34,9 @@ jobs:
           node --check mixer-record.js
           node --check mixer-meter.js
           node --check pitch-engine.js
+          node --check pitch-melody.js
+          node --check tests/pitch-melody.cjs
+          node tests/pitch-melody.cjs
           node --check tests/pitch-engine.cjs
           node --check tests/pitch-ui.cjs
           node tests/pitch-engine.cjs
@@ -49,7 +54,7 @@ jobs:
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-meter.js pitch-lab.html pitch-engine.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-meter.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -61,7 +66,7 @@ jobs:
             '7. La grabación con micrófono puede requerir HTTPS o localhost; no se garantiza desde file://.' \
             '8. Observe niveles por pista y mezcla final durante reproducción.' \
             '9. La corrección de afinación (Auto-Tune estilo) NO está implementada.' \
-            '10. Pruebe pitch-lab.html con una sola nota vocal sostenida: afinación experimental, no Auto-Tune profesional.' \
+            '10. Pruebe pitch-lab.html en modo sostenido o frase experimental de dos notas: NO es Auto-Tune profesional.' \
             '11. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
