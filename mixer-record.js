@@ -37,7 +37,7 @@ $("recordStart").addEventListener("click",async()=>{
   recorder.start(1000);
   $("recordStart").disabled=true;$("recordStop").disabled=false;
   // Guide/reference is played but recording is not latency compensated.
-  if(tracks.some((buf,index)=>index!==i&&buf)){await audio().resume();stop();const at=audio().currentTime+.08;tracks.forEach((buf,index)=>{if(!buf||index===i)return;const src=audio().createBufferSource(),g=audio().createGain(),p=audio().createStereoPanner();src.buffer=buf;g.gain.value=gain(index);p.pan.value=pan(index);src.connect(g).connect(p).connect(audio().destination);src.start(at);players.push(src)});}
+  if(tracks.some((buf,index)=>index!==i&&buf)){await audio().resume();stop();const at=audio().currentTime+.08;tracks.forEach((buf,index)=>{if(!buf||index===i)return;const src=audio().createBufferSource(),g=audio().createGain(),p=audio().createStereoPanner();src.buffer=buf;g.gain.value=gain(index);p.pan.value=pan(index);src.connect(g);addEq(audio(),g,index).connect(p).connect(audio().destination);src.start(at);players.push(src)});}
   report("Grabando canal "+(i+1)+". Usa audífonos para evitar filtración del instrumental. Esta versión NO corrige la latencia automáticamente.");
  }catch(err){
   stream?.getTracks().forEach(t=>t.stop());recording=null;$("recordStart").disabled=false;$("recordStop").disabled=true;report("No se inició la grabación: "+err.message)
