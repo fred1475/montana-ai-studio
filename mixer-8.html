@@ -24,7 +24,7 @@ for(let i=0;i<N;i++){
  $("file"+i).addEventListener("change",async e=>{
   const file=e.target.files?.[0];if(!file)return;report("Decodificando "+file.name+"...");
   try{
-   if(file.size>50*1024*1024)throw Error("Archivo mayor de 50 MB");
+   if(file.size>50e6)throw Error("Archivo mayor de 50 MB");
    const decoded=await audio().decodeAudioData(await file.arrayBuffer());
    if(decoded.duration>300)throw Error("Duración mayor de cinco minutos");
    stop();tracks[i]=decoded;originalFiles[i]=file;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
