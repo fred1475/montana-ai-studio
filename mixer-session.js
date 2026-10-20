@@ -76,6 +76,7 @@ $("sessionFile").addEventListener("change",async(e)=>{
    $("label"+i).textContent=t.source?t.source.name+" — "+t.decoded.duration.toFixed(1)+" s":"Sin audio";
   });
   window.commitPitchRestore(preparedPitch);
+  window.resetEditHistory?.();
   report("Sesión restaurada con "+loaded.filter(t=>t.decoded).length+" pista(s) de audio.");
  }catch(err){report("No se restauró la sesión: "+err.message)}finally{btn.disabled=false;e.target.value=""}
 });
