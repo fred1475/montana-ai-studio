@@ -88,6 +88,7 @@ $("sessionFile").addEventListener("change",async(e)=>{
   window.commitPitchRestore(preparedPitch);
   window.commitCleanRestore(preparedClean);
   window.resetEditHistory?.();
+  window.updateSourceDownload?.();
   report("Sesión restaurada con "+loaded.filter(t=>t.decoded).length+" pista(s) de audio.");
  }catch(err){report("No se restauró la sesión: "+err.message)}finally{btn.disabled=false;e.target.value=""}
 });
