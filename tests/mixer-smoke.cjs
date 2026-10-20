@@ -241,6 +241,59 @@ const path=require('node:path');
   assert.equal(await page.locator('#bpm').inputValue(),'120');
   assert.equal(await page.locator('#metronomeOn').isChecked(),true);
 
+
+  // Loud overlapping stereo test: limiter is optional and affects only WAV output.
+  await page.locator('#solo0').uncheck();
+  await page.locator('#mute1').uncheck();
+  await page.locator('#vol0').fill('150');
+  await page.locator('#vol1').fill('150');
+  await page.locator('#pan1').fill('0');
+  await page.locator('#masterGain').fill('100');
+  await page.locator('#offset1').fill('0');
+  await page.locator('#trimStart1').fill('0');
+  await page.locator('#trimEnd1').fill('0');
+  await page.locator('#lowEQ0').fill('0');
+  await page.locator('#highEQ0').fill('0');
+  await page.locator('#compEnable0').uncheck();
+  await page.locator('#reverb0').fill('0');
+  await page.locator('#delayWet0').fill('0');
+  await page.locator('#limiterOn').uncheck();
+  const [bypassLoud]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const rawPath=path.join(process.cwd(),'mixer-limiter-off.wav');await bypassLoud.saveAs(rawPath);
+  const raw=fs.readFileSync(rawPath);
+  assert((await page.locator('#status').innerText()).includes('ADVERTENCIA: hay clipping'));
+  await page.locator('#limiterOn').check();
+  await page.locator('#limiterCeiling').fill('-3');
+  assert.equal(await page.locator('#limiterCeilingVal').innerText(),'-3 dBFS');
+  const [limitedDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const limitedPath=path.join(process.cwd(),'mixer-limited-3db.wav');await limitedDownload.saveAs(limitedPath);
+  const limited=fs.readFileSync(limitedPath);
+  assert.equal(limited.length,raw.length);
+  assert((await page.locator('#status').innerText()).includes('Limitador aplicado'));
+  let maxRaw=0,maxLimited=0;
+  for(let j=44;j<raw.length;j+=2){
+   maxRaw=Math.max(maxRaw,Math.abs(raw.readInt16LE(j)));
+   maxLimited=Math.max(maxLimited,Math.abs(limited.readInt16LE(j)));
+  }
+  assert(maxRaw>=32000,'Unprotected test mix should reach PCM ceiling');
+  assert(maxLimited<=Math.pow(10,-3/20)*32768+2,'Enabled limiter must enforce -3 dBFS sample ceiling');
+  assert(maxLimited>10000&&maxLimited<maxRaw,'Limiter must attenuate actual audio');
+  const [limitedSession]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const limitedSessionPath=path.join(process.cwd(),'mixer-limiter-settings.json');await limitedSession.saveAs(limitedSessionPath);
+  const limitedData=JSON.parse(fs.readFileSync(limitedSessionPath,'utf8'));
+  assert.equal(limitedData.limiterOn,true);
+  assert.equal(limitedData.limiterCeiling,-3);
+  await page.reload();await page.locator('#sessionFile').setInputFiles(limitedSessionPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  assert.equal(await page.locator('#limiterOn').isChecked(),true);
+  assert.equal(await page.locator('#limiterCeiling').inputValue(),'-3');
+  limitedData.limiterCeiling=0;
+  const invalidLimitPath=path.join(process.cwd(),'mixer-invalid-limiter-session.json');
+  fs.writeFileSync(invalidLimitPath,JSON.stringify(limitedData));
+  await page.locator('#sessionFile').setInputFiles(invalidLimitPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
+  assert.equal(await page.locator('#limiterCeiling').inputValue(),'-3','Invalid limiter sessions must not overwrite active project');
+
   assert.deepEqual(errors,[]);
   console.log('PASS: 8 tracks, import, sessions, non-destructive editing, shelf EQ, compression, convolution reverb, delay and real PCM tails, WAV export, invalid-file regressions.');
  }finally{await browser.close()}
