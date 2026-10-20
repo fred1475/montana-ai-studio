@@ -8,8 +8,8 @@ $("saveSession").addEventListener("click",async()=>{
  try{
   const items=[];let total=0;
   for(let i=0;i<8;i++){
-   const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value)};
-   if(![state.volume,state.pan,state.lowEQ,state.highEQ,state.offset,state.trimStart,state.trimEnd].every(Number.isFinite)||state.volume<0||state.volume>150||Math.abs(state.pan)>100||Math.abs(state.lowEQ)>12||Math.abs(state.highEQ)>12||[state.offset,state.trimStart,state.trimEnd].some(v=>v<0||v>300))throw Error("Ajustes inválidos en canal "+(i+1));
+   const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),compEnabled:$("compEnable"+i).checked,compThreshold:Number($("compThreshold"+i).value),compRatio:Number($("compRatio"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value)};
+   if(![state.volume,state.pan,state.lowEQ,state.highEQ,state.compThreshold,state.compRatio,state.offset,state.trimStart,state.trimEnd].every(Number.isFinite)||state.volume<0||state.volume>150||Math.abs(state.pan)>100||Math.abs(state.lowEQ)>12||Math.abs(state.highEQ)>12||state.compThreshold< -36||state.compThreshold> -6||state.compRatio<2||state.compRatio>12||[state.offset,state.trimStart,state.trimEnd].some(v=>v<0||v>300))throw Error("Ajustes inválidos en canal "+(i+1));
    if(tracks[i])region(i,tracks[i]); // Never create a backup that the loader cannot restore.
    if(tracks[i]&&f){
     if(f.size>50e6||(total+=f.size)>80e6)throw Error("Máximo 80 MB por sesión.");
@@ -39,6 +39,8 @@ $("sessionFile").addEventListener("change",async(e)=>{
    if(!Number.isFinite(v)||v<0||v>150||!Number.isFinite(p)||p< -100||p>100||typeof t.mute!=="boolean"||typeof t.solo!=="boolean")throw Error("Ajustes inválidos.");
    const lowEQ=t.lowEQ===undefined?0:Number(t.lowEQ),highEQ=t.highEQ===undefined?0:Number(t.highEQ);
    if(![lowEQ,highEQ].every(Number.isFinite)||[lowEQ,highEQ].some(x=>x< -12||x>12))throw Error("Ajustes de ecualización inválidos.");
+   const compEnabled=t.compEnabled===undefined?false:t.compEnabled,compThreshold=t.compThreshold===undefined?-18:Number(t.compThreshold),compRatio=t.compRatio===undefined?4:Number(t.compRatio);
+   if(typeof compEnabled!=="boolean"||![compThreshold,compRatio].every(Number.isFinite)||compThreshold< -36||compThreshold> -6||compRatio<2||compRatio>12)throw Error("Ajustes del compresor inválidos.");
    const offset=t.offset===undefined?0:Number(t.offset),trimStart=t.trimStart===undefined?0:Number(t.trimStart),trimEnd=t.trimEnd===undefined?0:Number(t.trimEnd);
    if(![offset,trimStart,trimEnd].every(Number.isFinite)||[offset,trimStart,trimEnd].some(x=>x<0||x>300))throw Error("Posición de pista inválida.");
    let decoded=null,source=null;
@@ -50,7 +52,7 @@ $("sessionFile").addEventListener("change",async(e)=>{
     if(decoded.duration>300)throw Error("Pista demasiado larga.");
    }
    if(decoded&&(trimStart>=decoded.duration||trimEnd>decoded.duration+.001||(trimEnd!==0&&trimEnd<=trimStart)))throw Error("Recorte de pista inválido.");
-   loaded.push({decoded,source,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd,lowEQ,highEQ});
+   loaded.push({decoded,source,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd,lowEQ,highEQ,compEnabled,compThreshold,compRatio});
   }
   stop();
   $("masterGain").value=masterGain;$("masterValue").textContent=masterGain+"%";
@@ -62,6 +64,9 @@ $("sessionFile").addEventListener("change",async(e)=>{
    $("pan"+i).value=t.pan;$("panval"+i).textContent=t.pan===0?"Centro":(t.pan<0?"Izq ":"Der ")+Math.abs(t.pan);
    $("lowEQ"+i).value=t.lowEQ;$("lowVal"+i).textContent=t.lowEQ+" dB";
    $("highEQ"+i).value=t.highEQ;$("highVal"+i).textContent=t.highEQ+" dB";
+   $("compEnable"+i).checked=t.compEnabled;
+   $("compThreshold"+i).value=t.compThreshold;$("compThresholdVal"+i).textContent=t.compThreshold+" dB";
+   $("compRatio"+i).value=t.compRatio;$("compRatioVal"+i).textContent=t.compRatio+":1";
    $("offset"+i).value=t.offset;$("trimStart"+i).value=t.trimStart;$("trimEnd"+i).value=t.trimEnd;
    $("mute"+i).checked=t.mute;$("solo"+i).checked=t.solo;
    $("label"+i).textContent=t.source?t.source.name+" — "+t.decoded.duration.toFixed(1)+" s":"Sin audio";
