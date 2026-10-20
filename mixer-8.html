@@ -2,10 +2,11 @@
 :root{color-scheme:dark;font:16px system-ui;background:#090e19;color:#f7f8fb}*{box-sizing:border-box}body{max-width:1180px;margin:auto;padding:20px}h1,a{color:#efc36e}p,small{color:#b9c8d9}button,input{font:inherit}button{padding:10px 14px;border-radius:8px;border:1px solid #ae986d;background:#efc36e;color:#19120a;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px}.track,section{border:1px solid #45526a;border-radius:12px;background:#172132;padding:16px}label{display:block;margin:10px 0}input[type=file],input[type=range]{width:100%;max-width:100%}input[type=range]{accent-color:#efc36e}section{margin:20px 0}.status{white-space:pre-wrap}output{font-variant-numeric:tabular-nums}.muted{opacity:.65}</style></head><body>
 <a href="studio.html">← Volver al estudio</a><h1>Montana AI Studio — Mezclador de 8 pistas</h1>
 <p>Para instrumentales, voces, dobles, coros y efectos. Procesamiento local sin subir archivos. Los cambios no afectan tus archivos originales.</p><main id="tracks"></main>
-<section><label for="recordTrack">Canal para grabar <select id="recordTrack"><option value="1">2. Voz principal</option><option value="2">3. Doble 1</option><option value="3">4. Doble 2</option><option value="4">5. Coro 1</option><option value="5">6. Coro 2</option><option value="6">7. Adlibs</option><option value="7">8. Efectos</option></select></label> <button id="recordStart">● Grabar voz</button> <button id="recordStop" disabled>■ Terminar toma</button> <button id="play">▶ Reproducir</button> <button id="stop">■ Detener</button> <button id="export">⬇ Descargar mezcla WAV</button><button id="saveSession" type="button">💾 Guardar sesión</button> <button id="loadSession" type="button">📂 Abrir sesión</button> <input id="sessionFile" type="file" accept=".json,application/json" hidden><p id="status" class="status" role="status" aria-live="polite">Importa una o más pistas para comenzar.</p><small>Versión de desarrollo: las pistas comienzan alineadas en el segundo 0. Se admite hasta 5 minutos por pista y 50 MB por archivo. Exportación estéreo WAV PCM 16-bit a 44.1 kHz. No se ofrecen aún grabación multipista, edición temporal, plug-ins VST ni masterización IA.</small></section>
+<section><label for="recordTrack">Canal para grabar <select id="recordTrack"><option value="1">2. Voz principal</option><option value="2">3. Doble 1</option><option value="3">4. Doble 2</option><option value="4">5. Coro 1</option><option value="5">6. Coro 2</option><option value="6">7. Adlibs</option><option value="7">8. Efectos</option></select></label> <button id="recordStart">● Grabar voz</button> <button id="recordStop" disabled>■ Terminar toma</button> <label for="masterGain">Volumen maestro <output id="masterValue">80%</output></label><input id="masterGain" type="range" min="0" max="100" value="80"> <button id="play">▶ Reproducir</button> <button id="stop">■ Detener</button> <button id="export">⬇ Descargar mezcla WAV</button><button id="saveSession" type="button">💾 Guardar sesión</button> <button id="loadSession" type="button">📂 Abrir sesión</button> <input id="sessionFile" type="file" accept=".json,application/json" hidden><p id="status" class="status" role="status" aria-live="polite">Importa una o más pistas para comenzar.</p><small>Versión de desarrollo: las pistas comienzan alineadas en el segundo 0. Se admite hasta 5 minutos por pista y 50 MB por archivo. Exportación estéreo WAV PCM 16-bit a 44.1 kHz. No se ofrecen aún grabación multipista, edición temporal, plug-ins VST ni masterización IA.</small></section>
 <script>
 "use strict";
 const $=id=>document.getElementById(id),N=8,tracks=Array(N).fill(null),players=[];let ctx=null;
+$("masterGain").addEventListener("input",()=>{$("masterValue").textContent=$("masterGain").value+"%"});
 function report(msg){$("status").textContent=msg}
 function audio(){return ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)())}
 function gain(i){return $("mute"+i).checked||isSoloed()&&!$("solo"+i).checked?0:Number($("vol"+i).value)/100}
@@ -32,10 +33,10 @@ $("stop").onclick=()=>{stop();report("Reproducción detenida")};
 $("play").onclick=async()=>{
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
-  stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;
+  stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(ac.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=ac.createBufferSource(),vol=ac.createGain(),stereo=ac.createStereoPanner();
-   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol).connect(stereo).connect(ac.destination);
+   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol).connect(stereo).connect(master);
    src.start(at);players.push(src);src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1)};
   });report("Mezcla reproduciéndose. Para aplicar cambios, pulsa Detener y Reproducir.");
  }catch(err){report(err.message)}
@@ -57,15 +58,15 @@ $("export").onclick=async()=>{
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
   report("Creando mezcla WAV...");const rate=44100,frames=Math.ceil(Math.max(...tracks.filter(Boolean).map(b=>b.duration))*rate);
-  const offline=new OfflineAudioContext(2,frames,rate);
+  const offline=new OfflineAudioContext(2,frames,rate);const master=offline.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(offline.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=offline.createBufferSource(),vol=offline.createGain(),stereo=offline.createStereoPanner();
-   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol).connect(stereo).connect(offline.destination);src.start(0);
+   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol).connect(stereo).connect(master);src.start(0);
   });
-  const rendered=await offline.startRendering();const blob=wav(rendered.getChannelData(0),rendered.getChannelData(1),rate);
+  const rendered=await offline.startRendering();const left=rendered.getChannelData(0),right=rendered.getChannelData(1);let peak=0;for(let j=0;j<left.length;j++){peak=Math.max(peak,Math.abs(left[j]),Math.abs(right[j]));}const blob=wav(left,right,rate);
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-ai-studio-mezcla.wav";
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
-  report("Archivo WAV creado. Reprodúcelo para comprobar la mezcla.");
+  report("Archivo WAV creado. Pico: "+(20*Math.log10(Math.max(peak,1e-9))).toFixed(1)+" dBFS. "+(peak>1?"ADVERTENCIA: hay clipping; baja el volumen maestro y exporta otra vez.":"Sin clipping detectado en la mezcla renderizada.")+" Reproduce el archivo para comprobarlo.");
  }catch(err){report("Error al exportar: "+err.message)}finally{btn.disabled=false}
 };
 </script><script src="mixer-session.js"></script><script src="mixer-record.js"></script></body></html>
