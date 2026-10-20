@@ -27,6 +27,14 @@ Archivo `pitch-lab.html` junto con `pitch-engine.js` (sin llamadas a servidor). 
 
 La prueba se somete a GitHub Actions antes de considerarse aprobada. Integración directa a canales del mezclador aún pendiente; usar solo como laboratorio separado.
 
+## Nuevo hito del laboratorio: corrección de frases con varias notas (20 oct 2026)
+
+El archivo `pitch-melody.js` añade un **modo experimental separado** de segmentación por ventanas y corrección por tramos utilizando PSOLA. En `pitch-lab.html`, el artista selecciona **Una nota sostenida** o **Frase de varias notas**. El segundo admite por ahora frases monofónicas de 0.65–10 segundos con 2–12 notas claras, reconoce cambios de nota y mantiene la duración al exportar WAV.
+
+Se añadieron pruebas de dos notas secuenciales con frecuencias distintas para verificar el procesamiento y la exportación real desde Chromium. **Aprobación automatizada no equivale a certificación vocal.** Quedan por evaluar respiraciones, consonantes, ruido, vibrato, glides, afinaciones rápidas, límites entre sílabas, voces estéreo, timbre, formantes y artefactos; las pruebas de estudio siguen pendientes.
+
+No se integra todavía como efecto en tiempo real o en los canales del mezclador: el módulo se prueba por separado. No denominarlo 'Auto-Tune' comercial ni prometer funcionamiento sobre una canción completa.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
