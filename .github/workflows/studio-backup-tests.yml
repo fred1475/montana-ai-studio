@@ -37,15 +37,14 @@ jobs:
         run: |
           mkdir -p manual-preview
           cp studio.html studio.js backup.js manual-preview/
-          cat > manual-preview/README.txt <<'EOF'
-Montana AI Studio 2.0 — PREVIEW DE PRUEBAS
-1. Extraiga los tres archivos en una misma carpeta.
-2. Para la prueba de respaldos, abra studio.html en Chrome o Edge.
-3. En Proyectos: Descargar respaldo completo, luego Restaurar archivo JSON.
-4. Compruebe que reaparecen letras y audios. Guarde una copia del JSON.
-5. Este archivo es para pruebas; la grabacion de microfono puede requerir HTTPS.
-No introduzca material privado real en una prueba compartida.
-EOF
+          printf '%s\n' \
+            'Montana AI Studio 2.0 - PREVIEW DE PRUEBAS' \
+            '1. Extraiga los tres archivos en una misma carpeta.' \
+            '2. Abra studio.html en Chrome o Edge.' \
+            '3. En Proyectos: Descargar respaldo completo y Restaurar archivo JSON.' \
+            '4. Verifique letras y audios restaurados.' \
+            '5. La grabacion puede requerir HTTPS.' \
+            'No introduzca contenido privado en pruebas compartidas.' > manual-preview/README.txt
       - uses: actions/upload-artifact@v4
         with:
           name: montana-studio-2-preview
