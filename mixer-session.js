@@ -8,7 +8,7 @@ $("saveSession").addEventListener("click",async()=>{
  try{
   const items=[];let total=0;
   for(let i=0;i<8;i++){
-   const f=$("file"+i).files?.[0]||originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value)};
+   const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value)};
    if(tracks[i]&&f){
     if(f.size>50e6||(total+=f.size)>80e6)throw Error("Máximo 80 MB por sesión.");
     items.push({...state,name:f.name,type:f.type,data:to64(new Uint8Array(await f.arrayBuffer()))});
