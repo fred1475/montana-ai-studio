@@ -9,6 +9,8 @@ $("saveSession").addEventListener("click",async()=>{
   const items=[];let total=0;
   for(let i=0;i<8;i++){
    const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value)};
+   if(![state.volume,state.pan,state.lowEQ,state.highEQ,state.offset,state.trimStart,state.trimEnd].every(Number.isFinite)||state.volume<0||state.volume>150||Math.abs(state.pan)>100||Math.abs(state.lowEQ)>12||Math.abs(state.highEQ)>12||[state.offset,state.trimStart,state.trimEnd].some(v=>v<0||v>300))throw Error("Ajustes inválidos en canal "+(i+1));
+   if(tracks[i])region(i,tracks[i]); // Never create a backup that the loader cannot restore.
    if(tracks[i]&&f){
     if(f.size>50e6||(total+=f.size)>80e6)throw Error("Máximo 80 MB por sesión.");
     items.push({...state,name:f.name,type:f.type,data:to64(new Uint8Array(await f.arrayBuffer()))});
