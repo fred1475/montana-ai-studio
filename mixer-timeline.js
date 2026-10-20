@@ -76,7 +76,7 @@
      });
      clip.addEventListener("keyup",e=>{
        if(keysMoved&&["ArrowLeft","ArrowRight","Home"].includes(e.key)){
-         keysMoved=false;$("offset"+i).dispatchEvent(new Event("change",{bubbles:true}));
+         keysMoved=false; // The numeric offset field is already updated; preserve keyboard focus.
        }
      });
      bg.append(clip);
@@ -89,7 +89,7 @@
  }
  const observer=new MutationObserver(redraw);
  observer.observe(document.getElementById("tracks"),{childList:true,subtree:true,characterData:true});
- for(let i=0;i<8;i++)["offset","trimStart","trimEnd","file"].forEach(k=>$(k+i).addEventListener("change",()=>setTimeout(redraw,100)));
- document.getElementById("sessionFile").addEventListener("change",()=>setTimeout(redraw,750));
+ for(let i=0;i<8;i++)["offset","trimStart","trimEnd","file"].forEach(k=>$(k+i).addEventListener("change",redraw));
+ // Imported session labels are updated only after decoding; observed DOM changes redraw on completion.
  redraw();
 })();
