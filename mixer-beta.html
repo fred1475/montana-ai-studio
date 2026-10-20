@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Montana AI Studio — Mezclador Beta</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,Arial;background:#080c14;color:#f5f7fb}*{box-sizing:border-box}body{max-width:1000px;margin:auto;padding:24px}a,h1{color:#f1c56c}p,small{color:#b8c4d3}section{background:#141d2e;border:1px solid #394458;border-radius:15px;padding:18px;margin:16px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}label{display:block;margin:12px 0 5px}input[type=file]{max-width:100%;width:100%}input[type=range]{width:100%;accent-color:#f1c56c}button{padding:12px 17px;border:0;border-radius:9px;cursor:pointer;background:#f1c56c;color:#18120c;font-weight:700;margin:5px}button:disabled{opacity:.5;cursor:not-allowed}.track{border:1px solid #576075;border-radius:12px;padding:14px}
+</style></head><body><header><a href="studio.html">← Volver al estudio original</a><h1>Montana AI Studio — Mezclador multipista</h1><p>Experimento de dos pistas. Los archivos permanecen en tu navegador; no se suben al servidor.</p></header>
+<section class="grid"><div class="track"><h2>🥁 Instrumental</h2><label for="file1">Importar audio</label><input id="file1" type="file" accept="audio/*"><p id="name1">Sin archivo</p><label for="volume1">Volumen: <output id="value1">100%</output></label><input id="volume1" type="range" min="0" max="150" value="100"><label><input id="mute1" type="checkbox"> Silenciar</label></div>
+<div class="track"><h2>🎙️ Voz</h2><label for="file2">Importar audio</label><input id="file2" type="file" accept="audio/*"><p id="name2">Sin archivo</p><label for="volume2">Volumen: <output id="value2">100%</output></label><input id="volume2" type="range" min="0" max="150" value="100"><label><input id="mute2" type="checkbox"> Silenciar</label></div></section>
+<section><h2>Mezcla</h2><button id="play" type="button">▶ Escuchar mezcla</button><button id="stop" type="button">■ Detener</button><button id="export" type="button">⬇ Exportar WAV</button><p id="status" role="status" aria-live="polite">Importa una o dos pistas para comenzar.</p><small>Ambas pistas comienzan en el segundo 0. La mezcla tiene un máximo de 5 minutos y se exporta como WAV estéreo PCM de 16 bits. Volúmenes nuevos se aplican al volver a reproducir. No incluye sincronización ni masterización automática.</small></section>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const tracks=[null,null];let context=null,active=[];
+const getContext=()=>context||(context=new (window.AudioContext||window.webkitAudioContext)());
+const notice=s=>{$("status").textContent=s};
+function stop(){for(const n of active){try{n.stop()}catch(e){}try{n.disconnect()}catch(e){}}active=[]}
+function gain(i){return $("mute"+(i+1)).checked?0:Number($("volume"+(i+1)).value)/100}
+for(let i=0;i<2;i++){
+ const num=i+1;
+ $("volume"+num).addEventListener("input",()=>{$("value"+num).textContent=$("volume"+num).value+"%"});
+ $("file"+num).addEventListener("change",async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  notice("Cargando "+file.name+"...");
+  try{
+   if(file.size>50*1024*1024)throw Error("El archivo excede 50 MB.");
+   const ctx=getContext(),decoded=await ctx.decodeAudioData(await file.arrayBuffer());
+   if(decoded.duration>300)throw Error("Este prototipo admite un máximo de 5 minutos por pista.");
+   stop();tracks[i]=decoded;$("name"+num).textContent=file.name+" · "+decoded.duration.toFixed(1)+" segundos";notice("Pista cargada.");
+  }catch(err){notice("No se pudo importar: "+err.message)}
+ });
+}
+$("stop").addEventListener("click",()=>{stop();notice("Reproducción detenida.")});
+$("play").addEventListener("click",async()=>{
+ try{
+  if(!tracks.some(Boolean))throw Error("Importa al menos una pista.");
+  stop();const ctx=getContext();await ctx.resume();const start=ctx.currentTime+.05;
+  tracks.forEach((b,i)=>{if(!b)return;const source=ctx.createBufferSource(),vol=ctx.createGain();source.buffer=b;vol.gain.value=gain(i);source.connect(vol).connect(ctx.destination);source.start(start);active.push(source);source.onended=()=>{active=active.filter(x=>x!==source)}});
+  notice("Reproduciendo mezcla...");
+ }catch(e){notice(e.message)}
+});
+function encodeWav(l,r,rate){
+ const n=l.length,ab=new ArrayBuffer(44+n*4),d=new DataView(ab);
+ const str=(offset,s)=>{for(let i=0;i<s.length;i++)d.setUint8(offset+i,s.charCodeAt(i))};
+ str(0,"RIFF");d.setUint32(4,36+n*4,true);str(8,"WAVE");str(12,"fmt ");d.setUint32(16,16,true);
+ d.setUint16(20,1,true);d.setUint16(22,2,true);d.setUint32(24,rate,true);
+ d.setUint32(28,rate*4,true);d.setUint16(32,4,true);d.setUint16(34,16,true);
+ str(36,"data");d.setUint32(40,n*4,true);
+ for(let i=0;i<n;i++){for(let c=0;c<2;c++){const x=Math.max(-1,Math.min(1,c===0?l[i]:r[i]));d.setInt16(44+i*4+c*2,x<0?x*32768:x*32767,true)}}
+ return new Blob([ab],{type:"audio/wav"});
+}
+$("export").addEventListener("click",async()=>{
+ const btn=$("export");btn.disabled=true;
+ try{
+  const present=tracks.filter(Boolean);if(!present.length)throw Error("Importa al menos una pista.");
+  notice("Procesando mezcla WAV...");
+  const rate=44100,seconds=Math.max(...present.map(b=>b.duration)),frames=Math.ceil(seconds*rate);
+  const off=new OfflineAudioContext(2,frames,rate);
+  for(let i=0;i<2;i++){const b=tracks[i];if(!b)continue;const src=off.createBufferSource(),v=off.createGain();src.buffer=b;v.gain.value=gain(i);src.connect(v).connect(off.destination);src.start(0)}
+  const rendered=await off.startRendering();
+  const blob=encodeWav(rendered.getChannelData(0),rendered.getChannelData(1),rate);
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-studio-mezcla.wav";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  notice("Mezcla WAV exportada. Comprueba el archivo descargado.");
+ }catch(e){notice("Error al exportar: "+e.message)}finally{btn.disabled=false}
+});
+</script></body></html>
