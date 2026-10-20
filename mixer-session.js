@@ -17,7 +17,7 @@ $("saveSession").addEventListener("click",async()=>{
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
-  const blob=new Blob([JSON.stringify({format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),tracks:items})],{type:"application/json"});
+  const blob=new Blob([JSON.stringify({format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,tracks:items})],{type:"application/json"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-sesion-8-pistas.json";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   report("Sesión guardada en archivo JSON. Consérvalo en privado.");
  }catch(e){report("No se guardó: "+e.message)}finally{btn.disabled=false}
@@ -32,6 +32,8 @@ $("sessionFile").addEventListener("change",async(e)=>{
   if(s.format!=="montana-mixer-session"||s.version!==1||!Array.isArray(s.tracks)||s.tracks.length!==8)throw Error("Formato de sesión incompatible.");
   const masterGain=s.masterGain===undefined?80:Number(s.masterGain);
   if(!Number.isFinite(masterGain)||masterGain<0||masterGain>100)throw Error("Volumen maestro inválido.");
+  const bpm=s.bpm===undefined?100:s.bpm,metronomeOn=s.metronomeOn===undefined?false:s.metronomeOn;
+  if(typeof bpm!=="number"||!Number.isFinite(bpm)||bpm<40||bpm>240||typeof metronomeOn!=="boolean")throw Error("Metrónomo o BPM inválido.");
   const loaded=[];let bytes=0;
   for(let i=0;i<8;i++){
    const t=s.tracks[i];if(!t||typeof t!=="object")throw Error("Canal corrupto.");
@@ -59,6 +61,7 @@ $("sessionFile").addEventListener("change",async(e)=>{
   const preparedPitch=window.preparePitchRestore(loaded,s.tracks);
   stop();
   $("masterGain").value=masterGain;$("masterValue").textContent=masterGain+"%";
+  $("bpm").value=bpm;$("metronomeOn").checked=metronomeOn;
   loaded.forEach((t,i)=>{
    tracks[i]=t.decoded;originalFiles[i]=t.source;
    // Reset file inputs so the restored bytes are authoritative on next save.
