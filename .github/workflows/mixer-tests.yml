@@ -6,6 +6,8 @@ on:
       - 'mixer-session.js'
       - 'mixer-record.js'
       - 'mixer-meter.js'
+      - 'mixer-limiter.js'
+      - 'tests/mixer-limiter.cjs'
       - 'mixer-pitch.js'
       - 'pitch-lab.html'
       - 'pitch-engine.js'
@@ -37,6 +39,9 @@ jobs:
           node --check mixer-session.js
           node --check mixer-record.js
           node --check mixer-meter.js
+          node --check mixer-limiter.js
+          node --check tests/mixer-limiter.cjs
+          node tests/mixer-limiter.cjs
           node --check mixer-pitch.js
           node --check tests/mixer-pitch.cjs
           node --check pitch-engine.js
@@ -63,7 +68,7 @@ jobs:
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-limiter.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -78,7 +83,8 @@ jobs:
             '10. Pruebe pitch-lab.html en modo sostenido o frase experimental de dos notas: NO es Auto-Tune profesional.' \
             '11. Use Deshacer/Rehacer para ajustar posición y recortes sin destruir audio.' \
             '12. Active el metrónomo y ajuste BPM; los clics no están en el WAV exportado.' \
-            '13. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '13. Active el limitador maestro solo para exportar WAV y seleccione techo de muestra; no mide true-peak ni LUFS.' \
+            '14. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
