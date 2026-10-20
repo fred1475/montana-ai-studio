@@ -30,7 +30,7 @@ $("recordStart").addEventListener("click",async()=>{
     if(decoded.duration>300)throw Error("La toma supera cinco minutos.");
     const ext=blob.type.includes("mp4")?"m4a":"webm";
     const f=new File([blob],"toma-canal-"+(i+1)+"."+ext,{type:blob.type});
-    tracks[i]=decoded;originalFiles[i]=f;$("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;
+    tracks[i]=decoded;originalFiles[i]=f;window.resetPitch?.(i);$("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;
     $("label"+i).textContent=f.name+" — "+decoded.duration.toFixed(1)+" s";
     report("Toma guardada en canal "+(i+1)+". Descarga el respaldo de sesión para conservarla.");
    }catch(err){report("No se pudo decodificar la grabación: "+err.message+". Intenta importar audio WAV.");}
@@ -38,7 +38,7 @@ $("recordStart").addEventListener("click",async()=>{
   recorder.start(1000);
   $("recordStart").disabled=true;$("recordStop").disabled=false;
   // Guide/reference is played but recording is not latency compensated.
-  if(tracks.some((buf,index)=>index!==i&&buf)){await audio().resume();stop();const at=audio().currentTime+.08,m=audio().createGain();m.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(audio(),m).connect(audio().destination);activeOutputs.push(m);tracks.forEach((buf,index)=>{if(!buf||index===i)return;const src=audio().createBufferSource(),g=audio().createGain(),p=audio().createStereoPanner();src.buffer=buf;g.gain.value=gain(index);p.pan.value=pan(index);src.connect(g);window.attachTrackMeter(audio(),addSpace(audio(),addCompressor(audio(),addEq(audio(),g,index),index),index),index).connect(p).connect(m);const clip=region(index,buf);src.start(at+clip.offset,clip.start,clip.duration);players.push(src)});}
+  if(tracks.some((buf,index)=>index!==i&&buf)){await audio().resume();stop();const at=audio().currentTime+.08,m=audio().createGain();m.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(audio(),m).connect(audio().destination);activeOutputs.push(m);tracks.forEach((buf,index)=>{if(!buf||index===i)return;const src=audio().createBufferSource(),g=audio().createGain(),p=audio().createStereoPanner();src.buffer=window.getPitchBuffer(index);g.gain.value=gain(index);p.pan.value=pan(index);src.connect(g);window.attachTrackMeter(audio(),addSpace(audio(),addCompressor(audio(),addEq(audio(),g,index),index),index),index).connect(p).connect(m);const clip=region(index,buf);src.start(at+clip.offset,clip.start,clip.duration);players.push(src)});}
   report("Grabando canal "+(i+1)+". Usa audífonos para evitar filtración del instrumental. Esta versión NO corrige la latencia automáticamente.");
  }catch(err){
   stream?.getTracks().forEach(t=>t.stop());recording=null;$("recordStart").disabled=false;$("recordStop").disabled=true;report("No se inició la grabación: "+err.message)
