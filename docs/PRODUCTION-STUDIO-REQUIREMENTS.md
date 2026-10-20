@@ -43,6 +43,13 @@ Pruebas GitHub Actions: audio sintetizado desafinado -> WAV corregido de frecuen
 
 **Bloqueadores:** voces reales, latencia, afinación cambiante compleja, formantes, glides y consonantes, rendimiento con pistas largas, monitorización real y preservación auditiva del timbre. No usar marca comercial Auto-Tune para denominar el producto propio.
 
+## Nuevas herramientas comprobadas: edición y metrónomo
+
+- `mixer-history.js`: historial limitado a 80 ediciones de posición y recortes, con botones Deshacer/Rehacer. Se reinicia de forma segura al importar nuevos audios, concluir una nueva toma y restaurar una sesión. No existe todavía historial de efectos, split, grabaciones o cambio de archivos.
+- `mixer-metronome.js`: metrónomo real con cuatro tiempos, clic acentuado en el primero, tempo ajustable de 40 a 240 BPM, uso en reproducción y grabación de referencia. **No se incluye en el audio WAV exportado** ni en la pista registrada por MediaRecorder, salvo filtración acústica a través del micrófono; usar audífonos.
+- Las pruebas de Chromium verifican historial, programación de clics, parada, no contaminación del WAV y conservación del BPM tras guardar/restaurar.
+- Pendiente antes de publicar: pruebas manuales de metrónomo sincronizado con interfaces reales, latencia, temporización prolongada, time stretching, metrónomo con preconteo y automatización.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
