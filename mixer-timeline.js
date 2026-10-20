@@ -25,8 +25,10 @@
      };
      const commit=()=>{
        const field=$("offset"+i);
-       if(Number(field.value)===current)return;
-       field.value=current;
+       const shift=i===0?0:Number($("alignMs"+i).value)/1000;
+       const base=round(Math.max(0,current-shift));
+       if(Number(field.value)===base)return;
+       field.value=base;
        field.dispatchEvent(new Event("change",{bubbles:true}));
      };
      clip.dataset.track=String(i);
@@ -72,7 +74,7 @@
        e.preventDefault();
        const step=e.shiftKey?1:0.1;
        setPosition(e.key==="Home"?0:current+(e.key==="ArrowRight"?step:-step));
-       $("offset"+i).value=current;keysMoved=true;
+       $("offset"+i).value=round(Math.max(0,current-(i===0?0:Number($("alignMs"+i).value)/1000)));keysMoved=true;
      });
      clip.addEventListener("keyup",e=>{
        if(keysMoved&&["ArrowLeft","ArrowRight","Home"].includes(e.key)){
