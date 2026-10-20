@@ -30,7 +30,7 @@ $("recordStart").addEventListener("click",async()=>{
     if(decoded.duration>300)throw Error("La toma supera cinco minutos.");
     const ext=blob.type.includes("mp4")?"m4a":"webm";
     const f=new File([blob],"toma-canal-"+(i+1)+"."+ext,{type:blob.type});
-    tracks[i]=decoded;originalFiles[i]=f;window.resetPitch?.(i);$("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;
+    tracks[i]=decoded;originalFiles[i]=f;window.resetPitch?.(i);window.resetEditHistory?.();$("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;
     $("label"+i).textContent=f.name+" — "+decoded.duration.toFixed(1)+" s";
     report("Toma guardada en canal "+(i+1)+". Descarga el respaldo de sesión para conservarla.");
    }catch(err){report("No se pudo decodificar la grabación: "+err.message+". Intenta importar audio WAV.");}
