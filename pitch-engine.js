@@ -123,5 +123,5 @@
     const output=channels.map(ch=>Math.abs(correctionCents)<.3?Float32Array.from(ch):correctChannel(ch,sampleRate,measured.frequency,adjustedFrequency));
     return {channels:output,analysis:measured,target,targetFrequency:adjustedFrequency,correctionCents,duration:n/sampleRate};
   }
-  return {detectPitch,analyze,nearestNote,process,noteName,notes,scales};
+  return {detectPitch,analyze,nearestNote,process,correctChannel,noteName,notes,scales};
 });
