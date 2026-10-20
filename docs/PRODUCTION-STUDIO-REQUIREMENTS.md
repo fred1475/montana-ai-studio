@@ -82,6 +82,14 @@ La exportación ZIP sin compresión tiene un tope de 145 MiB y se comprueba ante
 
 Las pruebas previstas cubren canales aislados con notas de frecuencias distintas, WAV alineados, offset, silencio previo, mute/solo ignorados por diseño, colas de efectos, descarga individual, estructura del ZIP y rechazo preventivo de archivos excesivamente grandes.
 
+## Nueva etapa verificada: fades de entrada/salida por clip
+
+El módulo `mixer-fades.js` añade fundidos de entrada y salida de 0 a 5 segundos para cada uno de los ocho canales, sin cambiar los audios originales. Las rampas lineales actúan antes de los efectos de canal; las colas de reverb y delay quedan preservadas. Si un fragmento es más corto que la suma solicitada de ambos fundidos, se reducen proporcionalmente para evitar una automatización inválida.
+
+Los ajustes participan en reproducción, guía de overdub, exportación WAV completa, WAV individual y ZIP de stems alineados. Quedan guardados en el JSON de la sesión, admiten Deshacer/Rehacer y al restaurar sesiones antiguas el fundido por defecto es cero. Las pruebas automáticas de Chromium comparan la energía PCM en el principio/centro/final, el WAV del stem, el historial, la conservación de la duración y el rechazo de parámetros fuera de rango sin dañar el proyecto.
+
+**No es un editor de clips con herramientas de corte múltiple:** sigue pendiente separar/duplicar/pegar regiones, preescucha de edición, crossfades, automatización de volumen y la edición sample-accurate. Los resultados de laboratorio no sustituyen escucha musical con grabaciones reales.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
