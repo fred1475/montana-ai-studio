@@ -77,7 +77,7 @@ for(let i=0;i<N;i++){
    if(file.size>50e6)throw Error("Archivo mayor de 50 MB");
    const decoded=await audio().decodeAudioData(await file.arrayBuffer());
    if(decoded.duration>300)throw Error("Duración mayor de cinco minutos");
-   stop();tracks[i]=decoded;originalFiles[i]=file;$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
+   stop();tracks[i]=decoded;originalFiles[i]=file;window.resetPitch?.(i);$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
    report("Pista "+(i+1)+" importada");
   }catch(err){e.target.value="";report("No se pudo importar: "+err.message+". La pista anterior sigue intacta.")}
  });
@@ -89,7 +89,7 @@ $("play").onclick=async()=>{
   const clips=tracks.map((b,i)=>b?region(i,b):null);stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(ac,master).connect(ac.destination);activeOutputs.push(master);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=ac.createBufferSource(),vol=ac.createGain(),stereo=ac.createStereoPanner();
-   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);window.attachTrackMeter(ac,addSpace(ac,addCompressor(ac,addEq(ac,vol,i),i),i),i).connect(stereo).connect(master);
+   src.buffer=window.getPitchBuffer(i);vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);window.attachTrackMeter(ac,addSpace(ac,addCompressor(ac,addEq(ac,vol,i),i),i),i).connect(stereo).connect(master);
    const clip=clips[i];src.start(at+clip.offset,clip.start,clip.duration);players.push(src);src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1);src.disconnect()};
   });
   const maxEnd=Math.max(...clips.map((clip,i)=>clip?clip.offset+clip.duration+effectTail(i):0));
@@ -117,7 +117,7 @@ $("export").onclick=async()=>{
   const offline=new OfflineAudioContext(2,frames,rate);const master=offline.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(offline.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=offline.createBufferSource(),vol=offline.createGain(),stereo=offline.createStereoPanner();
-   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addSpace(offline,addCompressor(offline,addEq(offline,vol,i),i),i).connect(stereo).connect(master);const clip=region(i,buf);src.start(clip.offset,clip.start,clip.duration);
+   src.buffer=window.getPitchBuffer(i);vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addSpace(offline,addCompressor(offline,addEq(offline,vol,i),i),i).connect(stereo).connect(master);const clip=region(i,buf);src.start(clip.offset,clip.start,clip.duration);
   });
   const rendered=await offline.startRendering();const left=rendered.getChannelData(0),right=rendered.getChannelData(1);let peak=0;for(let j=0;j<left.length;j++){peak=Math.max(peak,Math.abs(left[j]),Math.abs(right[j]));}const blob=wav(left,right,rate);
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-ai-studio-mezcla.wav";
@@ -125,4 +125,4 @@ $("export").onclick=async()=>{
   report("Archivo WAV creado. Pico: "+(20*Math.log10(Math.max(peak,1e-9))).toFixed(1)+" dBFS. "+(peak>1?"ADVERTENCIA: hay clipping; baja el volumen maestro y exporta otra vez.":"Sin clipping detectado en la mezcla renderizada.")+" Reproduce el archivo para comprobarlo.");
  }catch(err){report("Error al exportar: "+err.message)}finally{btn.disabled=false}
 };
-</script><script src="mixer-meter.js"></script><script src="mixer-session.js"></script><script src="mixer-record.js"></script><script src="mixer-timeline.js"></script></body></html>
+</script><script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script src="mixer-pitch.js"></script><script src="mixer-meter.js"></script><script src="mixer-session.js"></script><script src="mixer-record.js"></script><script src="mixer-timeline.js"></script></body></html>
