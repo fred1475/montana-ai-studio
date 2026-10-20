@@ -35,3 +35,21 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/studio-server.log 2>&1 &
           sleep 2
           node tests/mixer-smoke.cjs
+      - name: Package manual mixer preview
+        run: |
+          mkdir -p mixer-preview
+          cp mixer-8.html mixer-session.js mixer-record.js mixer-timeline.js studio.html studio.js backup.js mixer-preview/
+          printf '%s\n' \
+            'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
+            '1. Extraiga los archivos en la misma carpeta.' \
+            '2. Abra mixer-8.html en Chrome o Edge.' \
+            '3. Importe dos WAV cortos para probar reproducción, recortes, panorama y exportación.' \
+            '4. Mueva el bloque en la línea de tiempo con el ratón y guarde la sesión JSON.' \
+            '5. Abra esa sesión JSON para comprobar que se recuperan pistas y posiciones.' \
+            '6. La grabación con micrófono puede requerir HTTPS o localhost; no se garantiza desde file://.' \
+            '7. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: montana-mixer-8-preview
+          path: mixer-preview/
+          retention-days: 7
