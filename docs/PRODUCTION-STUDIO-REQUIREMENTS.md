@@ -64,6 +64,14 @@ Pruebas incluidas: reducción medida del ruido de bajo nivel en PCM, reducción 
 
 **Limitaciones importantes:** no es separación de voz, reparación espectral ni eliminación completa de ruido. El de-esser utiliza una separación simple de frecuencias y puede causar artefactos o pérdida de brillo; la puerta puede cortar consonantes suaves. Falta probar voces humanas reales, ruido ambiental variable, rendimiento con tomas largas y calidad musical mediante escucha. No se han integrado motores IA de limpieza, medición LUFS/true-peak ni latencia calibrada.
 
+## Grabación: ajuste manual y rescate de fuentes (en desarrollo, octubre 2026)
+
+- Sincronización fina **manual**, no autocalibrada, de -250 a +250 ms para los canales vocales 2–8. Cuando la corrección adelanta una voz antes de t=0, la porción anterior a cero se omite en la reproducción/exportación, pero el archivo original sigue disponible; el resto se posiciona sin cambiar su tono o velocidad. Se conserva en la sesión, participa en Deshacer/Rehacer y afecta al WAV renderizado.
+- La grabación con MediaRecorder de Chrome/Edge conserva el audio anterior si se deniega el micrófono, falla la grabación o la nueva toma no se decodifica. El reemplazo ocurre solo después de decodificación completa. El botón **Rescatar fuente del canal** descarga los bytes originales importados o grabados, sin aplicar efectos; funciona también al restaurar el respaldo JSON.
+- La selección del canal de grabación se conserva en las sesiones nuevas, y las sesiones antiguas usan por defecto el canal 2.
+- Las pruebas incluyen tiempos exactos +-100ms en WAV, historial, respaldo/restauración, invalidación de ajustes maliciosos, micrófono simulado de Chromium, recuperación byte a byte y rechazo de permisos sin perder la toma previa.
+- **Bloqueadores para producción:** medición real de round-trip, conversores, interfaces de audio y latencia del navegador/dispositivo, pruebas prolongadas, sincronización sample-accurate, respaldo automático persistente fuera del navegador y hardware físico. La grabación guía sigue sin autocompensación. Los botones de descarga requieren acción del usuario y el navegador puede restringirlos.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
