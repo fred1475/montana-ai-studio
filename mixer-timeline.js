@@ -15,7 +15,7 @@
   const footer=document.createElement("small");footer.textContent="0 s — "+end.toFixed(1)+" s · Vista de referencia, no se puede arrastrar todavía.";root.append(footer);
  }
  const observer=new MutationObserver(()=>redraw());
- observer.observe(document.getElementById("tracks"),{childList:true,subtree:false});
+ observer.observe(document.getElementById("tracks"),{childList:true,subtree:true,characterData:true});
  for(let i=0;i<8;i++){["offset","trimStart","trimEnd","file"].forEach(k=>$(k+i).addEventListener("change",()=>setTimeout(redraw,100)))}
  document.getElementById("sessionFile").addEventListener("change",()=>setTimeout(redraw,750));
  redraw();
