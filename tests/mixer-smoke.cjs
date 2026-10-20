@@ -9,6 +9,7 @@ const path=require('node:path');
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8765/mixer-8.html');
   await assert.equal(await page.locator('article.track').count(),8);
+  await assert.equal(await page.locator('#timeline > div').count(),8);
   // Synthesize a valid 1s mono WAV with silent PCM16 samples.
   const wav=Buffer.alloc(44+44100*2);
   wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVE',8);
@@ -30,6 +31,9 @@ const path=require('node:path');
   await page.locator('#trimStart1').fill('0.1');
   await page.locator('#trimEnd1').fill('0.9');
   await page.locator('#masterGain').fill('70');
+  await page.locator('#offset1').dispatchEvent('change');
+  await page.waitForFunction(()=>document.querySelector('#timeline')?.textContent?.includes('1. Instrumental'));
+  assert((await page.locator('#timeline').innerText()).includes('2. Voz principal'));
   assert.equal(await page.locator('#masterValue').innerText(),'70%');
   await page.locator('#play').click();
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('reproduciéndose'));
