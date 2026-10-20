@@ -5,10 +5,11 @@
 <a href="mixer-8.html">← Volver al mezclador de ocho pistas</a>
 <h1>🎙️ Laboratorio de afinación — experimental</h1>
 <p>Montana Music Production LLC</p>
-<p class="alert"><strong>ESTO NO ES AUTO-TUNE PROFESIONAL.</strong> Es una prueba de corrección PSOLA offline de <strong>una sola nota sostenida</strong> (0.2–15 segundos). No funciona todavía con melodías cambiantes, voces superpuestas ni instrumentales. No ofrece retune en tiempo real ni compensación de latencia. Conserva siempre tus originales.</p>
+<p class="alert"><strong>ESTO NO ES AUTO-TUNE PROFESIONAL.</strong> El modo sostenido admite una nota (0.2–15 segundos); el nuevo modo experimental permite frases de 2–12 notas claras (0.65–10 segundos). No es adecuado todavía para glides, vibrato complejo, notas muy rápidas, voces superpuestas ni instrumentales. No ofrece retune en tiempo real ni compensación de latencia. Conserva siempre tus originales.</p>
 <section class="pane">
 <h2>1. Carga un fragmento vocal corto</h2>
-<label for="file">Audio de una sola nota (máx. 20 MB)</label><input id="file" type="file" accept="audio/*,.wav">
+<label for="file">Audio vocal monofónico (máx. 20 MB)</label><input id="file" type="file" accept="audio/*,.wav">
+<label for="mode">Tipo de afinación</label><select id="mode"><option value="sustain">Una nota sostenida (modo probado)</option><option value="melody">Frase de varias notas (experimental)</option></select>
 <label for="key">Tonalidad</label><select id="key"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select>
 <label for="scale">Escala</label><select id="scale"><option value="chromatic">Cromática (nota más cercana)</option><option value="major">Mayor</option><option value="minor">Menor</option></select>
 <label for="strength">Fuerza de corrección: <output id="strengthValue">100%</output></label><input id="strength" type="range" min="0" max="100" step="10" value="100">
@@ -20,9 +21,9 @@
 <output id="results">Todavía no hay un análisis.</output>
 <div><button id="original" type="button" disabled>▶ Original</button><button id="corrected" type="button" disabled>▶ Corregido</button><button id="stop" type="button">■ Detener</button></div>
 <button id="download" type="button" disabled>⬇ Descargar WAV corregido</button>
-<small>El procesamiento ocurre localmente en el navegador. Si la nota varía demasiado, se rechaza la corrección para evitar resultados engañosos.</small>
+<small>El procesamiento ocurre localmente en el navegador. Las frases cambiantes aún son experimentales. Los resultados pueden contener artefactos: escucha antes de utilizarlos.</small>
 </section>
-<script src="pitch-engine.js"></script><script>
+<script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script>
 'use strict';
 const $=id=>document.getElementById(id);
 let raw=null,processed=null,ctx=null,source=null;
@@ -56,12 +57,20 @@ $('process').addEventListener('click',async()=>{
   status('Analizando nota y generando la toma de prueba...');
   ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();
   const audio=await ctx.decodeAudioData(await file.arrayBuffer());
-  if(audio.duration>15||audio.duration<.2)throw Error('La toma debe durar entre 0.2 y 15 segundos.');
+  const mode=$('mode').value;
+  if(audio.duration>(mode==='melody'?10:15)||audio.duration<(mode==='melody'?.65:.2))throw Error('Duración fuera del rango permitido para el modo elegido.');
   const channels=Array.from({length:audio.numberOfChannels},(_,i)=>audio.getChannelData(i).slice());
-  const result=MontanaPitch.process(channels,audio.sampleRate,{key:$('key').value,scale:$('scale').value,strength:Number($('strength').value)});
-  const correctedPitch=MontanaPitch.analyze(result.channels[0],audio.sampleRate);
+  const options={key:$('key').value,scale:$('scale').value,strength:Number($('strength').value)};
+  const result=mode==='melody'?MontanaMelody.processMelody(channels,audio.sampleRate,options):MontanaPitch.process(channels,audio.sampleRate,options);
   processed={channels:result.channels,rate:audio.sampleRate};raw={channels,rate:audio.sampleRate};
-  $('results').textContent='Entrada: '+result.analysis.frequency.toFixed(2)+' Hz\nObjetivo: '+result.target.note+' ('+result.target.frequency.toFixed(2)+' Hz)\nCorrección solicitada: '+result.correctionCents.toFixed(1)+' cents\nNota medida después: '+correctedPitch.frequency.toFixed(2)+' Hz\nDuración original: '+audio.duration.toFixed(2)+' s; salida: '+result.duration.toFixed(2)+' s.';
+  if(mode==='melody'){
+   $('results').textContent='Modo frase experimental. Notas: '+result.segments.map(s=>s.targetNote).join(' → ')+'\n'
+    +result.segments.map(s=>s.startSeconds.toFixed(2)+'–'+s.endSeconds.toFixed(2)+' s: '+s.inputHz.toFixed(1)+' Hz → '+s.targetNote+', '+s.correctionCents.toFixed(1)+' cents').join('\n')
+    +'\nDuración conservada: '+result.duration.toFixed(2)+' s. Escucha para detectar artefactos.';
+  }else{
+   const correctedPitch=MontanaPitch.analyze(result.channels[0],audio.sampleRate);
+   $('results').textContent='Entrada: '+result.analysis.frequency.toFixed(2)+' Hz\nObjetivo: '+result.target.note+' ('+result.target.frequency.toFixed(2)+' Hz)\nCorrección solicitada: '+result.correctionCents.toFixed(1)+' cents\nNota medida después: '+correctedPitch.frequency.toFixed(2)+' Hz\nDuración original: '+audio.duration.toFixed(2)+' s; salida: '+result.duration.toFixed(2)+' s.';
+  }
   $('original').disabled=false;$('corrected').disabled=false;$('download').disabled=false;
   status('Fragmento procesado. Escucha ambas versiones antes de utilizarlo.');
  }catch(e){$('results').textContent='Sin salida válida.';status('No se pudo corregir: '+e.message)}finally{btn.disabled=false}
