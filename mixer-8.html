@@ -96,7 +96,7 @@ $("play").onclick=async()=>{
   });
   const maxEnd=Math.max(...clips.map((clip,i)=>clip?clip.offset+clip.duration+effectTail(i):0));
   const clickToken=window.startMetronome(ac,at);
-  setTimeout(()=>{releaseOutput(master);window.stopMetronome(clickToken);if(!activeOutputs.length)window.resetMeters?.()},Math.ceil((maxEnd+.3)*1000));
+  setTimeout(()=>{releaseOutput(master);if(clickToken)window.stopMetronome(clickToken);if(!activeOutputs.length)window.resetMeters?.()},Math.ceil((maxEnd+.3)*1000));
   report("Mezcla reproduciéndose. Para aplicar cambios, pulsa Detener y Reproducir.");
  }catch(err){report(err.message)}
 };
