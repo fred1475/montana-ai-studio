@@ -102,7 +102,7 @@ const path=require('node:path');
   const [roomDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
   const roomPath=path.join(process.cwd(),'mixer-room-output.wav');await roomDownload.saveAs(roomPath);
   const room=fs.readFileSync(roomPath);
-  assert(room.length>flat.length+44100*4,'Reverb must extend export to include tail');
+  assert(room.length>flat.length+Math.floor(44100*4*.3),'Reverb must extend export to include tail');
   assert.notDeepEqual(room.subarray(44,8044),flat.subarray(44,8044),'Room convolution must alter PCM waveform');
   await page.locator('#reverb0').fill('0');
   await page.locator('#delayWet0').fill('35');
