@@ -77,6 +77,23 @@ const path=require('node:path');
   await page.locator('#lowEQ0').fill('6');
   await page.locator('#highEQ0').fill('-3');
 
+  // A real compressor must reduce a loud 200 Hz WAV, not just update labels.
+  await page.locator('#compDetails0 summary').click();
+  await page.locator('#compEnable0').check();
+  await page.locator('#compThreshold0').fill('-36');
+  await page.locator('#compRatio0').fill('12');
+  assert.equal(await page.locator('#compThresholdVal0').innerText(),'-36 dB');
+  assert.equal(await page.locator('#compRatioVal0').innerText(),'12:1');
+  const [compDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const compPath=path.join(process.cwd(),'mixer-compressed-output.wav');await compDownload.saveAs(compPath);
+  const compressed=fs.readFileSync(compPath);
+  const rmsPCM=buf=>{
+    let sum=0,n=0;
+    for(let i=10000;i<32000;i++){const v=buf.readInt16LE(44+i*4)/32768;sum+=v*v;n++}
+    return Math.sqrt(sum/n);
+  };
+  assert(rmsPCM(compressed)<rmsPCM(out)*0.8,'Compressor must attenuate strong audio in the rendered WAV');
+
   // Save and restore a session with embedded audio and complete channel state.
   const [sessionDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
   const sessionPath=path.join(process.cwd(),'test-mixer-session.json');
@@ -87,6 +104,9 @@ const path=require('node:path');
   assert.equal(session.masterGain,70);
   assert.equal(session.tracks[0].lowEQ,6);
   assert.equal(session.tracks[0].highEQ,-3);
+  assert.equal(session.tracks[0].compEnabled,true);
+  assert.equal(session.tracks[0].compThreshold,-36);
+  assert.equal(session.tracks[0].compRatio,12);
   assert.equal(session.tracks[1].offset,movedOffset);
   assert.equal(session.tracks[1].trimStart,0.1);
   assert.equal(session.tracks[1].trimEnd,0.9);
@@ -102,6 +122,9 @@ const path=require('node:path');
   assert.equal(await page.locator('#masterValue').innerText(),'70%');
   assert.equal(await page.locator('#lowVal0').innerText(),'6 dB');
   assert.equal(await page.locator('#highVal0').innerText(),'-3 dB');
+  assert.equal(await page.locator('#compEnable0').isChecked(),true);
+  assert.equal(await page.locator('#compThreshold0').inputValue(),'-36');
+  assert.equal(await page.locator('#compRatio0').inputValue(),'12');
   assert.equal(await page.locator('#panval1').innerText(),'Izq 30');
   assert.equal(await page.locator('#offset1').inputValue(),String(movedOffset));
   assert.equal(await page.locator('#trimStart1').inputValue(),'0.1');
@@ -144,6 +167,6 @@ const path=require('node:path');
   await validReplacement.saveAs(replacementPath);
   assert.equal(JSON.parse(fs.readFileSync(replacementPath,'utf8')).tracks[1].name,'new-take.wav');
   assert.deepEqual(errors,[]);
-  console.log('PASS: 8 tracks, audio import, volume, panorama, mute/solo, playback, PCM WAV export.');
+  console.log('PASS: 8 tracks, import, sessions, non-destructive editing, shelf EQ, real compressor PCM attenuation, WAV export, invalid-file regressions.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
