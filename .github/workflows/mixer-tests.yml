@@ -6,6 +6,8 @@ on:
       - 'mixer-session.js'
       - 'mixer-record.js'
       - 'mixer-meter.js'
+      - 'mixer-stems.js'
+      - 'tests/mixer-stems.cjs'
       - 'mixer-limiter.js'
       - 'mixer-vocal-dsp.js'
       - 'mixer-vocal-clean.js'
@@ -45,6 +47,8 @@ jobs:
           node --check mixer-session.js
           node --check mixer-record.js
           node --check mixer-meter.js
+          node --check mixer-stems.js
+          node --check tests/mixer-stems.cjs
           node --check mixer-limiter.js
           node --check mixer-vocal-dsp.js
           node --check mixer-vocal-clean.js
@@ -78,13 +82,14 @@ jobs:
           node tests/mixer-smoke.cjs
           node tests/mixer-pitch.cjs
           node tests/mixer-sync.cjs
+          node tests/mixer-stems.cjs
           node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
           node tests/pitch-ui.cjs
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-stems.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -103,7 +108,8 @@ jobs:
             '14. En cada canal de voz puede activar puerta de ruido y de-esser locales; son una beta, escuchar antes de entregar.' \
             '15. Use alineación vocal manual de -250 a +250 ms y Rescatar fuente del canal después de una toma.' \
             '16. Aún falta calibración automática con equipo físico; esta es una beta.' \
-            '17. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '17. Descargue cada stem WAV o todos en ZIP. Archivos alineados desde 0:00, sin mezcla maestra ni mute/solo.' \
+            '18. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
