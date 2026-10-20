@@ -24,6 +24,8 @@ on:
       - 'mixer-metronome.js'
       - 'tests/mixer-smoke.cjs'
       - 'tests/mixer-pitch.cjs'
+      - 'tests/mixer-sync.cjs'
+      - 'tests/mixer-record.cjs'
       - '.github/workflows/mixer-tests.yml'
   workflow_dispatch:
 jobs:
@@ -53,6 +55,8 @@ jobs:
           node tests/mixer-limiter.cjs
           node --check mixer-pitch.js
           node --check tests/mixer-pitch.cjs
+          node --check tests/mixer-sync.cjs
+          node --check tests/mixer-record.cjs
           node --check pitch-engine.js
           node --check pitch-melody.js
           node --check tests/pitch-melody.cjs
@@ -73,6 +77,8 @@ jobs:
           sleep 2
           node tests/mixer-smoke.cjs
           node tests/mixer-pitch.cjs
+          node tests/mixer-sync.cjs
+          node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
           node tests/pitch-ui.cjs
       - name: Package manual mixer preview
@@ -95,7 +101,9 @@ jobs:
             '12. Active el metrónomo y ajuste BPM; los clics no están en el WAV exportado.' \
             '13. Active el limitador maestro solo para exportar WAV y seleccione techo de muestra; no mide true-peak ni LUFS.' \
             '14. En cada canal de voz puede activar puerta de ruido y de-esser locales; son una beta, escuchar antes de entregar.' \
-            '15. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '15. Use alineación vocal manual de -250 a +250 ms y Rescatar fuente del canal después de una toma.' \
+            '16. Aún falta calibración automática con equipo físico; esta es una beta.' \
+            '17. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
