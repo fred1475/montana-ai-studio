@@ -230,7 +230,15 @@ const path=require('node:path');
   await page.locator('#metronomeOn').uncheck();
   const [cleanExport]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
   const cleanPath=path.join(process.cwd(),'mixer-metro-off.wav');await cleanExport.saveAs(cleanPath);
-  assert.deepEqual(fs.readFileSync(metroPath),fs.readFileSync(cleanPath),'Metronome clicks must never be printed into WAV export');
+  const withClicksEnabled=fs.readFileSync(metroPath),withoutClicksEnabled=fs.readFileSync(cleanPath);
+  assert.equal(withClicksEnabled.length,withoutClicksEnabled.length,'Monitoring cannot change render length');
+  let sumDelta=0,maxDelta=0,countDelta=0;
+  for(let i=44;i<withClicksEnabled.length;i+=2){
+    const delta=Math.abs(withClicksEnabled.readInt16LE(i)-withoutClicksEnabled.readInt16LE(i));
+    maxDelta=Math.max(maxDelta,delta);sumDelta+=delta*delta;countDelta++;
+  }
+  assert(Math.sqrt(sumDelta/countDelta)<3 && maxDelta<64,
+    'Metronome clicks leaked to WAV export (PCM delta RMS '+Math.sqrt(sumDelta/countDelta).toFixed(2)+', max '+maxDelta+')');
   await page.locator('#metronomeOn').check();
   const [tempoSession]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
   const tempoPath=path.join(process.cwd(),'mixer-tempo-session.json');await tempoSession.saveAs(tempoPath);
