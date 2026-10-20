@@ -28,7 +28,7 @@ $("recordStart").addEventListener("click",async()=>{
  let guides;
  try{
   guides=tracks.map((buffer,index)=>buffer&&index!==i?
-   {index,buffer:window.getMixBuffer(index),clip:region(index,buffer)}:null).filter(Boolean);
+   {index,buffer:window.getMixBuffer(index),clip:(window.validateFades(index),region(index,buffer))}:null).filter(Boolean);
  }catch(err){report("Corrige las pistas de acompañamiento antes de grabar: "+err.message);return}
  let stream=null,recorder=null,started=false;
  try{
@@ -60,7 +60,7 @@ $("recordStart").addEventListener("click",async()=>{
     // Atomic replacement happens only after a full successful decode.
     tracks[i]=decoded;originalFiles[i]=file;
     window.resetPitch?.(i);window.resetClean?.(i);
-    $("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;
+    $("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("fadeIn"+i).value=0;$("fadeOut"+i).value=0;
     $("offset"+i).value=0;
     if(i>0){$("alignMs"+i).value=0;$("alignVal"+i).textContent="0 ms"}
     $("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
@@ -82,7 +82,7 @@ $("recordStart").addEventListener("click",async()=>{
    for(const guide of guides){
     const index=guide.index,src=audio().createBufferSource(),g=audio().createGain(),p=audio().createStereoPanner();
     src.buffer=guide.buffer;g.gain.value=gain(index);p.pan.value=pan(index);
-    src.connect(g);const eq=addEq(audio(),g,index),comp=addCompressor(audio(),eq,index),fx=addSpace(audio(),comp,index);
+    window.connectFades(audio(),src,g,index,guide.clip,at+guide.clip.offset);const eq=addEq(audio(),g,index),comp=addCompressor(audio(),eq,index),fx=addSpace(audio(),comp,index);
     window.attachTrackMeter(audio(),fx,index).connect(p).connect(m);
     src.start(at+guide.clip.offset,guide.clip.start,guide.clip.duration);players.push(src);
    }
