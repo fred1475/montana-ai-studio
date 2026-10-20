@@ -27,7 +27,7 @@
   src.buffer=srcBuffer;
   vol.gain.value=Number($("vol"+i).value)/100;
   panNode.pan.value=pan(i);
-  src.connect(vol);
+  window.connectFades(ctx,src,vol,i,plan.clips[i],plan.clips[i].offset);
   addSpace(ctx,addCompressor(ctx,addEq(ctx,vol,i),i),i).connect(panNode).connect(ctx.destination);
   const clip=plan.clips[i];
   src.start(clip.offset,clip.start,clip.duration);
