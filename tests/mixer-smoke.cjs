@@ -26,6 +26,8 @@ const path=require('node:path');
   await assert.equal(await page.locator('#panval1').innerText(),'Izq 30');
   await page.locator('#mute1').check();
   await page.locator('#solo0').check();
+  await page.locator('#masterGain').fill('70');
+  assert.equal(await page.locator('#masterValue').innerText(),'70%');
   await page.locator('#play').click();
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('reproduciéndose'));
   await page.locator('#stop').click();
@@ -37,6 +39,8 @@ const path=require('node:path');
   assert.equal(out.readUInt16LE(22),2);
   assert.equal(out.readUInt32LE(24),44100);
   assert(out.length>100000,'Expected exported audio data');
+  assert((await page.locator('#status').innerText()).includes('Sin clipping detectado'));
+
   // Save and restore a session with embedded audio and complete channel state.
   const [sessionDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
   const sessionPath=path.join(process.cwd(),'test-mixer-session.json');
