@@ -27,9 +27,9 @@ for(let i=0;i<N;i++){
    if(file.size>50*1024*1024)throw Error("Archivo mayor de 50 MB");
    const decoded=await audio().decodeAudioData(await file.arrayBuffer());
    if(decoded.duration>300)throw Error("Duración mayor de cinco minutos");
-   stop();tracks[i]=decoded;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
+   stop();tracks[i]=decoded;originalFiles[i]=file;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
    report("Pista "+(i+1)+" importada");
-  }catch(err){report("No se pudo importar: "+err.message)}
+  }catch(err){e.target.value="";report("No se pudo importar: "+err.message+". La pista anterior sigue intacta.")}
  });
 }
 $("stop").onclick=()=>{stop();report("Reproducción detenida")};
