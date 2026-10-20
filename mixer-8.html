@@ -27,7 +27,7 @@ for(let i=0;i<N;i++){
    if(file.size>50e6)throw Error("Archivo mayor de 50 MB");
    const decoded=await audio().decodeAudioData(await file.arrayBuffer());
    if(decoded.duration>300)throw Error("Duración mayor de cinco minutos");
-   stop();tracks[i]=decoded;originalFiles[i]=file;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
+   stop();tracks[i]=decoded;originalFiles[i]=file;$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
    report("Pista "+(i+1)+" importada");
   }catch(err){e.target.value="";report("No se pudo importar: "+err.message+". La pista anterior sigue intacta.")}
  });
@@ -36,11 +36,11 @@ $("stop").onclick=()=>{stop();report("Reproducción detenida")};
 $("play").onclick=async()=>{
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
-  stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(ac.destination);
+  const clips=tracks.map((b,i)=>b?region(i,b):null);stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(ac.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=ac.createBufferSource(),vol=ac.createGain(),stereo=ac.createStereoPanner();
    src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addEq(ac,vol,i).connect(stereo).connect(master);
-   const clip=region(i,buf);src.start(at+clip.offset,clip.start,clip.duration);players.push(src);src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1)};
+   const clip=clips[i];src.start(at+clip.offset,clip.start,clip.duration);players.push(src);src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1);src.disconnect()};
   });report("Mezcla reproduciéndose. Para aplicar cambios, pulsa Detener y Reproducir.");
  }catch(err){report(err.message)}
 };
