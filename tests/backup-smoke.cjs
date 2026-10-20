@@ -28,11 +28,15 @@ const path = require('node:path');
   const originalCount=await page.evaluate(async()=>(await allProjects()).length);
   await page.locator('#restoreBackup').setInputFiles(saveTo);
   await assertEventually(page,async()=>await page.locator('#backupStatus').innerText(),'Restaurados');
-  const after=await page.evaluate(async()=>await allProjects());
+  const after=await page.evaluate(async()=>{
+    const rows=await allProjects();
+    return Promise.all(rows.map(async p=>({kind:p.kind,title:p.title,size:p.blob?.size||null,bytes:p.blob?Array.from(new Uint8Array(await p.blob.arrayBuffer())):null})));
+  });
   assert.equal(after.length,originalCount+2,'Restore must not replace existing projects');
   const audio=after.filter(x=>x.kind==='audio');
   assert.equal(audio.length,2);
-  assert.equal(audio[1].blob.size,8);
+  assert.equal(audio[1].size,8);
+  assert.deepEqual(audio[1].bytes,[82,73,70,70,1,2,3,4]);
   console.log('PASS: Backup includes letters/audio; restore preserves existing projects.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
