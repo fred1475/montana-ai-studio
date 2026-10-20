@@ -12,13 +12,15 @@ function audio(){return ctx||(ctx=new (window.AudioContext||window.webkitAudioCo
 function gain(i){return $("mute"+i).checked||isSoloed()&&!$("solo"+i).checked?0:Number($("vol"+i).value)/100}
 function isSoloed(){return tracks.some((t,i)=>t&&$("solo"+i).checked)}
 function pan(i){return Number($("pan"+i).value)/100}
+function addEq(ac,node,i){const low=ac.createBiquadFilter(),high=ac.createBiquadFilter();low.type="lowshelf";low.frequency.value=250;low.gain.value=Number($("lowEQ"+i).value);high.type="highshelf";high.frequency.value=4000;high.gain.value=Number($("highEQ"+i).value);node.connect(low).connect(high);return high}
 function region(i,buffer){const read=id=>Number($(id+i).value),offset=read("offset"),start=read("trimStart"),rawEnd=read("trimEnd");const end=rawEnd===0?buffer.duration:rawEnd;if(![offset,start,rawEnd].every(Number.isFinite)||offset<0||start<0||rawEnd<0||offset>300||end>buffer.duration+.001||end<=start)throw Error("Tiempo inválido en pista "+(i+1));return {offset,start,duration:end-start}}
 const labels=["Instrumental","Voz principal","Doble 1","Doble 2","Coro 1","Coro 2","Adlibs","Efectos"];
-$("tracks").innerHTML=labels.map((name,i)=>`<article class="track"><h2>${i+1}. ${name}</h2><label for="file${i}">Importar audio</label><input id="file${i}" type="file" accept="audio/*"><p id="label${i}">Sin audio</p><label for="vol${i}">Volumen <output id="val${i}">100%</output></label><input id="vol${i}" type="range" min="0" max="150" value="100"><label for="pan${i}">Panorama <output id="panval${i}">Centro</output></label><input id="pan${i}" type="range" min="-100" max="100" value="0"><label for="offset${i}">Inicio (segundos)</label><input id="offset${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimStart${i}">Recorte inicial (segundos)</label><input id="trimStart${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimEnd${i}">Recorte final (segundos; 0 = completo)</label><input id="trimEnd${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label><input id="mute${i}" type="checkbox"> Silenciar</label><label><input id="solo${i}" type="checkbox"> Solo</label></article>`).join("");
+$("tracks").innerHTML=labels.map((name,i)=>`<article class="track"><h2>${i+1}. ${name}</h2><label for="file${i}">Importar audio</label><input id="file${i}" type="file" accept="audio/*"><p id="label${i}">Sin audio</p><label for="vol${i}">Volumen <output id="val${i}">100%</output></label><input id="vol${i}" type="range" min="0" max="150" value="100"><label for="pan${i}">Panorama <output id="panval${i}">Centro</output></label><input id="pan${i}" type="range" min="-100" max="100" value="0"><label for="lowEQ${i}">Graves (250 Hz) <output id="lowVal${i}">0 dB</output></label><input id="lowEQ${i}" type="range" min="-12" max="12" step="1" value="0"><label for="highEQ${i}">Agudos (4 kHz) <output id="highVal${i}">0 dB</output></label><input id="highEQ${i}" type="range" min="-12" max="12" step="1" value="0"><label for="offset${i}">Inicio (segundos)</label><input id="offset${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimStart${i}">Recorte inicial (segundos)</label><input id="trimStart${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimEnd${i}">Recorte final (segundos; 0 = completo)</label><input id="trimEnd${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label><input id="mute${i}" type="checkbox"> Silenciar</label><label><input id="solo${i}" type="checkbox"> Solo</label></article>`).join("");
 function stop(){for(const s of players){try{s.stop()}catch(e){}try{s.disconnect()}catch(e){}}players.length=0}
 for(let i=0;i<N;i++){
  $("vol"+i).addEventListener("input",()=>{$("val"+i).textContent=$("vol"+i).value+"%"});
  $("pan"+i).addEventListener("input",()=>{const v=Number($("pan"+i).value);$("panval"+i).textContent=v===0?"Centro":(v<0?"Izq ":"Der ")+Math.abs(v)});
+ for(const eq of ["lowEQ","highEQ"]){$(eq+i).addEventListener("input",()=>{$(eq==="lowEQ"?"lowVal"+i:"highVal"+i).textContent=$(eq+i).value+" dB"});}
  $("file"+i).addEventListener("change",async e=>{
   const file=e.target.files?.[0];if(!file)return;report("Decodificando "+file.name+"...");
   try{
@@ -37,7 +39,7 @@ $("play").onclick=async()=>{
   stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(ac.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=ac.createBufferSource(),vol=ac.createGain(),stereo=ac.createStereoPanner();
-   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol).connect(stereo).connect(master);
+   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addEq(ac,vol,i).connect(stereo).connect(master);
    const clip=region(i,buf);src.start(at+clip.offset,clip.start,clip.duration);players.push(src);src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1)};
   });report("Mezcla reproduciéndose. Para aplicar cambios, pulsa Detener y Reproducir.");
  }catch(err){report(err.message)}
@@ -62,7 +64,7 @@ $("export").onclick=async()=>{
   const offline=new OfflineAudioContext(2,frames,rate);const master=offline.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(offline.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=offline.createBufferSource(),vol=offline.createGain(),stereo=offline.createStereoPanner();
-   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol).connect(stereo).connect(master);const clip=region(i,buf);src.start(clip.offset,clip.start,clip.duration);
+   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addEq(offline,vol,i).connect(stereo).connect(master);const clip=region(i,buf);src.start(clip.offset,clip.start,clip.duration);
   });
   const rendered=await offline.startRendering();const left=rendered.getChannelData(0),right=rendered.getChannelData(1);let peak=0;for(let j=0;j<left.length;j++){peak=Math.max(peak,Math.abs(left[j]),Math.abs(right[j]));}const blob=wav(left,right,rate);
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-ai-studio-mezcla.wav";
