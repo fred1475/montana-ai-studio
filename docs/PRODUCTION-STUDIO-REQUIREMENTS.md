@@ -90,6 +90,18 @@ Los ajustes participan en reproducción, guía de overdub, exportación WAV comp
 
 **No es un editor de clips con herramientas de corte múltiple:** sigue pendiente separar/duplicar/pegar regiones, preescucha de edición, crossfades, automatización de volumen y la edición sample-accurate. Los resultados de laboratorio no sustituyen escucha musical con grabaciones reales.
 
+## Protección recuperable de sesiones — probado en Chromium
+
+`mixer-recovery.js` añade **autoguardado voluntario** en IndexedDB. El usuario debe activarlo explícitamente, se intenta guardar cada 45 segundos cuando hay cambios y también mediante el botón “Guardar recuperación ahora”. El respaldo local contiene una copia completa de los ajustes y los bytes originales de las pistas, usando la misma validación que la sesión JSON descargable. Al restaurar el navegador, se indica que hay recuperación, pero **no se carga silenciosamente**, sino únicamente al pulsar Restaurar. Borrar la copia exige confirmación y no elimina el audio abierto ni JSON externos. La preferencia de activación se conserva solo en el navegador.
+
+La transacción IndexedDB es atómica: un error de cuota o almacenamiento no reemplaza una copia anterior. Las pruebas end-to-end prueban optar por activar, restaurar después de recargar, audio original idéntico byte a byte, rechazo de copias inválidas conservando el proyecto activo y eliminación segura. **Límites:** navegador/dispositivo específico, cuotas del navegador, modo incógnito, bloqueos o borrado de almacenamiento. No hay sincronización nube, servidor o copias automáticas externas. Sigue siendo necesario descargar y almacenar JSON aparte.
+
+## Normalización PCM y mediciones básicas — prueba de niveles completada
+
+`mixer-export-levels.js` añade normalización **opcional y enlazada en estéreo** de picos de muestra del WAV maestro, objetivo ajustable entre -6 y -0.5 dBFS, con un máximo de aumento de +12 dB para reducir el riesgo de amplificar ruido débil. Se aplica antes del limitador opcional y no afecta la exportación de stems ni los originales. Muestra pico PCM, RMS estéreo y factor de cresta. La configuración se conserva al guardar y restaurar proyectos.
+
+Las pruebas incluyen picos PCM medidos del WAV exportado, conservación del balance estéreo, bypass por defecto, límite de amplificación, silencio, respaldo/restauración y rechazo de configuraciones incorrectas. **No son mediciones LUFS integradas, true-peak, EBU R128 ni masterización profesional.** Todavía faltan análisis y ajuste de loudness por estándar, intersample peaks, comparación auditiva y pruebas con músicas completas.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
