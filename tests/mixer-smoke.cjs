@@ -128,6 +128,21 @@ const path=require('node:path');
   await page.reload();
   await page.locator('#sessionFile').setInputFiles(safePath);
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  // Regression: impossible trims must block playback and prevent unusable backups.
+  await page.locator('#trimStart1').fill('2');
+  await page.locator('#play').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Tiempo inválido'));
+  assert.equal(await page.evaluate(()=>players.length),0,'No partial playback on invalid clip');
+  await page.locator('#saveSession').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se guardó'));
+  assert((await page.locator('#status').innerText()).includes('Tiempo inválido'));
+  await page.locator('#file1').setInputFiles({name:'new-take.wav',mimeType:'audio/wav',buffer:wav});
+  await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('new-take.wav'));
+  assert.equal(await page.locator('#trimStart1').inputValue(),'0','Replacing audio resets unusable trims');
+  const [validReplacement]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const replacementPath=path.join(process.cwd(),'test-mixer-new-take.json');
+  await validReplacement.saveAs(replacementPath);
+  assert.equal(JSON.parse(fs.readFileSync(replacementPath,'utf8')).tracks[1].name,'new-take.wav');
   assert.deepEqual(errors,[]);
   console.log('PASS: 8 tracks, audio import, volume, panorama, mute/solo, playback, PCM WAV export.');
  }finally{await browser.close()}
