@@ -82,7 +82,8 @@ $("recordStart").addEventListener("click",async()=>{
    for(const guide of guides){
     const index=guide.index,src=audio().createBufferSource(),g=audio().createGain(),p=audio().createStereoPanner();
     src.buffer=guide.buffer;g.gain.value=gain(index);p.pan.value=pan(index);
-    src.connect(g);window.attachTrackMeter(audio(),addSpace(audio(),addCompressor(audio(),addEq(audio(),g,index),index),index).connect(p).connect(m);
+    src.connect(g);const eq=addEq(audio(),g,index),comp=addCompressor(audio(),eq,index),fx=addSpace(audio(),comp,index);
+    window.attachTrackMeter(audio(),fx,index).connect(p).connect(m);
     src.start(at+guide.clip.offset,guide.clip.start,guide.clip.duration);players.push(src);
    }
    if($("metronomeOn").checked)window.startMetronome(audio(),at);
