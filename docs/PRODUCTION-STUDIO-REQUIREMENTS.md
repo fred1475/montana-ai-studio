@@ -35,6 +35,14 @@ Se añadieron pruebas de dos notas secuenciales con frecuencias distintas para v
 
 No se integra todavía como efecto en tiempo real o en los canales del mezclador: el módulo se prueba por separado. No denominarlo 'Auto-Tune' comercial ni prometer funcionamiento sobre una canción completa.
 
+## Hito siguiente: afinación vocal integrada al mezclador — beta
+
+`mixer-pitch.js` ofrece controles experimentales para canales 2–8 y NO modifica los originales. Permite cambiar tonalidad/escala, intensidad y modo de nota sostenida o frases breves; procesa fuera de tiempo real, ofrece bypass original/corregido y usa el buffer seleccionado en reproducción, grabación de referencia y exportación WAV. El archivo de sesión conserva la fuente original y ajustes de afinación; al restaurarlo reconstituye la señal corregida cuando corresponde. Las sesiones anteriores sin ajustes de afinación continúan funcionando.
+
+Pruebas GitHub Actions: audio sintetizado desafinado -> WAV corregido de frecuencia objetiva; bypass -> WAV con frecuencia original; duración constante; respaldo/restauración y rechazo de configuración inválida sin destruir la sesión anterior. Este hito no avala grabación real, calidad de formantes ni voces humanas.
+
+**Bloqueadores:** voces reales, latencia, afinación cambiante compleja, formantes, glides y consonantes, rendimiento con pistas largas, monitorización real y preservación auditiva del timbre. No usar marca comercial Auto-Tune para denominar el producto propio.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
