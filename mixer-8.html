@@ -14,15 +14,57 @@ function isSoloed(){return tracks.some((t,i)=>t&&$("solo"+i).checked)}
 function pan(i){return Number($("pan"+i).value)/100}
 function addEq(ac,node,i){const low=ac.createBiquadFilter(),high=ac.createBiquadFilter();low.type="lowshelf";low.frequency.value=250;low.gain.value=Number($("lowEQ"+i).value);high.type="highshelf";high.frequency.value=4000;high.gain.value=Number($("highEQ"+i).value);node.connect(low).connect(high);return high}
 function addCompressor(ac,node,i){if(!$("compEnable"+i).checked)return node;const comp=ac.createDynamicsCompressor();comp.threshold.value=Number($("compThreshold"+i).value);comp.ratio.value=Number($("compRatio"+i).value);comp.knee.value=6;comp.attack.value=.005;comp.release.value=.22;node.connect(comp);return comp}
+// Consistent, deterministic synthetic room impulse in both live and offline rendering.
+const roomImpulses=new Map();
+function roomImpulse(ac){
+ const rate=ac.sampleRate;
+ if(roomImpulses.has(rate))return roomImpulses.get(rate);
+ const count=Math.ceil(rate*1.25),b=ac.createBuffer(2,count,rate);
+ for(let ch=0;ch<2;ch++){
+  const channel=b.getChannelData(ch);let seed=0x1985ab+(ch*7919);
+  for(let k=0;k<count;k++){
+   seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+   const t=k/rate;
+   channel[k]=t<.015?0:((seed>>>0)/4294967295*2-1)*.009*Math.exp(-t*4);
+  }
+ }
+ roomImpulses.set(rate,b);return b;
+}
+function effectTail(i){
+ const rev=Number($("reverb"+i).value)>0?1.25:0;
+ const delay=Number($("delayWet"+i).value)>0?Number($("delayMs"+i).value)/1000*7:0;
+ return Math.max(rev,delay);
+}
+function addSpace(ac,node,i){
+ const sum=ac.createGain();node.connect(sum);
+ const rv=Number($("reverb"+i).value)/100;
+ if(rv>0){
+  const conv=ac.createConvolver(),wet=ac.createGain(),damp=ac.createBiquadFilter();
+  conv.normalize=false;conv.buffer=roomImpulse(ac);
+  damp.type="lowpass";damp.frequency.value=5500;wet.gain.value=rv;
+  node.connect(conv).connect(damp).connect(wet).connect(sum);
+ }
+ const dw=Number($("delayWet"+i).value)/100;
+ if(dw>0){
+  const echo=ac.createDelay(1),feedback=ac.createGain(),wet=ac.createGain();
+  echo.delayTime.value=Number($("delayMs"+i).value)/1000;
+  wet.gain.value=dw;feedback.gain.value=.35;
+  node.connect(echo);
+  echo.connect(wet).connect(sum);
+  echo.connect(feedback).connect(echo);
+ }
+ return sum;
+}
 function region(i,buffer){const read=id=>Number($(id+i).value),offset=read("offset"),start=read("trimStart"),rawEnd=read("trimEnd");const end=rawEnd===0?buffer.duration:rawEnd;if(![offset,start,rawEnd].every(Number.isFinite)||offset<0||start<0||rawEnd<0||offset>300||end>buffer.duration+.001||end<=start)throw Error("Tiempo inválido en pista "+(i+1));return {offset,start,duration:end-start}}
 const labels=["Instrumental","Voz principal","Doble 1","Doble 2","Coro 1","Coro 2","Adlibs","Efectos"];
-$("tracks").innerHTML=labels.map((name,i)=>`<article class="track"><h2>${i+1}. ${name}</h2><label for="file${i}">Importar audio</label><input id="file${i}" type="file" accept="audio/*"><p id="label${i}">Sin audio</p><label for="vol${i}">Volumen <output id="val${i}">100%</output></label><input id="vol${i}" type="range" min="0" max="150" value="100"><label for="pan${i}">Panorama <output id="panval${i}">Centro</output></label><input id="pan${i}" type="range" min="-100" max="100" value="0"><label for="lowEQ${i}">Graves (250 Hz) <output id="lowVal${i}">0 dB</output></label><input id="lowEQ${i}" type="range" min="-12" max="12" step="1" value="0"><label for="highEQ${i}">Agudos (4 kHz) <output id="highVal${i}">0 dB</output></label><input id="highEQ${i}" type="range" min="-12" max="12" step="1" value="0"><details id="compDetails${i}"><summary>🎚 Compresor de dinámica</summary><label><input id="compEnable${i}" type="checkbox"> Activar compresor</label><label for="compThreshold${i}">Umbral <output id="compThresholdVal${i}">-18 dB</output></label><input id="compThreshold${i}" type="range" min="-36" max="-6" step="1" value="-18"><label for="compRatio${i}">Relación <output id="compRatioVal${i}">4:1</output></label><input id="compRatio${i}" type="range" min="2" max="12" step="1" value="4"><small>Compresión básica. El audio original no se modifica.</small></details><label for="offset${i}">Inicio (segundos)</label><input id="offset${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimStart${i}">Recorte inicial (segundos)</label><input id="trimStart${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimEnd${i}">Recorte final (segundos; 0 = completo)</label><input id="trimEnd${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label><input id="mute${i}" type="checkbox"> Silenciar</label><label><input id="solo${i}" type="checkbox"> Solo</label></article>`).join("");
+$("tracks").innerHTML=labels.map((name,i)=>`<article class="track"><h2>${i+1}. ${name}</h2><label for="file${i}">Importar audio</label><input id="file${i}" type="file" accept="audio/*"><p id="label${i}">Sin audio</p><label for="vol${i}">Volumen <output id="val${i}">100%</output></label><input id="vol${i}" type="range" min="0" max="150" value="100"><label for="pan${i}">Panorama <output id="panval${i}">Centro</output></label><input id="pan${i}" type="range" min="-100" max="100" value="0"><label for="lowEQ${i}">Graves (250 Hz) <output id="lowVal${i}">0 dB</output></label><input id="lowEQ${i}" type="range" min="-12" max="12" step="1" value="0"><label for="highEQ${i}">Agudos (4 kHz) <output id="highVal${i}">0 dB</output></label><input id="highEQ${i}" type="range" min="-12" max="12" step="1" value="0"><details id="compDetails${i}"><summary>🎚 Compresor de dinámica</summary><label><input id="compEnable${i}" type="checkbox"> Activar compresor</label><label for="compThreshold${i}">Umbral <output id="compThresholdVal${i}">-18 dB</output></label><input id="compThreshold${i}" type="range" min="-36" max="-6" step="1" value="-18"><label for="compRatio${i}">Relación <output id="compRatioVal${i}">4:1</output></label><input id="compRatio${i}" type="range" min="2" max="12" step="1" value="4"><small>Compresión básica. El audio original no se modifica.</small></details><details id="spaceDetails${i}"><summary>🌌 Reverb y delay</summary><label for="reverb${i}">Reverb <output id="reverbVal${i}">0%</output></label><input id="reverb${i}" type="range" min="0" max="50" step="5" value="0"><label for="delayWet${i}">Delay <output id="delayWetVal${i}">0%</output></label><input id="delayWet${i}" type="range" min="0" max="50" step="5" value="0"><label for="delayMs${i}">Tiempo del delay <output id="delayMsVal${i}">300 ms</output></label><input id="delayMs${i}" type="range" min="100" max="750" step="50" value="300"><small>Efectos locales no destructivos; se incluyen las colas en el WAV.</small></details><label for="offset${i}">Inicio (segundos)</label><input id="offset${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimStart${i}">Recorte inicial (segundos)</label><input id="trimStart${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimEnd${i}">Recorte final (segundos; 0 = completo)</label><input id="trimEnd${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label><input id="mute${i}" type="checkbox"> Silenciar</label><label><input id="solo${i}" type="checkbox"> Solo</label></article>`).join("");
 function stop(){for(const s of players){try{s.stop()}catch(e){}try{s.disconnect()}catch(e){}}players.length=0}
 for(let i=0;i<N;i++){
  $("vol"+i).addEventListener("input",()=>{$("val"+i).textContent=$("vol"+i).value+"%"});
  $("pan"+i).addEventListener("input",()=>{const v=Number($("pan"+i).value);$("panval"+i).textContent=v===0?"Centro":(v<0?"Izq ":"Der ")+Math.abs(v)});
  for(const eq of ["lowEQ","highEQ"]){$(eq+i).addEventListener("input",()=>{$(eq==="lowEQ"?"lowVal"+i:"highVal"+i).textContent=$(eq+i).value+" dB"});}
  for(const param of ["compThreshold","compRatio"]){$(param+i).addEventListener("input",()=>{$(param+"Val"+i).textContent=$(param+i).value+(param==="compRatio"?":1":" dB")})}
+ for(const param of ["reverb","delayWet","delayMs"]){$(param+i).addEventListener("input",()=>{$(param+"Val"+i).textContent=$(param+i).value+(param==="delayMs"?" ms":"%")})}
  $("file"+i).addEventListener("change",async e=>{
   const file=e.target.files?.[0];if(!file)return;report("Decodificando "+file.name+"...");
   try{
@@ -41,7 +83,7 @@ $("play").onclick=async()=>{
   const clips=tracks.map((b,i)=>b?region(i,b):null);stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(ac.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=ac.createBufferSource(),vol=ac.createGain(),stereo=ac.createStereoPanner();
-   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addCompressor(ac,addEq(ac,vol,i),i).connect(stereo).connect(master);
+   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addSpace(ac,addCompressor(ac,addEq(ac,vol,i),i),i).connect(stereo).connect(master);
    const clip=clips[i];src.start(at+clip.offset,clip.start,clip.duration);players.push(src);src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1);src.disconnect()};
   });report("Mezcla reproduciéndose. Para aplicar cambios, pulsa Detener y Reproducir.");
  }catch(err){report(err.message)}
@@ -62,11 +104,11 @@ $("export").onclick=async()=>{
  const btn=$("export");btn.disabled=true;
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
-  report("Creando mezcla WAV...");const rate=44100,frames=Math.ceil(Math.max(...tracks.map((b,i)=>b?(region(i,b).offset+region(i,b).duration):0))*rate);
+  report("Creando mezcla WAV...");const rate=44100,frames=Math.ceil(Math.max(...tracks.map((b,i)=>b?(region(i,b).offset+region(i,b).duration+effectTail(i)):0))*rate);
   const offline=new OfflineAudioContext(2,frames,rate);const master=offline.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(offline.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const src=offline.createBufferSource(),vol=offline.createGain(),stereo=offline.createStereoPanner();
-   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addCompressor(offline,addEq(offline,vol,i),i).connect(stereo).connect(master);const clip=region(i,buf);src.start(clip.offset,clip.start,clip.duration);
+   src.buffer=buf;vol.gain.value=gain(i);stereo.pan.value=pan(i);src.connect(vol);addSpace(offline,addCompressor(offline,addEq(offline,vol,i),i),i).connect(stereo).connect(master);const clip=region(i,buf);src.start(clip.offset,clip.start,clip.duration);
   });
   const rendered=await offline.startRendering();const left=rendered.getChannelData(0),right=rendered.getChannelData(1);let peak=0;for(let j=0;j<left.length;j++){peak=Math.max(peak,Math.abs(left[j]),Math.abs(right[j]));}const blob=wav(left,right,rate);
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-ai-studio-mezcla.wav";
