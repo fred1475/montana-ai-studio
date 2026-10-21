@@ -40,3 +40,15 @@ El workflow de GitHub Actions ejecuta `tests/mixer-ebu-reference.cjs`, usando **
 La EBU limita el uso de su conjunto oficial de secuencias a I+D interna y prohíbe actividades comerciales sin otros permisos; **no lo copiamos ni redistribuimos**. Sus condiciones están en https://tech.ebu.ch/files/live/sites/tech/files/shared/testmaterial/use%20of%20EBU%20AUDIO%20test%20sequences.pdf
 
 Hasta completar validación externa, mostrar *estimado / orientativo* en las interfaces y documentos. Una meta interna de 200 % de exigencia creativa **no constituye garantía verificable de 200 % de calidad**.
+
+## Nueva función: informe de auditoría vinculada al WAV (octubre 2026)
+
+El archivo `mixer-master-audit.js` genera, de forma **opcional**, un informe `montana-mezcla-auditoria-r128.json` tras exportar la mezcla WAV. **La fuente del informe es el WAV PCM16 codificado** (no el PCM float previo a la conversión); se vuelven a calcular LUFS integrado, momentáneo, corto, LRA, true-peak estimado, pico de muestra y RMS en el audio final, que puede incluir cuantización o clipping.
+
+El JSON incorpora dimensiones, duración, tasa de muestreo, checksum **CRC32 del WAV exacto** (para emparejar archivo e informe, NO como firma criptográfica), fecha, procesamiento de salida utilizado y comprobaciones de ingeniería: objetivo de emisión −23 LUFS ±0.5 LU, referencia de pico verdadero −1 dBTP, presencia de muestras PCM a escala máxima, y advertencia de LRA provisional para grabaciones menores de 60 segundos.
+
+Se aplican límites de recursos: hasta 56 MiB de WAV para la auditoría, sin bloquear la descarga ordinaria de mezclas mayores. El informe solo queda disponible después de analizar una exportación concreta. Al exportar otra mezcla o restaurar otra sesión, se descarta cualquier informe anterior para no asociarlo por error a una canción diferente. La preferencia de auditoría sí puede guardarse en JSON de sesión.
+
+Pruebas automáticas: `tests/mixer-master-audit.cjs` verifica el valor CRC32 universal `123456789` → `cbf43926`, asociación byte-a-byte del JSON al WAV descargado, exactitud de LUFS/true-peak recalculados a partir del PCM16, alertas de clipping y cambios entre dos exportaciones, y rechazo seguro de ajustes de sesión inválidos.
+
+**La auditoría es orientativa y NO certifica EBU Mode, ni la cadena de audio, ni conformidad legal o artística.** La meta de calidad superior exige además probar masters completos, interfaces y monitores reales, codificación de plataformas y una revisión humana de la mezcla.
