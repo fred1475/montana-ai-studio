@@ -76,6 +76,7 @@ on:
       - 'tests/pitch-stereo-coherence.cjs'
       - 'tests/pitch-unvoiced-guard.cjs'
       - 'tests/pitch-unvoiced-browser.cjs'
+      - 'tests/pitch-mark-validation.cjs'
       - 'tests/pitch-ui.cjs'
       - 'mixer-timeline.js'
       - 'mixer-history.js'
@@ -178,6 +179,8 @@ jobs:
           node --check tests/pitch-stereo-coherence.cjs
           node --check tests/pitch-unvoiced-guard.cjs
           node --check tests/pitch-unvoiced-browser.cjs
+          node --check tests/pitch-mark-validation.cjs
+          node tests/pitch-mark-validation.cjs
           node tests/pitch-melody.cjs
           node tests/pitch-stereo-reference.cjs
           node tests/pitch-stereo-coherence.cjs
