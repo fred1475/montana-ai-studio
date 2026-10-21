@@ -56,6 +56,10 @@
        after.stems.some((stem,i)=>stem.crc32!==item.stems[i].crc32))
      throw Error("El envío cambió durante la preparación. Repítelo.");
     window.montanaCommitTrackBatch(prepared);
+    // Labels describe their new musical contents. Original WAV filenames
+    // remain untouched and will still be available in the session backup.
+    const musicalNames=["Bombo","Caja","Palmas","Hi-hat","Bajo"];
+    targets.forEach((track,i)=>window.setMixerTrackLabel(track,musicalNames[i]));
     document.getElementById("bpm").value=String(item.bpm);
     replace.checked=false;pending=null;
     try{await MontanaBeatBridge.discard();}
@@ -68,6 +72,7 @@
     const file=new File([item.bytes],item.filename,{type:"audio/wav"});
     show("Verificando audio del Beat Lab antes de importarlo...");
     await window.montanaLoadTrackFile(0,file);
+    window.setMixerTrackLabel(0,"Ritmo Beat Lab");
     document.getElementById("bpm").value=String(item.bpm);
     document.getElementById("file0").value="";
     replace.checked=false;pending=null;
