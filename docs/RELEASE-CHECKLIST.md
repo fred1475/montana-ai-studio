@@ -37,6 +37,12 @@ La detección vocal estéreo ya era resistente a cancelaciones en contrafase; **
 
 `tests/pitch-stereo-coherence.cjs` comprueba conservación de polaridad invertida y diferencias de nivel entre canales a nivel de muestra PCM, tanto en una nota sostenida como en una frase de dos notas; `tests/mixer-pitch.cjs` contrasta además el archivo WAV exportado. Se conserva el bypass y la fuente original. Las pruebas sintéticas **no demuestran calidad perceptual, preservación de formantes ni validez de corrección en voces grabadas con equipo real**.
 
+### Inspección de tomas vocales antes del procesamiento
+
+Ahora los siete canales vocales incluyen un botón **«Analizar fuente sin modificarla»**: inspecciona las muestras PCM decodificadas de la toma original, no la afinación, limpieza ni mezcla procesada. Presenta pico y RMS en dBFS, componente continua, correlación estéreo, muestras cerca de escala completa y avisos conservadores por señal muy débil, poco margen, posible saturación digital, offset DC, contrafase y desequilibrio estéreo. El análisis es deliberadamente manual y local, no se exporta ni sube, y se descarta al cambiar o restaurar la fuente para no reutilizar métricas obsoletas.
+
+Los tests `tests/mixer-vocal-preflight.cjs` y `tests/mixer-vocal-preflight-ui.cjs` cubren señales sintéticas, seguridad de datos, navegador, reimportación y restauración de sesiones. **Interpretación:** una muestra cerca del máximo digital no demuestra saturación analógica, y ausencia de avisos no garantiza buena grabación, ruido aceptable ni calidad vocal. No requiere conectar equipo antes de la prueba final.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
