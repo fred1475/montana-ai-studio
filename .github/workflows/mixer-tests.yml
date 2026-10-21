@@ -10,6 +10,8 @@ on:
       - 'mixer-fades.js'
       - 'mixer-recovery.js'
       - 'mixer-export-levels.js'
+      - 'mixer-loudness.js'
+      - 'tests/mixer-loudness.cjs'
       - 'tests/mixer-export-levels.cjs'
       - 'tests/mixer-recovery.cjs'
       - 'tests/mixer-fades.cjs'
@@ -57,6 +59,8 @@ jobs:
           node --check mixer-fades.js
           node --check mixer-recovery.js
           node --check mixer-export-levels.js
+          node --check mixer-loudness.js
+          node --check tests/mixer-loudness.cjs
           node --check tests/mixer-export-levels.cjs
           node --check tests/mixer-recovery.cjs
           node --check tests/mixer-fades.cjs
@@ -98,13 +102,14 @@ jobs:
           node tests/mixer-fades.cjs
           node tests/mixer-recovery.cjs
           node tests/mixer-export-levels.cjs
+          node tests/mixer-loudness.cjs
           node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
           node tests/pitch-ui.cjs
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
-          cp mixer-8.html mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -127,7 +132,8 @@ jobs:
             '18. Ajuste los fundidos de entrada/salida de cada pista. Se aplican al WAV, stems y referencia de grabación.' \
             '19. Active el autoguardado local de IndexedDB solo si lo desea; restaure manualmente y conserve un JSON de respaldo.' \
             '20. Pruebe normalización de picos de muestra y medición RMS al exportar; no equivale a LUFS o true-peak.' \
-            '21. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '21. Active medición experimental de LUFS integrado y true-peak 4× durante la exportación WAV si desea estimaciones adicionales.' \
+            '22. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
