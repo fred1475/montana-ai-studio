@@ -13,6 +13,8 @@ assert.equal(unchanged.metrics.newLargeSteps,0);
 assert.equal(unchanged.channels,1);
 assert.equal(unchanged.stereo,null);
 assert.equal(unchanged.metrics.highBandDeltaDb,0);
+assert.equal(unchanged.metrics.dropoutWindowCount,0);
+assert.equal(unchanged.metrics.firstDropoutSeconds,null);
 for(const testRate of [44100,48000]){
  const frames=testRate;
  const source=Float32Array.from({length:frames},(_,i)=>.25*Math.sin(2*Math.PI*190*i/testRate));
@@ -40,6 +42,27 @@ for(const testRate of [44100,48000]){
  assert.equal(quietOutput.metrics.highBandDeltaDb,null);
  assert(quietOutput.warnings.some(w=>w.id==='signal_loss'));
  assert(!quietOutput.warnings.some(w=>w.id==='spectral_balance_shift'));
+
+ const dropped=source.slice(),naturalPause=source.slice();
+ for(let i=Math.floor(testRate*.37);i<Math.floor(testRate*.58);i++){
+  dropped[i]=0;naturalPause[i]=0;
+ }
+ const dropout=analyze([source],[dropped],testRate);
+ assert(dropout.metrics.dropoutWindowCount>=4);
+ assert(dropout.metrics.firstDropoutSeconds>=.35&&dropout.metrics.firstDropoutSeconds<=.4);
+ assert(dropout.warnings.some(w=>w.id==='local_dropouts'));
+ const intendedPause=analyze([naturalPause],[naturalPause.slice()],testRate);
+ assert.equal(intendedPause.metrics.dropoutWindowCount,0);
+ assert(!intendedPause.warnings.some(w=>w.id==='local_dropouts'));
+ const uniformGain=analyze([source],[Float32Array.from(source,x=>x*.3)],testRate);
+ assert.equal(uniformGain.metrics.dropoutWindowCount,0);
+ const allMissing=analyze([source],[new Float32Array(frames)],testRate);
+ assert.equal(allMissing.metrics.dropoutWindowCount,0);
+ assert(allMissing.warnings.some(w=>w.id==='signal_loss'));
+ const doubleStereo=analyze([source,source],[source,dropped],testRate);
+ assert(doubleStereo.metrics.dropoutWindowCount>=4);
+ assert(doubleStereo.warnings.some(w=>w.id==='local_dropouts'));
+ assert.deepEqual(dropped.slice(0,Math.floor(testRate*.30)),source.slice(0,Math.floor(testRate*.30)));
  assert.deepEqual(source,sourceBackup);
  assert.deepEqual(treble,trebleBackup);
 }
@@ -94,4 +117,4 @@ const infinity=tone.slice();infinity[1]=Infinity;
 assert.throws(()=>analyze([tone],[infinity],rate),/no finita/);
 assert.deepEqual(tone,frozen,'QA never modifies the original');
 assert.equal(unchanged.qualification.includes('no certificación'),true);
-console.log('PASS pitch QA: stereo phase/balance, high-band relative shift 44.1/48k, bypass, two channels, RMS gain, peak headroom, sample clipping, new discontinuity, silence, invalid PCM, immutable audio.');
+console.log('PASS pitch QA: dropout windows and spectral shift 44.1/48k, stereo phase/balance, bypass, two channels, RMS gain, peak headroom, sample clipping, new discontinuity, silence, invalid PCM, immutable audio.');
