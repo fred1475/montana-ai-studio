@@ -70,6 +70,7 @@ $('process').addEventListener('click',async()=>{
    ' dBFS → corregido '+format(qa.metrics.outputRmsDbfs)+' dBFS; cambio '+
    format(qa.metrics.rmsDeltaDb)+' dB; pico final '+format(qa.metrics.outputPeakDbfs)+
    ' dBFS; saltos nuevos '+qa.metrics.newLargeSteps+'. '+
+   'Cambio relativo de altas (aprox. 2.5 kHz) '+format(qa.metrics.highBandDeltaDb)+' dB. '+
    (qa.stereo?'Estéreo: correlación '+format(qa.stereo.source.correlation)+
     ' → '+format(qa.stereo.output.correlation)+'; balance L/R '+
     format(qa.stereo.source.balanceDb)+' → '+format(qa.stereo.output.balanceDb)+' dB. ':'')+
