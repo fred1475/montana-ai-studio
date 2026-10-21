@@ -40,7 +40,7 @@
    show("Beat importado en canal 1 · "+item.bpm+
      " BPM. No se alteró la grabación fuente en Beat Lab. Guarda tu sesión para conservarlo.");
   }catch(e){show("Importación cancelada: "+e.message+". El audio anterior se conserva.");
-  }finally{busy=false;button.disabled=false;}
+  }finally{busy=false;button.disabled=!pending;}
  });
  discard.addEventListener("click",async()=>{
   if(busy)return;busy=true;discard.disabled=true;button.disabled=true;
