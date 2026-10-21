@@ -20,11 +20,64 @@
       segments.forEach((part,j)=>{
        const block=document.createElement("div");
        block.dataset.track=String(i);block.dataset.part=String(j+1);
-       block.style.cssText="position:absolute;top:4px;bottom:4px;border-radius:4px;min-width:8px;outline:1px solid #141c2b";
-       block.style.background=colors[i];block.style.opacity=j===0?"0.9":"0.65";
-       block.style.left=(100*part.offset/end)+"%";block.style.width=(100*part.duration/end)+"%";
-       block.title="Fragmento "+(j+1)+": "+part.offset.toFixed(2)+" s, duración "+part.duration.toFixed(2)+" s. Mueve el segundo desde el editor de clips.";
-       block.setAttribute("role","img");block.setAttribute("aria-label",block.title);
+       block.style.cssText="position:absolute;top:4px;bottom:4px;border-radius:4px;min-width:8px;outline:1px solid #141c2b;cursor:grab;touch-action:none";
+       block.style.background=colors[i];block.style.opacity=j===0?"0.9":"0.7";
+       block.style.width=(100*part.duration/end)+"%";
+       let current=round(part.offset),drag=null,keysMoved=false;
+       const fieldId=j===0?"offset"+i:j===1?"splitOffset"+i:"splitOffset"+j+"_"+i;
+       const description=()=>{
+        const s="Pista "+(i+1)+", fragmento "+(j+1)+", inicio "+current.toFixed(2)+" s, duración "+part.duration.toFixed(2)+" s";
+        block.title=s;block.setAttribute("aria-label",s);
+        block.setAttribute("aria-valuenow",String(current));block.setAttribute("aria-valuetext",s);
+       };
+       const position=value=>{
+        current=round(clamp(value,0,300));
+        block.style.left=(100*current/end)+"%";description();
+       };
+       const commit=()=>{
+        const field=$(fieldId),shift=j===0&&i>0?Number($("alignMs"+i).value)/1000:0;
+        const next=round(Math.max(0,current-shift));
+        if(Number(field.value)===next)return;
+        field.value=next;field.dispatchEvent(new Event("change",{bubbles:true}));
+       };
+       block.tabIndex=0;block.setAttribute("role","slider");
+       block.setAttribute("aria-valuemin","0");block.setAttribute("aria-valuemax","300");
+       position(part.offset);
+       block.addEventListener("pointerdown",event=>{
+        if(event.button!==0||drag)return;
+        event.preventDefault();block.focus();
+        drag={id:event.pointerId,x:event.clientX,start:current};
+        block.style.cursor="grabbing";
+        const onMove=e=>{
+         if(!drag||e.pointerId!==drag.id)return;
+         const width=bg.getBoundingClientRect().width;
+         if(width>0)position(drag.start+(e.clientX-drag.x)*end/width);
+        };
+        const cleanup=()=>{
+         window.removeEventListener("pointermove",onMove);
+         window.removeEventListener("pointerup",onUp);
+         window.removeEventListener("pointercancel",onCancel);
+         drag=null;block.style.cursor="grab";
+        };
+        const onUp=e=>{if(drag&&e.pointerId===drag.id){cleanup();commit()}};
+        const onCancel=e=>{if(drag&&e.pointerId===drag.id){cleanup();position(part.offset)}};
+        window.addEventListener("pointermove",onMove);
+        window.addEventListener("pointerup",onUp);
+        window.addEventListener("pointercancel",onCancel);
+       });
+       block.addEventListener("keydown",event=>{
+        if(!["ArrowLeft","ArrowRight","Home"].includes(event.key))return;
+        event.preventDefault();
+        const step=event.shiftKey?1:0.1;
+        position(event.key==="Home"?0:current+(event.key==="ArrowRight"?step:-step));
+        const shift=j===0&&i>0?Number($("alignMs"+i).value)/1000:0;
+        $(fieldId).value=round(Math.max(0,current-shift));keysMoved=true;
+       });
+       block.addEventListener("keyup",event=>{
+        if(keysMoved&&["ArrowLeft","ArrowRight","Home"].includes(event.key)){
+         keysMoved=false;window.captureTimelineHistory?.();
+        }
+       });
        bg.append(block);
       });
      }else{
@@ -100,12 +153,12 @@
    lane.append(title,bg);root.append(lane);
   });
   const footer=document.createElement("small");
-  footer.textContent="0 s — "+end.toFixed(1)+" s · Arrastra un bloque para mover su inicio. Flechas: 0.1 s; Shift + flecha: 1 s. Los archivos originales no cambian.";
+  footer.textContent="0 s — "+end.toFixed(1)+" s · Arrastra cualquier fragmento para moverlo. Flechas: 0.1 s; Shift + flecha: 1 s. Los archivos originales no cambian.";
   root.append(footer);
  }
  const observer=new MutationObserver(redraw);
  observer.observe(document.getElementById("tracks"),{childList:true,subtree:true,characterData:true});
- for(let i=0;i<8;i++)["offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","file","splitMode","splitAt","splitOffset",...(i>0?["alignMs"]:[])].forEach(k=>$(k+i).addEventListener("change",redraw));
+ for(let i=0;i<8;i++)["offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","file","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_",...(i>0?["alignMs"]:[])].forEach(k=>$(k+i).addEventListener("change",redraw));
  // Imported session labels are updated only after decoding; observed DOM changes redraw on completion.
  redraw();
 })();
