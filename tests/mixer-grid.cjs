@@ -61,7 +61,7 @@ for(let i=0;i<n;i++)wave.writeInt16LE(Math.round(13000*Math.sin(2*Math.PI*220*i/
   await page.locator("#sessionFile").setInputFiles(bad);
   await page.waitForFunction(()=>document.querySelector("#status")?.textContent?.includes("No se restauró"));
   assert.equal(await page.locator("#gridDivision").inputValue(),"8","Invalid snap division cannot replace project");
-  delete project.gridSnapOn;delete project.gridDivision;
+  delete project.manifestSha256;delete project.gridSnapOn;delete project.gridDivision;
   const legacy=path.join(process.cwd(),"grid-project-legacy.json");fs.writeFileSync(legacy,JSON.stringify(project));
   await page.locator("#sessionFile").setInputFiles(legacy);
   await page.waitForFunction(()=>document.querySelector("#status")?.textContent?.includes("Sesión restaurada"));
