@@ -33,6 +33,13 @@ for(const testRate of [44100,48000]){
  const silentBand=analyze([new Float32Array(frames)],[new Float32Array(frames)],testRate);
  assert.equal(silentBand.metrics.highBandDeltaDb,null);
  assert(!silentBand.warnings.some(w=>w.id==='spectral_balance_shift'));
+ const nearSilent=Float32Array.from(source,x=>x*.000004);
+ const quietInput=analyze([nearSilent],[nearSilent],testRate);
+ assert.equal(quietInput.metrics.highBandDeltaDb,null,'Near-silence must not have a trusted spectrum');
+ const quietOutput=analyze([source],[nearSilent],testRate);
+ assert.equal(quietOutput.metrics.highBandDeltaDb,null);
+ assert(quietOutput.warnings.some(w=>w.id==='signal_loss'));
+ assert(!quietOutput.warnings.some(w=>w.id==='spectral_balance_shift'));
  assert.deepEqual(source,sourceBackup);
  assert.deepEqual(treble,trebleBackup);
 }
