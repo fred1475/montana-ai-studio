@@ -1,6 +1,6 @@
 "use strict";
 /* Montana Music Production — isolated stems and dependency-free ZIP archive.
- * Every file includes timeline leading silence, trim, track gain/pan, EQ,
+ * Every file includes timeline leading silence, trim, input gain, track gain/pan, EQ,
  * compressor, reverb, delay, and experimental selected vocal DSP.
  * Mute/solo, master gain, and master limiter deliberately do NOT print into
  * stems; they are isolated sources for later mixing.
@@ -26,6 +26,7 @@
   const srcBuffer=window.getMixBuffer(i);
   const ctx=new OfflineAudioContext(2,plan.frames,plan.rate);
   const vol=ctx.createGain(),panNode=ctx.createStereoPanner();
+  const pre=MontanaInputTrim.attach(ctx,vol,Number($("inputTrim"+i).value));
   vol.gain.value=Number($("vol"+i).value)/100;
   panNode.pan.value=pan(i);
   addSpace(ctx,addCompressor(ctx,addEq(ctx,vol,i),i),i).connect(panNode).connect(ctx.destination);
@@ -33,7 +34,7 @@
   for(const [clipIndex,clip] of plan.segments[i].entries()){
    const src=ctx.createBufferSource();src.buffer=srcBuffer;
    if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
-   window.connectClipCrossfade(ctx,src,vol,i,clip,clip.offset,clipIndex,crossfadePlan);
+   window.connectClipCrossfade(ctx,src,pre,i,clip,clip.offset,clipIndex,crossfadePlan);
    src.start(clip.offset,clip.start,clip.duration);
   }
   const rendered=await ctx.startRendering();
@@ -128,7 +129,7 @@
    const note=[
     "Montana Music Production — stems individuales, WAV PCM"+bits+", "+(plan.rate/1000).toFixed(1)+" kHz, estéreo.",
     "Todos los archivos están alineados desde 0:00 y tienen idéntica duración.",
-    "Incluyen: volumen del canal, panorama, ecualización, compresor, reverb, delay y corrección/limpieza vocal activadas.",
+    "Incluyen: ganancia de entrada, volumen del canal, panorama, ecualización, compresor, reverb, delay y corrección/limpieza vocal activadas.",
     "No incluyen mute/solo, volumen maestro, limitador maestro ni metrónomo.",
     "Los archivos originales siguen intactos; las colas de efectos conservan su duración.",
     "No son masters terminados. Revise clipping y realice mezcla/masterización de forma independiente."
