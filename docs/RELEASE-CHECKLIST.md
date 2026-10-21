@@ -154,6 +154,13 @@ La proporción queda en la sesión JSON y se reconstituye al restaurarla. Los pr
 
 **Límite importante:** la mezcla lineal de una voz afinada con su original puede provocar batidos y cancelaciones de fase, especialmente al 50 %, porque no hay alineación de fase ni compensación de retardo dedicada. No se garantizan preservación de formantes, masterización ni idoneidad profesional. La escucha con material real queda pospuesta para la fase final acordada.
 
+### Beat Lab (nuevo módulo de composición original, sin IA)
+`beat-lab.html` y `beat-engine.js` permiten programar **16 pasos por compás**, repetidos durante 1/2/4/8 compases, a 60–200 BPM y con swing 0–40 % de desplazamiento de pasos impares. Incluyen bombo, caja, palmas, hi-hat y bajo sintetizados localmente sin librerías de muestras externas; presets editables de trap, reggaetón, dembow e hip hop más patrón vacío. El usuario puede reproducir en su navegador, exportar WAV estéreo PCM16 a 44.1 kHz, MIDI Standard File formato 0 (PPQ 480; batería canal 10, bajo canal 1) o guardar/importar un patrón JSON validado. El WAV puede importarse manualmente en el mezclador de 8 pistas. No se implementó conexión automática entre las dos interfaces.
+
+Pruebas propuestas y conectadas a CI: `tests/beat-engine.cjs` para invariantes, MIDI y WAV, y `tests/beat-ui.cjs` en Chromium para interacción, JSON, MIDI, render offline, WAV y reproducción. La aprobación del código y del navegador debe verificarse en el commit correspondiente. El render es local y no solicita permisos de micrófono ni claves.
+
+**Límites:** esto es un secuenciador simple por pasos, no generación de música por IA. No es un piano roll MIDI completo, instrumento VST, grabador de beats externos, sample editor, masterizador profesional ni herramienta con swing humanizado avanzado. Los presets son puntos de partida rítmicos. El sintetizador no garantiza mezcla sin clipping ni calidad acústica de estudio. No confundir este hito con el 100 % de las capacidades solicitadas.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
