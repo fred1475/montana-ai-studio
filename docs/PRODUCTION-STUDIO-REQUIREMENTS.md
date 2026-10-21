@@ -189,3 +189,10 @@ Pruebas automatizadas `tests/hardware-check.cjs` simulan señales con dos nivele
 3. Comparación audible con un DAW y evaluación por usuario; rendimiento y latencia medidos con hardware real.
 4. Verificación en Chrome y Edge; tratamiento seguro de sesiones inválidas, permisos de micrófono y privacidad.
 5. Autorización explícita antes de fusionar PR #2 y publicar. Ningún desarrollo se declara implementado antes de pasar pruebas.
+
+## Nuevo hito: detección vocal resistente a cancelación estéreo (beta)
+
+El motor de afinación experimental (`pitch-engine.js` y `pitch-melody.js`) ahora crea una referencia **solo para detectar el tono**, sin tocar las fuentes de canal: usa el promedio cuando el estéreo es coherente, y el canal de mayor energía cuando hay anticorrelación fuerte (inferior a −0.75) o un canal es prácticamente silencioso (menos de 2 % de la energía del otro). Así, una voz invertida en el canal derecho no desaparece al calcular el tono. También rechaza muestras no finitas y frecuencias de muestreo inválidas. El panel avisa cuando se activa esa protección.
+
+Prueba adicional `tests/pitch-stereo-reference.cjs`: nota sostenida y frase de dos notas con canales en contrafase, canal silencioso, original sin cambios, cálculo de afinación, longitudes, NaN y configuraciones inválidas. La suite verifica señales matemáticas cortas; **no** demuestra restauración de fase acústica, calidad de formantes, compatibilidad con voces reales ni afinación profesional. El usuario no tiene que conectar ni probar el equipo durante esta etapa.
+
