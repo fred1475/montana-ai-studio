@@ -79,6 +79,12 @@ El procesamiento vocal `mixer-vocal-dsp.js` ahora calcula la atenuación de sibi
 
 `tests/mixer-vocal-stereo-link.cjs` usa voces sintéticas a **44.1/48 kHz** y compara polaridad invertida, lados proporcionales, puerta + de-esser, respuesta entre frecuencias, reducción de altas frecuencias, conservación de fundamental y protección de los originales. `tests/mixer-vocal-stereo-browser.cjs` verifica canal estéreo real decodificado, buffer de mezcla, WAV PCM16 exportado, caché y restauración de sesión en Chromium. **Estas señales artificiales no garantizan ausencia de artefactos perceptuales, mantenimiento del timbre/formantes ni resultado profesional en voces grabadas reales.** La escucha con el equipo físico sigue para la etapa final.
 
+### Afinación: protección de consonantes y pausas (PSOLA experimental)
+
+El motor `pitch-engine.js` incorpora una **protección conservadora de pasajes aperiódicos** para no aplicar completamente el cambio de tono PSOLA a ruidos breves, respiraciones y consonantes sin periodicidad: estima correlación a un período de la frecuencia fundamental con energía deslizante, suaviza un peso común (9 ms nominales) y mezcla con el audio original donde la referencia deja de ser periódica. La señal corregida sigue activa en notas estables. El mismo peso se aplica a L/R para preservar polaridad y proporción entre canales; `pitch-melody.js` aplica esta protección por segmento además de sus fundidos en transiciones de notas. Ni originales ni archivos fuente son alterados.
+
+La regresión sintética `tests/pitch-unvoiced-guard.cjs` verifica preservación de un estallido de ruido durante una nota larga, corrección medible del resto, afinación A3 y relación estéreo L/R a 44.1/48 kHz, así como compatibilidad del modo melodía, bypass y errores de parámetros. Es solo una protección experimental: **no certifica preservación de formantes, calidad perceptual, un análisis perfecto de consonantes o funcionamiento profesional con voces reales**. Requiere escucha final controlada antes de publicación.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
