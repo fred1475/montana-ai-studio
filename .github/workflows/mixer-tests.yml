@@ -14,6 +14,7 @@ on:
       - 'mixer-export-preflight-ui.js'
       - 'tests/mixer-export-preflight.cjs'
       - 'tests/mixer-export-preflight-ui.cjs'
+      - 'tests/mixer-eight-track-stress.cjs'
       - 'mixer-loudness.js'
       - 'mixer-master-audit.js'
       - 'mixer-wav-export.js'
@@ -112,6 +113,7 @@ jobs:
           node --check mixer-export-preflight-ui.js
           node --check tests/mixer-export-preflight.cjs
           node --check tests/mixer-export-preflight-ui.cjs
+          node --check tests/mixer-eight-track-stress.cjs
           node tests/mixer-export-preflight.cjs
           node --check mixer-loudness.js
           node --check mixer-master-audit.js
@@ -216,6 +218,7 @@ jobs:
           node tests/mixer-recovery.cjs
           node tests/mixer-export-levels.cjs
           node tests/mixer-export-preflight-ui.cjs
+          node tests/mixer-eight-track-stress.cjs
           node tests/mixer-loudness.cjs
           node tests/mixer-master-audit.cjs
           node tests/mixer-master-stereo-browser.cjs
