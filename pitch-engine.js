@@ -28,6 +28,37 @@
     }
     return {midi:best,note:noteName(best),frequency:freq(best),cents:cents(f,freq(best))};
   }
+  // Prevent opposing stereo channels from cancelling the voice during analysis.
+  // Original channel data is never overwritten.
+  function vocalReference(channels){
+    if(!Array.isArray(channels)||channels.length<1||channels.length>2||
+       channels.some(c=>!(c instanceof Float32Array))||
+       !channels[0].length||channels.some(c=>c.length!==channels[0].length))
+      throw Error('Canales vocales mono/estéreo inválidos');
+    const n=channels[0].length;
+    if(channels.length===1){
+      for(const sample of channels[0])if(!Number.isFinite(sample))throw Error('Muestra vocal inválida');
+      return {samples:channels[0].slice(),mode:'mono',correlation:null};
+    }
+    const [left,right]=channels;
+    let powerLeft=0,powerRight=0,cross=0;
+    for(let i=0;i<n;i++){
+      const l=left[i],r=right[i];
+      if(!Number.isFinite(l)||!Number.isFinite(r))throw Error('Muestra vocal inválida');
+      powerLeft+=l*l;powerRight+=r*r;cross+=l*r;
+    }
+    const high=Math.max(powerLeft,powerRight),low=Math.min(powerLeft,powerRight);
+    const correlation=powerLeft>1e-12&&powerRight>1e-12?cross/Math.sqrt(powerLeft*powerRight):null;
+    const cancelled=correlation!==null&&correlation<-.75;
+    const unbalanced=high>1e-12&&low/high<.02;
+    const samples=new Float32Array(n);
+    if(cancelled||unbalanced){
+      samples.set(powerLeft>=powerRight?left:right);
+      return {samples,mode:cancelled?'phase-safe-channel':'stronger-channel',correlation};
+    }
+    for(let i=0;i<n;i++)samples[i]=(left[i]+right[i])*.5;
+    return {samples,mode:'stereo-average',correlation};
+  }
   function detectPitch(samples,sampleRate,position=.5) {
     if (!(samples instanceof Float32Array) || !Number.isFinite(sampleRate) || sampleRate<8000) throw Error('Audio no válido');
     const length=4096;
@@ -111,17 +142,17 @@
   }
   function process(channels,sampleRate,options={}){
     if(!Array.isArray(channels)||!channels.length||channels.length>2||channels.some(ch=>!(ch instanceof Float32Array)))throw Error('Solo audio mono o estéreo válido');
+    if(!Number.isFinite(sampleRate)||sampleRate<8000||sampleRate>192000)throw Error('Frecuencia de muestreo inválida');
     const n=channels[0].length;
     if(!channels.every(ch=>ch.length===n)||n<8192||n>sampleRate*15)throw Error('Solo notas sostenidas de 0.2 a 15 segundos');
     const {key='C',scale='chromatic',strength=100}=options;
     if(!Number.isFinite(strength)||strength<0||strength>100)throw Error('Intensidad inválida');
-    const mono=new Float32Array(n);
-    for(let i=0;i<n;i++){let s=0;for(const ch of channels)s+=ch[i];mono[i]=s/channels.length}
-    const measured=analyze(mono,sampleRate),target=nearestNote(measured.frequency,key,scale);
+    const reference=vocalReference(channels);
+    const measured=analyze(reference.samples,sampleRate),target=nearestNote(measured.frequency,key,scale);
     const adjustedFrequency=measured.frequency*Math.pow(target.frequency/measured.frequency,strength/100);
     const correctionCents=cents(adjustedFrequency,measured.frequency);
     const output=channels.map(ch=>Math.abs(correctionCents)<.3?Float32Array.from(ch):correctChannel(ch,sampleRate,measured.frequency,adjustedFrequency));
-    return {channels:output,analysis:measured,target,targetFrequency:adjustedFrequency,correctionCents,duration:n/sampleRate};
+    return {channels:output,analysis:{...measured,referenceMode:reference.mode},target,targetFrequency:adjustedFrequency,correctionCents,duration:n/sampleRate};
   }
-  return {detectPitch,analyze,nearestNote,process,correctChannel,noteName,notes,scales};
+  return {detectPitch,analyze,nearestNote,process,correctChannel,vocalReference,noteName,notes,scales};
 });
