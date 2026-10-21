@@ -16,6 +16,7 @@
   $("panAutoStatus"+i).textContent=clean.enabled?
    "Activa · "+clean.points.length+" punto(s) · posición estéreo absoluta":
    "Desactivada · se utiliza el panorama fijo del canal";
+  window.refreshPanAutomationGraph?.(i);
   return clean;
  }
  const committed=[];
