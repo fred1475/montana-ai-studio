@@ -19,7 +19,7 @@ async function createMixerSnapshot(){
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
-  const snapshot={format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),recordFormat:$("recordFormat").value,bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,wavSampleRate:Number($("wavSampleRate").value),wavBits:Number($("wavBits").value),stemBits:Number($("stemBits").value),stemSampleRate:Number($("stemSampleRate").value),ditherOn:$("ditherOn").checked,tracks:items};
+  const snapshot={format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),recordFormat:$("recordFormat").value,bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,wavSampleRate:Number($("wavSampleRate").value),wavBits:Number($("wavBits").value),stemBits:Number($("stemBits").value),stemSampleRate:Number($("stemSampleRate").value),ditherOn:$("ditherOn").checked,songMarkers:window.montanaMarkerState(),tracks:items};
   snapshot.manifestSha256=MontanaSessionIntegrity.manifest(snapshot);
   return snapshot;
 }
@@ -114,6 +114,7 @@ async function restoreMixerSnapshot(s){
   const preparedCrossfade=window.prepareCrossfadeRestore(s.tracks);
   const preparedCopies=window.prepareCopyRestore(loaded,s.tracks,preparedSplit);
   const preparedGrid=window.validateGridRestore(s);
+  const preparedMarkers=window.prepareMarkerRestore(s.songMarkers);
   window.validateRestoredCrossfades(loaded,preparedSplit,preparedCrossfade);
   window.validateCopyCrossfadeRestore(loaded,preparedSplit,preparedCopies,preparedCrossfade);
   stop();
@@ -157,6 +158,7 @@ async function restoreMixerSnapshot(s){
   window.commitSplitRestore(preparedSplit);
   window.commitCrossfadeRestore(preparedCrossfade);
   window.commitCopyRestore(preparedCopies);
+  window.commitMarkerRestore(preparedMarkers);
   window.resetEditHistory?.();
   window.updateSourceDownload?.();
   report("Sesión restaurada con "+loaded.filter(t=>t.decoded).length+" pista(s) de audio.");
