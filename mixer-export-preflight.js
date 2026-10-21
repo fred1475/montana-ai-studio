@@ -37,6 +37,8 @@
   const warnings=[];
   if(minimumWorkingBytes>256*MiB)
    warnings.push("Reserva mínima de buffers alta; el navegador podría necesitar considerablemente más RAM");
+  else if(kind==="stems"&&stemCount>=6&&zipUpperBound>80*MiB)
+   warnings.push("ZIP multicanal grande; el navegador puede requerir bastante más RAM que los bytes del archivo");
   if(kind==="master"&&audit&&wavBytes>AUDIT_LIMIT)
    warnings.push("La auditoría PCM exacta no admite este WAV (>56 MiB); el archivo WAV sí puede exportarse");
   return {
