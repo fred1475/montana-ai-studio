@@ -44,6 +44,7 @@ on:
       - 'tests/mixer-recovery.cjs'
       - 'tests/mixer-fades.cjs'
       - 'tests/mixer-stems.cjs'
+      - 'tests/mixer-stems24.cjs'
       - 'mixer-limiter.js'
       - 'mixer-vocal-dsp.js'
       - 'mixer-vocal-clean.js'
@@ -124,6 +125,7 @@ jobs:
           node --check tests/mixer-recovery.cjs
           node --check tests/mixer-fades.cjs
           node --check tests/mixer-stems.cjs
+          node --check tests/mixer-stems24.cjs
           node --check mixer-limiter.js
           node --check mixer-vocal-dsp.js
           node --check mixer-vocal-clean.js
@@ -173,6 +175,7 @@ jobs:
           node tests/mixer-pitch.cjs
           node tests/mixer-sync.cjs
           node tests/mixer-stems.cjs
+          node tests/mixer-stems24.cjs
           node tests/mixer-fades.cjs
           node tests/mixer-recovery.cjs
           node tests/mixer-export-levels.cjs
