@@ -52,3 +52,9 @@ Se aplican límites de recursos: hasta 56 MiB de WAV para la auditoría, sin blo
 Pruebas automáticas: `tests/mixer-master-audit.cjs` verifica el valor CRC32 universal `123456789` → `cbf43926`, asociación byte-a-byte del JSON al WAV descargado, exactitud de LUFS/true-peak recalculados a partir del PCM16, alertas de clipping y cambios entre dos exportaciones, y rechazo seguro de ajustes de sesión inválidos.
 
 **La auditoría es orientativa y NO certifica EBU Mode, ni la cadena de audio, ni conformidad legal o artística.** La meta de calidad superior exige además probar masters completos, interfaces y monitores reales, codificación de plataformas y una revisión humana de la mezcla.
+
+## Cobertura multimuestreo automatizada — ampliación de QA
+
+El test adicional `tests/mixer-ebu-multirate.cjs`, ejecutado por `mixer-tests.yml`, contrasta contra el filtro independiente `ffmpeg ebur128=peak=true` cuatro casos sintéticos: estéreo asimétrico a **44.1 y 96 kHz**, señal unilateral a **48 kHz** y variaciones de nivel con compuerta a **44.1 kHz**. Comprueba I, LRA, pico verdadero **estimado 4×**, señales asimétricas y rechazo de entradas inválidas (NaN, duración insuficiente, tasas fuera de rango y canales desiguales).
+
+Los umbrales de comparación de esta regresión son **criterios internos**, no oficiales: <0.22 LU en integrado, <0.8 LU en LRA y <0.7 dB en true-peak estimado. La CI verde indica solo que estos cuatro escenarios cumplen los umbrales internos, **no certificación EBU**. Siguen pendientes la batería oficial autorizada, pruebas de picos entre muestras adversarios, otros modos y validación de campo.
