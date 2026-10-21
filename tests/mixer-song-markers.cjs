@@ -12,6 +12,7 @@ assert.deepEqual(original,[{label:'Coro',seconds:20},{label:'Intro',seconds:0}],
 const inserted=M.append(original,'Verso',12.125);
 assert.deepEqual(inserted.map(x=>x.label),['Intro','Verso','Coro']);
 assert.equal(inserted[1].seconds,12.125);
+assert.deepEqual(M.validate([{label:'Corte preciso',seconds:1.001}]),[{label:'Corte preciso',seconds:1.001}], 'Accept valid millisecond timestamps despite floating-point representation');
 const moved=M.move(inserted,1,16.375);
 assert.equal(moved[1].seconds,16.375);
 assert.equal(inserted[1].seconds,12.125);
