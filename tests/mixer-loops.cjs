@@ -65,7 +65,7 @@ function volume(data,start,end){
   await page.locator('#sessionFile').setInputFiles(bad);
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
   assert.equal(await page.locator('#repeat1').inputValue(),'3','Invalid repeat must not corrupt session');
-  delete saved.tracks[1].repeat;
+  delete saved.manifestSha256;delete saved.tracks[1].repeat;
   const legacy=path.join(process.cwd(),'three-loops-legacy.json');fs.writeFileSync(legacy,JSON.stringify(saved));
   await page.locator('#sessionFile').setInputFiles(legacy);
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
