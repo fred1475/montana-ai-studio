@@ -62,7 +62,7 @@
    '<label for="deessThreshold'+i+'">Umbral de-esser <output id="cleanValdeessThreshold'+i+'">-32 dB</output></label><input id="deessThreshold'+i+'" type="range" min="-50" max="-15" step="1" value="-32">'+
    '<label for="deessStrength'+i+'">Intensidad de-esser <output id="cleanValdeessStrength'+i+'">75%</output></label><input id="deessStrength'+i+'" type="range" min="0" max="100" step="5" value="75">'+
    '<p id="cleanResult'+i+'">Se aplica al reproducir o exportar (sin cambiar el original).</p>'+
-   '<small>Procesamiento local básico. No sustituye reducción de ruido espectral ni limpieza profesional. Escucha el resultado para evitar artefactos.</small>';
+   '<small>Procesamiento local básico: el de-esser comparte un detector y la misma reducción entre canales estéreo para minimizar alteraciones de imagen; el ataque se adapta a la frecuencia de muestreo. No sustituye reducción espectral ni limpieza profesional. Escucha el resultado para detectar artefactos.</small>';
   document.querySelectorAll("article.track")[i].append(section);
   for(const k of keys){
    const input=$(k+i);
