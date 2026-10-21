@@ -56,7 +56,7 @@ function rms(b,t1,t2){let s=0,count=0;for(let j=Math.round(t1*rate);j<Math.round
   await page.locator('#sessionFile').setInputFiles(badPath);
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
   assert.equal(await page.locator('#fadeIn0').inputValue(),'0.5','Bad backup cannot replace good session');
-  delete session.tracks[0].fadeIn;delete session.tracks[0].fadeOut;
+  delete session.manifestSha256;delete session.tracks[0].fadeIn;delete session.tracks[0].fadeOut;
   const legacyPath=path.join(process.cwd(),'fade-legacy.json');fs.writeFileSync(legacyPath,JSON.stringify(session));
   await page.locator('#sessionFile').setInputFiles(legacyPath);
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
