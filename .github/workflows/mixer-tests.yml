@@ -34,6 +34,7 @@ on:
       - 'tests/mixer-master-audit.cjs'
       - 'tests/mixer-loudness.cjs'
       - 'tests/mixer-ebu-reference.cjs'
+      - 'tests/mixer-ebu-multirate.cjs'
       - 'docs/EBU-R128-VALIDATION.md'
       - 'tests/mixer-loops.cjs'
       - 'tests/mixer-export-levels.cjs'
@@ -105,6 +106,7 @@ jobs:
           node --check tests/mixer-master-audit.cjs
           node --check tests/mixer-loudness.cjs
           node --check tests/mixer-ebu-reference.cjs
+          node --check tests/mixer-ebu-multirate.cjs
           node --check tests/mixer-loops.cjs
           node --check tests/mixer-export-levels.cjs
           node --check tests/mixer-recovery.cjs
@@ -143,6 +145,7 @@ jobs:
       - name: Run mixer functional checks
         run: |
           node tests/mixer-ebu-reference.cjs
+          node tests/mixer-ebu-multirate.cjs
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/studio-server.log 2>&1 &
           sleep 2
           node tests/mixer-smoke.cjs
