@@ -18,6 +18,11 @@ on:
       - 'mixer-grid.js'
       - 'docs/RELEASE-CHECKLIST.md'
       - 'hardware-check.html'
+      - 'hardware-loopback.html'
+      - 'hardware-loopback.js'
+      - 'hardware-loopback-ui.js'
+      - 'tests/hardware-loopback.cjs'
+      - 'tests/hardware-loopback-ui.cjs'
       - 'hardware-check.js'
       - 'hardware-diagnostics.js'
       - 'tests/hardware-check.cjs'
@@ -85,6 +90,11 @@ jobs:
           node --check mixer-clipboard.js
           node --check mixer-grid.js
           node --check hardware-check.js
+          node --check hardware-loopback.js
+          node --check hardware-loopback-ui.js
+          node --check tests/hardware-loopback.cjs
+          node --check tests/hardware-loopback-ui.cjs
+          node tests/hardware-loopback.cjs
           node --check hardware-diagnostics.js
           node --check tests/hardware-check.cjs
           node --check tests/mixer-grid.cjs
@@ -150,6 +160,7 @@ jobs:
           node tests/mixer-clipboard.cjs
           node tests/mixer-grid.cjs
           node tests/hardware-check.cjs
+          node tests/hardware-loopback-ui.cjs
           node tests/mixer-loops.cjs
           node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
@@ -159,7 +170,7 @@ jobs:
           mkdir -p mixer-preview
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
           cp docs/RELEASE-CHECKLIST.md mixer-preview/CHECKLIST-ANTES-DE-PUBLICAR.md
-          cp hardware-check.html hardware-check.js hardware-diagnostics.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -186,7 +197,7 @@ jobs:
             '22. Puede repetir 1–8 veces una región recortada en su pista, escuchándola y exportando WAV/stems.' \
             '23. Active Auditoría de master WAV si desea JSON EBU de preentrega con CRC32 del PCM16 exacto.' \
             '24. Use hasta cuatro fragmentos, cuatro copias adicionales y BPM grid snap opcional (1/4, 1/8, 1/16) en la línea de tiempo.' \
-            '25. Hardware check preparado: abra hardware-check.html para probar físicamente la interfaz SOLO cuando lleguemos a la validación final.' \
+            '25. hardware-check.html y hardware-loopback.html quedan reservados para probar la interfaz y estimar latencia SOLO en validación final, con loopback seguro.' \
             '26. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
