@@ -11,6 +11,8 @@ on:
       - 'mixer-recovery.js'
       - 'mixer-export-levels.js'
       - 'mixer-loudness.js'
+      - 'mixer-master-audit.js'
+      - 'tests/mixer-master-audit.cjs'
       - 'tests/mixer-loudness.cjs'
       - 'tests/mixer-ebu-reference.cjs'
       - 'docs/EBU-R128-VALIDATION.md'
@@ -63,6 +65,8 @@ jobs:
           node --check mixer-recovery.js
           node --check mixer-export-levels.js
           node --check mixer-loudness.js
+          node --check mixer-master-audit.js
+          node --check tests/mixer-master-audit.cjs
           node --check tests/mixer-loudness.cjs
           node --check tests/mixer-ebu-reference.cjs
           node --check tests/mixer-loops.cjs
@@ -113,6 +117,7 @@ jobs:
           node tests/mixer-recovery.cjs
           node tests/mixer-export-levels.cjs
           node tests/mixer-loudness.cjs
+          node tests/mixer-master-audit.cjs
           node tests/mixer-loops.cjs
           node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
@@ -121,7 +126,7 @@ jobs:
         run: |
           mkdir -p mixer-preview
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
-          cp mixer-8.html mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-8.html mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -146,7 +151,8 @@ jobs:
             '20. Pruebe normalización de picos de muestra y medición RMS al exportar; no equivale a LUFS o true-peak.' \
             '21. Active medición EBU R128 orientativa: integrado, M, S, LRA y true-peak 4×. Comparada con FFmpeg; NO está oficialmente certificada.' \
             '22. Puede repetir 1–8 veces una región recortada en su pista, escuchándola y exportando WAV/stems.' \
-            '23. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '23. Active Auditoría de master WAV si desea JSON EBU de preentrega con CRC32 del PCM16 exacto.' \
+            '24. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
