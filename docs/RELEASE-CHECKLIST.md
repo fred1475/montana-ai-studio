@@ -21,7 +21,7 @@ Estos requisitos **NO están completados** y no se deduce su cumplimiento de una
 
 - **Afinación vocal profesional:** algoritmo probado solo en fragmentos breves; faltan preservar y validar formantes, vibrato, fraseo largo y artefactos con voces reales y un comparador perceptual.
 - **IA musical generativa integrada:** requiere proveedor elegido, contrato/API permitida, autenticación/consentimiento, presupuesto autorizado, privacidad y pruebas del servicio real. Ninguna IA de generación musical se ha integrado como backend fiable en este estudio.
-- **Calibración de latencia:** aún falta una prueba física sincronizada de loopback de interfaz/micrófono, compensación reproducible de hardware, validación de drivers y varios tamaños de búfer. Seleccionar dispositivo **no es calibrar latencia**.
+- **Calibración de latencia:** ya hay `hardware-loopback.html`, un **estimador de ida y vuelta** por correlación entre una señal emitida y capturada en el mismo reloj de AudioContext. Sus pruebas sintéticas no constituyen validación física. Sigue pendiente la prueba real de loopback, repetibilidad por búfer/driver, compensación reproducible de overdubs y validación de precisión. Seleccionar dispositivo o medir un loopback simulado **no es calibrar latencia**.
 - **Masterización validada externamente:** medidor R128/true-peak sigue sin certificación EBU/ITU. Debe verificarse con la suite oficial legalmente autorizada y un medidor de referencia, incluyendo señales adversarias, frecuencias de muestreo, colas y codificación de distribución.
 - **Pruebas de aceptación real:** voces y beats propios consentidos, escucha de artefactos, coherencia y compatibilidad de la interfaz, latencia, clipping por hardware, estabilidad bajo sesiones largas, varios navegadores y accesibilidad.
 - **Editor profesional completo:** copia entre canales, edición de clips ilimitados, cuantización de eventos sample-accurate y time-stretch/warp todavía faltan.
@@ -38,3 +38,10 @@ El candidato `RC` debe:
 5. Obtener **aprobación explícita de publicación** antes de cambiar `main`.
 
 Estado actual: **beta probada automáticamente; NO RC, NO 100 % terminado, NO certificación oficial**. No asignar porcentaje objetivo a criterios no validados.
+
+## 4. Equipo de audio: estado del estimador preparado para la prueba final
+
+- `hardware-loopback.js`: patrón de pulsos determinista de bajo nivel y correlación normalizada para detectar desfase a 44.1 y 48 kHz en pruebas sintéticas con ruido. Devuelve estimación de milisegundos, índice y confianza. Rechaza señal ausente y registros truncados.
+- `hardware-loopback-ui.js`: solicita **confirmación explícita de conexión segura**, enumera entradas, captura PCM de retorno y registra el `currentFrame` del AudioWorklet dentro del mismo AudioContext que reproduce los pulsos. Nunca modifica automáticamente una grabación ni establece valores de latencia por defecto.
+- Advertencia física: solo loopback interno o conexión de línea conforme al manual de la interfaz; **no conectar salida a una entrada con phantom power activada**. Esta prueba se ejecutará únicamente en la fase final acordada, con equipo real.
+- CI prueba por un lado retardos sintéticos de 0–510 ms con ruido y por otro **rechazo de un micrófono simulado sin retorno**. Ninguna de las dos equivale a una medición de drivers reales.
