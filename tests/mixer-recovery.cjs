@@ -20,6 +20,8 @@ for(let i=0;i<n;i++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*220*i/r
   await page.locator('#vol1').fill('45');
   await page.locator('#alignMs1').fill('70');
   await page.locator('#fadeIn1').fill('.2');
+  await page.locator('#trackName1').fill('Toma definitiva Montana');
+  await page.locator('#trackName1').dispatchEvent('change');
   await page.locator('#autosaveEnabled').check();
   await page.waitForFunction(()=>document.querySelector('#recoveryStatus')?.textContent?.includes('Recuperación local guardada'),null,{timeout:30000});
   const stored=await page.evaluate(async()=>{
@@ -38,16 +40,20 @@ for(let i=0;i<n;i++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*220*i/r
   assert.equal(stored.tracks[1].volume,45);
   assert.equal(stored.tracks[1].alignMs,70);
   assert.equal(stored.tracks[1].fadeIn,.2);
+  assert.equal(stored.tracks[1].trackLabel,'Toma definitiva Montana');
   assert(stored.tracks[1].data?.length>1000,'Snapshot must embed original WAV bytes');
   await page.reload();
   await page.waitForFunction(()=>document.querySelector('#recoveryStatus')?.textContent?.includes('Recuperación local encontrada'));
   assert.equal(await page.locator('#autosaveEnabled').isChecked(),true,'Consent preference remains');
   assert.equal(await page.locator('#label1').innerText(),'Sin audio','Auto restore must NOT silently overwrite a project');
+  assert.equal(await page.locator('#trackName1').inputValue(),'Voz principal',
+   'Auto recovery must not silently restore names either');
   await page.locator('#restoreRecovery').click();
   await page.waitForFunction(()=>document.querySelector('#recoveryStatus')?.textContent?.includes('Sesión recuperada'),null,{timeout:30000});
   assert.equal(await page.locator('#vol1').inputValue(),'45');
   assert.equal(await page.locator('#alignMs1').inputValue(),'70');
   assert.equal(await page.locator('#fadeIn1').inputValue(),'0.2');
+  assert.equal(await page.locator('#trackName1').inputValue(),'Toma definitiva Montana');
   assert((await page.locator('#label1').innerText()).includes('backup-principal.wav'));
   const [source]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadSource').click()]);
   const srcPath=path.join(process.cwd(),'autosave-restored-source.wav');await source.saveAs(srcPath);
@@ -72,6 +78,8 @@ for(let i=0;i<n;i++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*220*i/r
   await page.locator('#restoreRecovery').click();
   await page.waitForFunction(()=>document.querySelector('#recoveryStatus')?.textContent?.includes('No se restauró la recuperación'));
   assert.equal(await page.locator('#vol1').inputValue(),'45','Invalid backup leaves current settings alone');
+  assert.equal(await page.locator('#trackName1').inputValue(),'Toma definitiva Montana',
+   'Invalid backup must preserve active track labels');
   assert((await page.locator('#label1').innerText()).includes('backup-principal.wav'),'Invalid backup leaves audio intact');
   await page.locator('#clearRecovery').click();
   await page.waitForFunction(()=>document.querySelector('#recoveryStatus')?.textContent?.includes('no existe respaldo'));
