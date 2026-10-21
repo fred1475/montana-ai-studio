@@ -43,6 +43,28 @@ function wav(frequency){
   for(let i=0;i<rate;i++)data[i]=audio.readInt16LE(44+i*2)/32768;
   const corrected=pitch.analyze(data,rate).frequency;
   assert(Math.abs(1200*Math.log2(corrected/220))<12,'Browser exported WAV must be A3; was '+corrected+'Hz');
+  // Wet=0 is exact source bypass after WAV quantization and cannot reuse stale output.
+  await page.locator('#wet').evaluate(el=>{
+   el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  assert.equal(await page.locator('#download').isDisabled(),true);
+  assert((await page.locator('#pitchQuality').textContent()).includes('Ajustes modificados'));
+  await page.locator('#process').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Mezcla procesada 0%'),null,{timeout:30000});
+  const [dryDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);
+  const dryFilename=path.join(process.cwd(),'pitch-lab-dry-output.wav');
+  await dryDownload.saveAs(dryFilename);
+  const dryFile=fs.readFileSync(dryFilename);
+  assert.equal(dryFile.length,44+rate*2);
+  for(let j=0;j<length;j+=277){
+   const expected=wav(224.5).readInt16LE(44+j*2);
+   const actual=dryFile.readInt16LE(44+j*2);
+   assert(Math.abs(expected-actual)<=2,'0% wet must preserve source PCM within export quantization');
+  }
+  await page.locator('#wet').evaluate(el=>{
+   el.value='100';el.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  assert.equal(await page.locator('#download').isDisabled(),true);
   // Experimental mode: two sequential monophonic notes, end-to-end WAV check.
   const sequence=wav(224.5);let phase=0;
   for(let j=0;j<length;j++){
@@ -73,6 +95,6 @@ function wav(frequency){
   assert.equal(await page.locator('#download').isDisabled(),true);
   assert((await page.locator('#pitchQuality').textContent()).includes('Sin diagnóstico válido'));
   assert.deepEqual(errors,[]);
-  console.log('PASS: monophonic offline pitch correction UI, accurate exported WAV, equal duration and silence guard.');
+  console.log('PASS: pitch correction UI with 0% wet source bypass, stale export guard, melody, valid WAV, silence guard.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
