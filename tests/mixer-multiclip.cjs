@@ -104,7 +104,8 @@ function rms(data,from,to){
   const restored=await render("#export","four-clips-restored.wav");
   assert.equal(restored.length,audio.length);
   assert(amplitude(restored,880,2.14,2.24)>.13);
-  saved.tracks[1].split.extras[1].at=.65; // Non-monotonic cut, reject transaction.
+  delete saved.manifestSha256; // Exercise validation of pre-integrity sessions.
+   saved.tracks[1].split.extras[1].at=.65; // Non-monotonic cut, reject transaction.
   const invalid=path.join(process.cwd(),"four-clips-invalid.json");fs.writeFileSync(invalid,JSON.stringify(saved));
   await page.locator("#sessionFile").setInputFiles(invalid);
   await page.waitForFunction(()=>document.querySelector("#status")?.textContent?.includes("No se restauró"));
