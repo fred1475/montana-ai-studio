@@ -101,6 +101,10 @@ Cada uno de los siete canales vocales del mezclador muestra ahora un informe **l
 
 La UI `mixer-pitch.js` vuelve a calcular el QA después de restaurar una sesión con afinación activa; **no guarda métricas temporales en el JSON** y las borra cuando la toma original cambia o se invalida la corrección. `pitch-lab.html` muestra el mismo resumen tras afinar una nota o frase, y lo borra al cambiar archivo o rechazar una toma inválida. Las pruebas `tests/pitch-quality.cjs` y `tests/mixer-pitch-quality-ui.cjs` incluyen silencio, clipping, variaciones de nivel, saltos bruscos, fuente inmutable, restauración de proyecto y limpieza de informes obsoletos. No se certifica preservación de formantes, timbre, ausencia de artefactos perceptuales, true peak ni EBU R128; se necesita escucha humana con material y equipo reales en la etapa final.
 
+### Protección de PCM vocal corrupto incluso sin efectos
+
+`mixer-vocal-dsp.js` ahora valida todas las muestras de los canales originales antes de copiarlas o procesarlas, incluso si puerta y de-esser están desactivados o si la fuerza del de-esser es 0 %. Rechaza NaN y valores infinitos en cualquiera de los canales en vez de propagarlos silenciosamente a la mezcla o a la exportación. No cambia los samples válidos ni los originales; `tests/mixer-vocal-dsp.cjs` incorpora regresión mono/estéreo en bypass y en procesamiento activo. **No convierte esta beta en procesador vocal profesional ni valida voces reales.**
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
