@@ -105,6 +105,16 @@ La UI `mixer-pitch.js` vuelve a calcular el QA después de restaurar una sesión
 
 `mixer-vocal-dsp.js` ahora valida todas las muestras de los canales originales antes de copiarlas o procesarlas, incluso si puerta y de-esser están desactivados o si la fuerza del de-esser es 0 %. Rechaza NaN y valores infinitos en cualquiera de los canales en vez de propagarlos silenciosamente a la mezcla o a la exportación. No cambia los samples válidos ni los originales; `tests/mixer-vocal-dsp.cjs` incorpora regresión mono/estéreo en bypass y en procesamiento activo. **No convierte esta beta en procesador vocal profesional ni valida voces reales.**
 
+### Respaldo de sesión con comprobación de fuentes originales
+
+Las sesiones JSON nuevas y las recuperaciones IndexedDB nuevas incluyen `sourceCrc32` para cada fuente embebida. Al restaurar, `mixer-session.js` calcula CRC32 de los bytes originales y rechaza discrepancias **antes de sustituir** cualquier pista del proyecto activo. Los proyectos antiguos sin checksum conservan compatibilidad y siguen cargando con su validación anterior. `tests/mixer-smoke.cjs` comprueba alteración de un byte en audio decodificable, rechazo atómico y carga de sesiones antiguas.
+
+**Límites:** CRC32 detecta corrupción accidental habitual pero **no** autentica archivos, no cifra las grabaciones y no protege contra modificaciones intencionales. Conserva siempre respaldos independientes y privados.
+
+### Rechazo temprano de auditorías WAV demasiado grandes
+
+`mixer-master-audit.js` comprueba el tamaño del Blob **antes** de reservar el `ArrayBuffer` de auditoría; el límite vigente sigue siendo 56 MiB y el WAV exportado puede descargarse aunque se omita el informe. También valida el tamaño real después de leerlo, incluso cuando faltan metadatos. `tests/mixer-master-stereo-qa.cjs` verifica que un archivo sobredimensionado no se lee para auditarlo y que la vía alternativa se rechaza con seguridad. No elimina los demás buffers de exportación ni resuelve los límites de memoria del navegador.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
