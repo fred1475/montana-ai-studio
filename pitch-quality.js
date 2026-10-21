@@ -10,6 +10,22 @@
 })(typeof globalThis!=="undefined"?globalThis:this,function(){
  "use strict";
  const db=v=>v>1e-12?20*Math.log10(v):null;
+
+ // Stereo monitoring is diagnostic only: remove DC before correlation and
+ // suppress ratios if either channel is effectively silent.
+ function stereoSnapshot(channels){
+  const [left,right]=channels,n=left.length;
+  let sumL=0,sumR=0,sumLL=0,sumRR=0,sumLR=0;
+  for(let i=0;i<n;i++){
+   const l=left[i],r=right[i];
+   sumL+=l;sumR+=r;sumLL+=l*l;sumRR+=r*r;sumLR+=l*r;
+  }
+  const varL=Math.max(0,sumLL-sumL*sumL/n),varR=Math.max(0,sumRR-sumR*sumR/n);
+  const correlation=varL>1e-10&&varR>1e-10?
+   Math.max(-1,Math.min(1,(sumLR-sumL*sumR/n)/Math.sqrt(varL*varR))):null;
+  const balanceDb=sumLL>1e-9&&sumRR>1e-9?10*Math.log10(sumLL/sumRR):null;
+  return {correlation,balanceDb};
+ }
  function analyze(original,corrected,rate){
   if(!Array.isArray(original)||!Array.isArray(corrected)||!original.length||
      original.length>2||corrected.length!==original.length||
@@ -45,7 +61,21 @@
   const sourceRms=Math.sqrt(srcEnergy/count),outputRms=Math.sqrt(outEnergy/count);
   const rmsDeltaDb=sourceRms>1e-9&&outputRms>1e-9?db(outputRms/sourceRms):null;
   const peakIncreaseDb=sourcePeak>1e-9&&outputPeak>1e-9?db(outputPeak/sourcePeak):null;
+  const stereo=original.length===2?{
+   source:stereoSnapshot(original),output:stereoSnapshot(corrected)
+  }:null;
   const warnings=[];
+  if(stereo){
+   const before=stereo.source,after=stereo.output;
+   if(before.correlation!==null&&after.correlation!==null&&
+      Math.abs(before.correlation)>=.70&&Math.abs(after.correlation-before.correlation)>.45)
+    warnings.push({id:"stereo_coherence_change",
+     message:"La afinación cambió de forma importante la correlación estéreo; revisa fase y compatibilidad mono."});
+   if(before.balanceDb!==null&&after.balanceDb!==null&&
+      Math.abs(after.balanceDb-before.balanceDb)>3)
+    warnings.push({id:"stereo_balance_change",
+     message:"El balance de nivel entre izquierdo y derecho cambió más de 3 dB; compara con la fuente."});
+  }
   if(outputPeak>=1)warnings.push({id:"sample_clip",message:"La voz afinada alcanza o supera 0 dBFS de pico de muestra; revisa ganancia y limitación."});
   else if(outputPeak>=.98 && outputPeak>sourcePeak+.01)warnings.push({id:"low_headroom",message:"La afinación deja muy poco margen de pico; revisa clipping al mezclar."});
   if(rmsDeltaDb!==null&&Math.abs(rmsDeltaDb)>6)
@@ -59,7 +89,7 @@
    metrics:{sourcePeakDbfs:db(sourcePeak),outputPeakDbfs:db(outputPeak),
     sourceRmsDbfs:db(sourceRms),outputRmsDbfs:db(outputRms),
     rmsDeltaDb,peakIncreaseDb,maxSourceStep,maxOutputStep,newLargeSteps},
-   warnings,
+   stereo,warnings,
    qualification:"Indicadores PCM heurísticos, no certificación de formantes, timbre, percepción, EBU R128 ni ausencia de artefactos."
   };
  }
