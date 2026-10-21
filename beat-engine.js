@@ -57,6 +57,13 @@
   }
   return out;
  }
+ function isolate(raw,instrument){
+  const p=validate(raw);
+  if(instrument!=="bass"&&!keys.includes(instrument))throw Error("Stem desconocido");
+  for(const k of keys)if(k!==instrument)p.drums[k]=Array(STEPS).fill(0);
+  if(instrument!=="bass")p.bass=Array(STEPS).fill(null);
+  return p;
+ }
  function vlq(n){
   if(!Number.isInteger(n)||n<0||n>0x0fffffff)throw Error("Tick MIDI inválido");
   let x=n&127;const bytes=[x];
@@ -161,5 +168,5 @@
   return {channels:[out.getChannelData(0).slice(),out.getChannelData(1).slice()],
    rate,duration,notes:events(p).length};
  }
- return {STEPS,PPQ,drums,keys,preset,validate,events,midi,wav,schedule,render};
+ return {STEPS,PPQ,drums,keys,preset,validate,events,isolate,midi,wav,schedule,render};
 });
