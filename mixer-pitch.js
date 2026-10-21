@@ -7,6 +7,32 @@
 const pitchBuffers=Array(8).fill(null),pitchActive=Array(8).fill(false);
 const pitchReports=Array(8).fill(null),pitchLevelReports=Array(8).fill(null);
 const pitchTimbreReports=Array(8).fill(null),pitchNoteReports=Array(8).fill(null);
+const pitchArtifactReports=Array(8).fill(null);
+function updatePitchArtifacts(i,details){
+ pitchArtifactReports[i]=details;
+ if(i===0)return;
+ const box=$("pitchArtifactAudit"+i);box.replaceChildren();
+ if(!details){box.textContent="Sin diagnóstico de artefactos; procesa la voz.";return;}
+ const summary=document.createElement("p");
+ const total=Object.values(details.counts).reduce((a,b)=>a+b,0);
+ summary.textContent=total===0?
+  "Sin alertas en estos criterios PCM. Esto NO garantiza naturalidad ni preservación de formantes.":
+  "Puntos a revisar: "+details.counts.dropout+" posibles cortes, "+
+  details.counts.step+" saltos nuevos, "+details.counts.peak+
+  " picos. "+(details.truncated?"La lista está limitada a 24 eventos.":"");
+ box.append(summary);
+ const ul=document.createElement("ul");
+ const labels={dropout:"Posible microcorte",step:"Posible clic / salto",peak:"Pico cercano a 0 dBFS"};
+ for(const event of details.events){
+  const li=document.createElement("li");
+  li.textContent=event.timeSeconds.toFixed(3)+" s · canal "+event.channel+
+   " · "+labels[event.code];ul.append(li);
+ }
+ box.append(ul);
+ const note=document.createElement("small");
+ note.textContent="Marcas heurísticas de muestras PCM en ventanas de 25 ms. Pueden ser falsos positivos; escucha cada fragmento para evaluar voz robótica, timbre y naturalidad.";
+ box.append(note);
+}
 function updatePitchNotes(i,diagnosis){
  pitchNoteReports[i]=diagnosis;
  if(i===0)return;
@@ -124,7 +150,7 @@ function checkPitch(p,i){
 }
 function pitchInvalidate(i){
  window.montanaBlindReset?.(i);
- pitchBuffers[i]=null;pitchActive[i]=false;updatePitchQa(i,null);updatePitchNotes(i,null);
+ pitchBuffers[i]=null;pitchActive[i]=false;updatePitchQa(i,null);updatePitchNotes(i,null);updatePitchArtifacts(i,null);
  updatePitchMatch(i,null,i>0&&$("pitchMatch"+i).checked);
  updatePitchTimbre(i,null,i>0&&$("pitchTimbre"+i).checked);
  if(i>0){
@@ -161,7 +187,8 @@ function processVocal(buffer,settings){
  const notes=settings.mode==="melody"?result.segments.map(s=>s.targetNote).join(" → "):result.target.note;
  const qa=MontanaPitchQA.analyze(channels,mixedChannels,buffer.sampleRate);
  const noteAudit=MontanaPitchNoteAudit.create(result,settings.mode,mixedChannels,buffer.sampleRate,settings);
- return {buffer:corrected,notes,qa,noteAudit,match:matched?.report||null,timbre:guarded?.report||null,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
+ const artifactTimeline=MontanaVocalArtifactTimeline.analyze(channels,mixedChannels,buffer.sampleRate);
+ return {buffer:corrected,notes,qa,noteAudit,artifactTimeline,match:matched?.report||null,timbre:guarded?.report||null,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
 }
 window.resetPitch=pitchInvalidate;
 window.pitchSessionState=i=>{
@@ -177,14 +204,15 @@ window.preparePitchRestore=(loaded,records)=>{
   if(p.enabled&&!loaded[i].decoded)throw Error("Afinación sin voz en canal "+(i+1));
   // Build all corrected buffers before changing the open session (atomic restore).
   const processed=p.enabled?processVocal(loaded[i].decoded,p):null;
-  restored.push({settings:{...p},buffer:processed?.buffer||null,qa:processed?.qa||null,noteAudit:processed?.noteAudit||null,match:processed?.match||null,timbre:processed?.timbre||null});
+  restored.push({settings:{...p},buffer:processed?.buffer||null,qa:processed?.qa||null,noteAudit:processed?.noteAudit||null,artifactTimeline:processed?.artifactTimeline||null,match:processed?.match||null,timbre:processed?.timbre||null});
  }
  return restored;
 };
 window.commitPitchRestore=restored=>{
- restored.forEach(({settings,buffer,qa,noteAudit,match,timbre},i)=>{
+ restored.forEach(({settings,buffer,qa,noteAudit,artifactTimeline,match,timbre},i)=>{
   pitchBuffers[i]=buffer;pitchActive[i]=settings.enabled;
-  if(i>0){updatePitchQa(i,qa);updatePitchNotes(i,noteAudit);updatePitchMatch(i,match,settings.matchLevel);
+  if(i>0){updatePitchQa(i,qa);updatePitchNotes(i,noteAudit);
+   updatePitchArtifacts(i,artifactTimeline);updatePitchMatch(i,match,settings.matchLevel);
    updatePitchTimbre(i,timbre,settings.protectTimbre);}
   if(i===0)return;
   $("pitchMode"+i).value=settings.mode;$("pitchKey"+i).value=settings.key;
@@ -219,6 +247,7 @@ for(let i=1;i<8;i++){
   '<p id="pitchState'+i+'">Original — sin corrección aplicada</p>'+
   '<p id="pitchQa'+i+'" role="status">Sin diagnóstico: procesa una toma vocal para comparar original y afinado.</p>'+
   '<section aria-label="Diagnóstico de notas y cents"><h4>🎼 Diagnóstico de notas y cents</h4><div id="pitchNoteAudit'+i+'">Sin notas medidas; procesa una toma vocal.</div></section>'+
+  '<section aria-label="Línea de tiempo de posibles artefactos"><h4>⚠️ Segundos a revisar por posibles artefactos</h4><div id="pitchArtifactAudit'+i+'">Sin diagnóstico de artefactos; procesa la voz.</div></section>'+
   '<small>Las métricas QA son heurísticas PCM, no garantizan timbre, formantes ni calidad perceptual. La afinación sigue siendo offline, limitada a fragmentos breves; fuente sin alterar.</small>';
  document.querySelectorAll("article.track")[i].append(el);
  for(const key of ["pitchMode","pitchKey","pitchScale","pitchStrength","pitchWet","pitchMatch","pitchTimbre"]){
@@ -244,6 +273,7 @@ for(let i=1;i<8;i++){
    const result=processVocal(tracks[i],state);
    pitchBuffers[i]=result.buffer;pitchActive[i]=true;updatePitchQa(i,result.qa);
    updatePitchNotes(i,result.noteAudit);
+   updatePitchArtifacts(i,result.artifactTimeline);
    updatePitchMatch(i,result.match,state.matchLevel);
    updatePitchTimbre(i,result.timbre,state.protectTimbre);
    $("pitchAudit"+i).disabled=false;
