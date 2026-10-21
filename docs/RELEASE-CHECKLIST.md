@@ -229,6 +229,14 @@ El gráfico comparte **el mismo estado validado** de `mixer-pan-automation.js` c
 
 `tests/mixer-pan-graph.cjs` cubre proyección XY, interpolación geométrica, puntos, límites e inmutabilidad. `tests/mixer-pan-graph-ui.cjs` comprueba en Chromium los ocho gráficos, creación, arrastre, teclado, ancla protegida, Undo/Redo y guardado/restauración de la sesión. Pendiente la escucha con hardware al final, igual que la validación externa del master.
 
+### Afinación vocal: comparación opcional al mismo nivel RMS (beta)
+
+El editor de afinación de los siete canales vocales añade la casilla **«Igualar nivel RMS de la voz afinada al original»**, desactivada de forma predeterminada. Esta opción ajusta únicamente el nivel de la versión procesada, **antes** de la mezcla seca/húmeda, para que las comparaciones A/B no favorezcan artificialmente a la versión más fuerte. `pitch-level-match.js` mide el RMS total de la toma original y de la afinada, aplica un único multiplicador a todos los canales mono/estéreo —sin cambiar el balance L/R— y evita multiplicaciones extremas con un límite nominal de ±6 dB. Por seguridad de pico la atenuación puede superar −6 dB si el audio ya se aproxima a escala completa; la salida queda por debajo de 0.98 pico de muestra cuando hay señal. Si alguna señal carece de nivel suficiente, se omite la normalización para no inflar silencios ni artefactos. El resultado se informa junto al diagnóstico QA y se señala cuando los límites impidieron igualar el RMS.
+
+La función **no** realiza normalización EBU R128/LUFS, no protege formantes, no preserva timbre por sí sola y no certifica la calidad vocal. La cadena de audio original, su archivo WAV y sus muestras siguen intactos. Cuando está desactivada, se ejecuta el mismo flujo de afinación y mezcla que antes. Las sesiones JSON guardan la opción `matchLevel` dentro de `tracks[i].pitch`; las sesiones anteriores sin ese campo recuperan el valor **false**, preservando compatibilidad. Las restauraciones verifican el campo booleano y recalculan el audio corregido desde la fuente original, sin confiar en un buffer procesado almacenado ni persistir los diagnósticos como autoridad.
+
+Pruebas: `tests/pitch-level-match.cjs` comprueba RMS, ganancia común estéreo, protección de pico, silencios, errores y fuente sin mutación. `tests/mixer-pitch-level-match-ui.cjs` valida Chromium con voz estéreo, activación, indicador de resultado, respaldo/restauración, archivos originales, proyectos antiguos y rechazo seguro de ajustes inválidos. Siguen pendientes escucha perceptual con voces reales, preservación de formantes y validación física final.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
