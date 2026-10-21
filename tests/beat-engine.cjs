@@ -14,6 +14,15 @@ for(const name of ['trap','reggaeton','dembow','hiphop','empty']){
  assert.deepEqual(p,copy,'No input mutation');
  assert(ev.every(e=>e.tick>=0&&e.tick<p.bars*16*120));
 }
+const beatSource=preset('dembow'),frozen=JSON.parse(JSON.stringify(beatSource));
+for(const track of ['kick','snare','clap','hat','bass']){
+ const stem=beat.isolate(beatSource,track);
+ assert(beat.events(stem).every(e=>e.kind===track),'Isolated stem must contain only '+track);
+ assert.equal(stem.bpm,beatSource.bpm);assert.equal(stem.bars,beatSource.bars);
+ assert.equal(stem.swing,beatSource.swing);
+ assert.deepEqual(beatSource,frozen,'Isolation must not modify pattern');
+}
+assert.throws(()=>beat.isolate(beatSource,'fx'),/Stem desconocido/);
 const p=preset('empty');p.bpm=120;p.bars=2;p.swing=30;
 p.drums.kick[0]=1;p.drums.hat[1]=1;p.bass[1]=48;
 const ev=events(p);
@@ -38,4 +47,4 @@ for(const bad of [null,{},[],{...p,bpm:201},{...p,bpm:60.5},{...p,swing:-1},{...
  {...p,bass:Array(16).fill(200)},
  {...p,drums:{...p.drums,hat:Array(16).fill(true)}}])
  assert.throws(()=>validate(bad),/inválid/);
-console.log('PASS beat engine: five presets, deterministic notes, swing MIDI, format-0 header, exact WAV PCM16, invalid patterns.');
+console.log('PASS beat engine: five presets, isolated aligned stems, deterministic notes, swing MIDI, format-0 header, exact WAV PCM16, invalid patterns.');
