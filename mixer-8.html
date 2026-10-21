@@ -15,6 +15,9 @@
 <script>
 "use strict";
 const $=id=>document.getElementById(id),N=8,tracks=Array(N).fill(null),players=[],activeOutputs=[];let ctx=null;
+// Every Stop or replacement invalidates pending asynchronous AudioContext.resume().
+// A timer belongs to exactly one playback; never let a stale callback alter a new one.
+let playbackEpoch=0,playbackTimer=null;
 $("masterGain").addEventListener("input",()=>{$("masterValue").textContent=$("masterGain").value+"%"});
 function report(msg){$("status").textContent=msg}
 $("limiterCeiling").addEventListener("input",()=>{$("limiterCeilingVal").textContent=$("limiterCeiling").value+" dBFS"});
@@ -90,6 +93,8 @@ window.montanaDefaultTrackLabels=defaultLabels.slice();
 $("tracks").innerHTML=labels.map((name,i)=>`<article class="track"><h2 id="trackTitle${i}">${i+1}. ${name}</h2><label for="trackName${i}">Nombre del canal</label><input type="text" id="trackName${i}" maxlength="40" value="${name}" aria-label="Nombre del canal ${i+1}"><label for="file${i}">Importar audio</label><input id="file${i}" type="file" accept="audio/*"><p id="label${i}">Sin audio</p><div style="display:flex;gap:8px;align-items:center;margin:6px 0"><meter id="meter${i}" min="0" max="100" value="0" style="flex:1" aria-label="Nivel de salida del canal ${i+1}"></meter><output id="meterDb${i}" style="font-size:12px;min-width:68px">−∞ dBFS</output></div><label for="inputTrim${i}">Ganancia de entrada (antes de efectos) <output id="inputTrimVal${i}">0 dB</output></label><input id="inputTrim${i}" type="range" min="-24" max="12" step="0.5" value="0"><small>−24 a +12 dB; nivel anterior al fader/EQ/compresor. No modifica el WAV original. Puede producir clipping si se sube demasiado.</small><details id="autoDetails${i}"><summary>🎚️ Automatización de volumen (durante canción)</summary><label><input id="autoEnable${i}" type="checkbox"> Activar curva de volumen</label><label for="autoPoints${i}">Puntos: segundos:nivel (%), separados por comas</label><textarea id="autoPoints${i}" rows="2" maxlength="180" style="width:100%;background:#111b2c;color:white;border:1px solid #8493a9;border-radius:6px;padding:8px">0:100</textarea><div id="autoGraph${i}" style="margin-top:10px" aria-label="Editor gráfico de automatización del canal ${i+1}"></div><small>Gráfico: clic para crear un punto, arrastra para moverlo, usa las flechas para ajustes finos y Supr para borrar. El primer punto siempre está en 0 segundos. Puedes seguir escribiendo los valores manualmente.</small><small>Ejemplo: 0:100, 10:60, 15:60, 20:100. Hasta 8 puntos, 0–300 s y 0–150 %. El nivel cambia linealmente entre puntos y permanece en el último valor después. Efecto en el tiempo de canción; no altera el audio fuente. Para escuchar cambios pulsa Detener y Reproducir.</small><p id="autoPreview${i}" role="status">Desactivada: ganancia uniforme 100 % durante toda la canción</p></details><label for="vol${i}">Volumen <output id="val${i}">100%</output></label><input id="vol${i}" type="range" min="0" max="150" value="100"><label for="pan${i}">Panorama <output id="panval${i}">Centro</output></label><input id="pan${i}" type="range" min="-100" max="100" value="0"><details id="panAutoDetails${i}"><summary>↔️ Automatización estéreo izquierda/derecha</summary><label><input id="panAutoEnable${i}" type="checkbox"> Activar panorama variable durante la canción</label><label for="panAutoPoints${i}">Puntos: segundo:posición (−100 izquierda, 0 centro, +100 derecha)</label><textarea id="panAutoPoints${i}" rows="2" maxlength="200" style="width:100%;background:#111b2c;color:white;border:1px solid #8493a9;border-radius:6px;padding:8px">0:0</textarea><div id="panGraph${i}" style="margin-top:10px" aria-label="Gráfico de automatización estéreo del canal ${i+1}"></div><small>Gráfico: clic para añadir, arrastra para mover izquierda/derecha, flechas para ajustes finos y Supr para borrar. El primer punto permanece en 0 s. El editor numérico sigue disponible.</small><small>Ejemplo: 0:-100, 0.5:-100, 1.5:100, 2:100. Hasta 8 puntos con tiempos de 0 a 300 segundos. Si está activada, esta curva sustituye el panorama fijo del canal. La exportación WAV y los stems contienen el mismo recorrido. Detén y reproduce para escuchar los cambios.</small><p id="panAutoStatus${i}" role="status">Desactivada · se utiliza el panorama fijo del canal</p></details><label for="lowEQ${i}">Graves (250 Hz) <output id="lowVal${i}">0 dB</output></label><input id="lowEQ${i}" type="range" min="-12" max="12" step="1" value="0"><label for="highEQ${i}">Agudos (4 kHz) <output id="highVal${i}">0 dB</output></label><input id="highEQ${i}" type="range" min="-12" max="12" step="1" value="0"><details id="compDetails${i}"><summary>🎚 Compresor de dinámica</summary><label><input id="compEnable${i}" type="checkbox"> Activar compresor</label><label for="compThreshold${i}">Umbral <output id="compThresholdVal${i}">-18 dB</output></label><input id="compThreshold${i}" type="range" min="-36" max="-6" step="1" value="-18"><label for="compRatio${i}">Relación <output id="compRatioVal${i}">4:1</output></label><input id="compRatio${i}" type="range" min="2" max="12" step="1" value="4"><small>Compresión básica. El audio original no se modifica.</small></details><details id="spaceDetails${i}"><summary>🌌 Reverb y delay</summary><label for="reverb${i}">Reverb <output id="reverbVal${i}">0%</output></label><input id="reverb${i}" type="range" min="0" max="50" step="5" value="0"><label for="delayWet${i}">Delay <output id="delayWetVal${i}">0%</output></label><input id="delayWet${i}" type="range" min="0" max="50" step="5" value="0"><label for="delayMs${i}">Tiempo del delay <output id="delayMsVal${i}">300 ms</output></label><input id="delayMs${i}" type="range" min="100" max="750" step="50" value="300"><small>Efectos locales no destructivos; se incluyen las colas en el WAV.</small></details>${i>0?`<label for="alignMs${i}">Sincronización fina (ms; negativo = adelantar) <output id="alignVal${i}">0 ms</output></label><input id="alignMs${i}" type="number" min="-250" max="250" step="1" value="0" style="width:100%">`:""}<label for="offset${i}">Inicio (segundos)</label><input id="offset${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimStart${i}">Recorte inicial (segundos)</label><input id="trimStart${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="repeat${i}">Repetir región (1–8 veces)</label><input id="repeat${i}" type="number" min="1" max="8" step="1" value="1" style="width:100%"><label for="fadeIn${i}">Fundido de entrada (segundos; 0–5)</label><input id="fadeIn${i}" type="number" min="0" max="5" step="0.05" value="0" style="width:100%"><label for="fadeOut${i}">Fundido de salida (segundos; 0–5)</label><input id="fadeOut${i}" type="number" min="0" max="5" step="0.05" value="0" style="width:100%"><label for="trimEnd${i}">Recorte final (segundos; 0 = completo)</label><input id="trimEnd${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label><input id="mute${i}" type="checkbox"> Silenciar</label><label><input id="solo${i}" type="checkbox"> Solo</label></article>`).join("");
 function releaseOutput(node){try{node.disconnect()}catch(e){}const k=activeOutputs.indexOf(node);if(k>=0)activeOutputs.splice(k,1)}
 function stop(){
+ playbackEpoch++;
+ if(playbackTimer!==null){clearTimeout(playbackTimer);playbackTimer=null}
  window.stopSectionPreview?.();
  window.stopMetronome?.();
  for(const s of players){try{s.stop()}catch(e){}try{s.disconnect()}catch(e){}}
@@ -169,10 +174,13 @@ for(let i=0;i<N;i++){
 }
 $("stop").onclick=()=>{stop();report("Reproducción detenida")};
 $("play").onclick=async()=>{
+ let token=null;
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
   window.validateMetronome();
-  const clips=tracks.map((b,i)=>b?(window.validateFades(i),window.getTrackSegments(i,b)):[]);const crossfadePlans=clips.map((seg,i)=>window.prepareCrossfadePlan(i,seg));const mixBuffers=tracks.map((b,i)=>b?window.getMixBuffer(i):null);stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(ac,master).connect(ac.destination);activeOutputs.push(master);
+  const clips=tracks.map((b,i)=>b?(window.validateFades(i),window.getTrackSegments(i,b)):[]);const crossfadePlans=clips.map((seg,i)=>window.prepareCrossfadePlan(i,seg));const mixBuffers=tracks.map((b,i)=>b?window.getMixBuffer(i):null);stop();token=playbackEpoch;const ac=audio();await ac.resume();
+  if(token!==playbackEpoch)return; // Stop/import/new Play occurred during device resume.
+  const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(ac,master).connect(ac.destination);activeOutputs.push(master);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const vol=ac.createGain(),stereo=ac.createStereoPanner(),eqIn=ac.createGain();
    const automated=MontanaVolumeAutomation.attach(ac,eqIn,window.volumeAutomationState(i),at);
@@ -190,9 +198,17 @@ $("play").onclick=async()=>{
   });
   const maxEnd=Math.max(0,...clips.flatMap((items,i)=>items.map(clip=>clip.offset+clip.duration+effectTail(i))));
   const clickToken=window.startMetronome(ac,at);
-  setTimeout(()=>{releaseOutput(master);if(clickToken)window.stopMetronome(clickToken);if(!activeOutputs.length)window.resetMeters?.()},Math.ceil((maxEnd+.3)*1000));
+  playbackTimer=setTimeout(()=>{
+   if(token!==playbackEpoch)return;
+   playbackTimer=null;releaseOutput(master);
+   if(clickToken)window.stopMetronome(clickToken);
+   if(!activeOutputs.length)window.resetMeters?.();
+  },Math.ceil((maxEnd+.3)*1000));
   report("Mezcla reproduciéndose. Para aplicar cambios, pulsa Detener y Reproducir.");
- }catch(err){report(err.message)}
+ }catch(err){
+  if(token===null)report(err.message); // Invalid parameters have not changed transport.
+  else if(token===playbackEpoch){stop();report(err.message)} // Undo partially built audio graph.
+ }
 };
 function wav(a,b,rate){return MontanaWavExport.encode(a,b,rate)}
 $("export").onclick=async()=>{

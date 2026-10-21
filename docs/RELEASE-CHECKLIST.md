@@ -315,6 +315,10 @@ Pruebas `tests/mixer-section-plan.cjs`: intervalos, validaciones, loops cruzando
 
 `mixer-timeline.js` incorpora controles **Acercar / Alejar / Ajustar vista** con factores ×1, ×2, ×4 y ×8. La regla temporal, los marcadores y las ocho pistas comparten la anchura de edición ampliada; el contenedor permite desplazamiento horizontal sin cambiar la posición numérica de los fragmentos ni sus archivos de origen. Los bloques siguen operables con ratón y teclado. La preferencia de zoom es temporal en la pantalla: no se escribe al JSON de sesión ni altera el BPM, la duración, la exportación WAV o el resultado de la mezcla. No constituye aún un editor de forma de onda a nivel de muestra ni time-stretch/warp. La regresión `tests/mixer-timeline-zoom.cjs` comprueba desplazamiento horizontal, controles, inicio del fragmento y WAV original byte por byte en Chromium.
 
+### Cancelación segura del transporte de reproducción
+
+El botón **Detener** invalida ahora cualquier `AudioContext.resume()` que todavía esté pendiente. Dos pulsaciones rápidas de Reproducir no pueden generar dos grafos maestros: solo gana la última solicitud. Al detener, también se cancela el temporizador de liberación de efectos, y si falla la creación posterior de la reproducción se desconectan los nodos y fuentes ya iniciadas. Esta protección afecta únicamente a la escucha del mezclador; **no toca originales, marcadores, WAV de exportación ni sesiones**. `tests/mixer-transport-race.cjs` cubre reanudaciones retardadas, respuestas fuera de orden, rechazo de dispositivo, fallo de metrónomo y reproducción normal en Chromium. Sigue pendiente la prueba física final con interfaz real.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
