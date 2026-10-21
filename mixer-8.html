@@ -74,13 +74,7 @@ function stop(){
  for(const node of [...activeOutputs])releaseOutput(node);
  window.resetMeters?.();
 }
-async function loadMixerTrackFile(i,file){
- if(!Number.isInteger(i)||i<0||i>=N||!(file instanceof Blob))
-  throw Error("Canal o archivo inválido");
- if(file.size>50e6)throw Error("Archivo mayor de 50 MB");
- const decoded=await audio().decodeAudioData(await file.arrayBuffer());
- if(decoded.duration>300||!Number.isFinite(decoded.duration)||decoded.duration<=0)
-  throw Error("Duración fuera del límite permitido");
+function applyMixerDecodedTrack(i,file,decoded){
  stop();tracks[i]=decoded;originalFiles[i]=file;
  window.resetPitch?.(i);window.resetClean?.(i);window.resetVocalPreflight?.(i);
  window.resetSplit?.(i);window.resetCrossfade?.(i);window.resetCopies?.(i);
@@ -88,11 +82,42 @@ async function loadMixerTrackFile(i,file){
  window.resetEditHistory?.();
  if(i>0){$("alignMs"+i).value=0;$("alignVal"+i).textContent="0 ms"}
  $("trimStart"+i).value=0;$("trimEnd"+i).value=0;
+ $("file"+i).value="";
  $("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
  window.updateSourceDownload?.();
  report("Pista "+(i+1)+" importada");
+}
+async function decodeMixerFile(file){
+ if(!(file instanceof Blob)||file.size>50e6||file.size<44)
+  throw Error("Archivo WAV incompatible o mayor de 50 MB");
+ const decoded=await audio().decodeAudioData(await file.arrayBuffer());
+ if(decoded.duration>300||!Number.isFinite(decoded.duration)||decoded.duration<=0)
+  throw Error("Duración fuera del límite permitido");
  return decoded;
 }
+async function loadMixerTrackFile(i,file){
+ if(!Number.isInteger(i)||i<0||i>=N)throw Error("Canal inválido");
+ const decoded=await decodeMixerFile(file);
+ applyMixerDecodedTrack(i,file,decoded);
+ return decoded;
+}
+// Decode ALL files before touching any mixer channel. The caller checks
+// occupied lanes and explicit replacement consent before and after decoding.
+window.montanaPrepareTrackBatch=async assignments=>{
+ if(!Array.isArray(assignments)||assignments.length!==5)throw Error("Se requieren cinco instrumentos");
+ const seen=new Set(),out=[];
+ for(const a of assignments){
+  if(!a||!Number.isInteger(a.channel)||a.channel<0||a.channel>=N||
+     seen.has(a.channel))throw Error("Canales de stems inválidos o repetidos");
+  seen.add(a.channel);
+  out.push({channel:a.channel,file:a.file,decoded:await decodeMixerFile(a.file)});
+ }
+ return out;
+};
+window.montanaCommitTrackBatch=prepared=>{
+ if(!Array.isArray(prepared)||prepared.length!==5)throw Error("Lote de stems inválido");
+ for(const a of prepared)applyMixerDecodedTrack(a.channel,a.file,a.decoded);
+};
 window.montanaLoadTrackFile=loadMixerTrackFile;
 for(let i=0;i<N;i++){
  $("vol"+i).addEventListener("input",()=>{$("val"+i).textContent=$("vol"+i).value+"%"});
