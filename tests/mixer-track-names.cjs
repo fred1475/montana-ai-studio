@@ -39,10 +39,14 @@ function toneWav(rate=44100){
   // No HTML insertion on user-facing labels; invalid character classes are rejected.
   const invalid=await page.evaluate(()=>{
    const old=labels[0];
-   let error=null;try{window.setMixerTrackLabel(0,'<img>');}catch(e){error=e.message;}
-   return {error,unchanged:labels[0]===old};
+   const errors=[];
+   for(const proposed of ['<img>', 'line\\nnext', 'x'.repeat(41), '']) {
+    try{window.setMixerTrackLabel(0,proposed);errors.push('ACCEPTED');}
+    catch(e){errors.push(e.message);}
+   }
+   return {errors,unchanged:labels[0]===old};
   });
-  assert(invalid.error.includes('inválido'));assert(invalid.unchanged);
+  assert(invalid.errors.every(e=>e.includes('inválido')));assert(invalid.unchanged);
   assert.equal(await page.locator('#label0').textContent(),'beat-original.wav — 0.5 s');
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
   const savedAt=path.join(process.cwd(),'mixer-track-names-session.json');await download.saveAs(savedAt);
