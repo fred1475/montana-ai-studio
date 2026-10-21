@@ -33,6 +33,7 @@
   return {...s,ramps};
  }
  window.prepareCrossfadePlan=(i,segments)=>prepare(state(i),i,segments);
+ window.validateCrossfadeSegments=(setting,i,segments)=>prepare(setting,i,segments);
  window.crossfadeSessionState=state;
  window.connectClipCrossfade=(ctx,source,dest,i,clip,when,index,plan)=>{
   if(!plan?.enabled){window.connectFades(ctx,source,dest,i,clip,when);return}
