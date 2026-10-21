@@ -73,6 +73,12 @@ El ZIP final, los WAV codificados, el render Web Audio y el navegador siguen ocu
 
 **Límite importante:** usar bloques no implica que el proceso completo consuma poca memoria. El Blob de salida, el render Web Audio, el ZIP de varios stems, la auditoría exacta y el navegador todavía requieren otros buffers; no se garantiza rendimiento estable en sesiones extensas de producción real.
 
+### De-esser estéreo sincronizado en voces — imagen L/R estable
+
+El procesamiento vocal `mixer-vocal-dsp.js` ahora calcula la atenuación de sibilancias una sola vez por fotograma usando el componente de alta frecuencia más intenso de los canales, y aplica **la misma envolvente** a ambos lados. Se conserva el filtrado pasa-bajos independiente por canal, pero no se generan dos detectores que puedan bombear de manera diferente. El suavizado de ganancia ahora depende de los segundos y de la frecuencia de muestreo (respuesta nominal de 0.4 ms); en mono se mantiene el comportamiento básico anterior. La operación sigue siendo **offline, optativa y no destructiva**. La misma lógica se usa para reproducir/exportar y queda reflejada al cargar las configuraciones guardadas.
+
+`tests/mixer-vocal-stereo-link.cjs` usa voces sintéticas a **44.1/48 kHz** y compara polaridad invertida, lados proporcionales, puerta + de-esser, respuesta entre frecuencias, reducción de altas frecuencias, conservación de fundamental y protección de los originales. `tests/mixer-vocal-stereo-browser.cjs` verifica canal estéreo real decodificado, buffer de mezcla, WAV PCM16 exportado, caché y restauración de sesión en Chromium. **Estas señales artificiales no garantizan ausencia de artefactos perceptuales, mantenimiento del timbre/formantes ni resultado profesional en voces grabadas reales.** La escucha con el equipo físico sigue para la etapa final.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
