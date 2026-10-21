@@ -10,6 +10,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8765/hardware-loopback.html');
   assert.equal(await page.locator('#measureLoop').isDisabled(),true,'Explicit physical loopback consent required');
+  assert.equal(await page.locator('#downloadLoopReport').isDisabled(),true,'No measured result should be downloadable before a loopback');
   assert((await page.locator('#loopResults').innerText()).includes('Pendiente'));
   await page.locator('#scanLoop').click();
   await page.waitForFunction(()=>document.querySelector('#loopStatus')?.textContent?.includes('entrada(s) detectadas'));
@@ -21,6 +22,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright');
   assert(status.includes('No se detectó')||status.includes('Señal de loopback ambigua')||status.includes('Grabación incompleta'),
    'Fake microphone without loopback must never produce verified calibration: '+status);
   assert((await page.locator('#loopResults').innerText()).includes('No se aplicó ninguna compensación'));
+  assert.equal(await page.locator('#downloadLoopReport').isDisabled(),true,'No report may be issued on failed measurement');
   assert.equal(await page.locator('#measureLoop').isDisabled(),false);
   await page.locator('#confirmSafe').uncheck();
   assert.equal(await page.locator('#measureLoop').isDisabled(),true);
