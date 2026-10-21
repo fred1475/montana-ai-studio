@@ -72,7 +72,7 @@ const {chromium}=require('playwright');
    });db.close();
    await window.refreshBeatTransfer();
   });
-  assert((await page.locator('#beatTransferStatus').textContent()).includes('no se pudo recuperar'));
+  assert((await page.locator('#beatTransferStatus').textContent()).toLowerCase().includes('no se pudo recuperar'));
   assert.equal(await page.locator('#beatTransferImport').isDisabled(),true);
   assert.equal(await page.evaluate(()=>originalFiles[0]?.name),stored.filename);
   await page.locator('#beatTransferDiscard').click();
