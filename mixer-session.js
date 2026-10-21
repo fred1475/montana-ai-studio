@@ -15,7 +15,7 @@ async function createMixerSnapshot(){
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
-  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,tracks:items};
+  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,tracks:items};
 }
 window.createMixerSnapshot=createMixerSnapshot;
 $("saveSession").addEventListener("click",async()=>{
@@ -41,6 +41,8 @@ async function restoreMixerSnapshot(s){
   if(typeof normalizeOn!=="boolean"||typeof normalizeTarget!=="number"||!Number.isFinite(normalizeTarget)||normalizeTarget< -6||normalizeTarget>-.5)throw Error("Normalización inválida.");
   const loudnessOn=s.loudnessOn===undefined?false:s.loudnessOn;
   if(typeof loudnessOn!=="boolean")throw Error("Preferencia de análisis LUFS inválida.");
+  const auditOn=s.auditOn===undefined?false:s.auditOn;
+  if(typeof auditOn!=="boolean")throw Error("Preferencia de auditoría WAV inválida.");
   const loaded=[];let bytes=0;
   for(let i=0;i<8;i++){
    const t=s.tracks[i];if(!t||typeof t!=="object")throw Error("Canal corrupto.");
@@ -80,6 +82,8 @@ async function restoreMixerSnapshot(s){
   $("limiterOn").checked=limiterOn;$("limiterCeiling").value=limiterCeiling;$("limiterCeilingVal").textContent=limiterCeiling+" dBFS";
   $("normalizeOn").checked=normalizeOn;$("normalizeTarget").value=normalizeTarget;$("normalizeVal").textContent=normalizeTarget+" dBFS";
   $("loudnessOn").checked=loudnessOn;$("loudnessResults").textContent="Análisis listo para ejecutar en la próxima exportación; no modifica el audio.";
+  $("auditOn").checked=auditOn;window.montanaLastAudit=null;$("downloadAudit").disabled=true;
+  $("auditStatus").textContent="La auditoría requiere exportar de nuevo el WAV; ninguna cifra anterior se reutiliza.";
   loaded.forEach((t,i)=>{
    tracks[i]=t.decoded;originalFiles[i]=t.source;
    // Reset file inputs so the restored bytes are authoritative on next save.
