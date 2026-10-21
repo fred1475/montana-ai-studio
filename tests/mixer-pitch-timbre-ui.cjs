@@ -70,7 +70,7 @@ function stereo(hz){
   assert.equal(await page.locator('#pitchTimbre1').isChecked(),true);
   assert.equal(await page.evaluate(()=>originalFiles[1]?.name),'timbre-vocal.wav');
   const legacy=JSON.parse(JSON.stringify(project));
-  legacy.tracks.forEach(t=>{if(t.pitch)delete t.pitch.protectTimbre});
+  delete legacy.manifestSha256;legacy.tracks.forEach(t=>{if(t.pitch)delete t.pitch.protectTimbre});
   await page.locator('#sessionFile').setInputFiles({name:'legacy-timbre.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'),null,{timeout:35000});
   assert.equal(await page.locator('#pitchTimbre1').isChecked(),false);
