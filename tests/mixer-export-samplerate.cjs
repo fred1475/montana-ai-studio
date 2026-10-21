@@ -84,6 +84,7 @@ function inspectWav(buffer,rate,bits){
   assert.equal(saved.wavBits,24);
   await page.reload();
   async function restore(session,name){
+   await page.evaluate(()=>document.querySelector('#status').textContent='Validando nuevo archivo de sesión...');
    await page.locator('#sessionFile').setInputFiles({
     name,mimeType:'application/json',buffer:Buffer.from(JSON.stringify(session))
    });
