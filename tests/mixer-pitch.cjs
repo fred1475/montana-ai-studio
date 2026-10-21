@@ -89,6 +89,7 @@ for(let j=0;j<frames;j++)wave.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*2
   }
   await page.locator('#file1').setInputFiles({name:'voz-estereo-contra-fase.wav',mimeType:'audio/wav',buffer:antiphase});
   await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('contra-fase'));
+  await page.locator('#pitchDetails1').evaluate(el=>{el.open=true});
   await page.locator('#pitchApply1').click();
   await page.waitForFunction(()=>document.querySelector('#pitchState1')?.textContent?.includes('Detector protegido contra cancelación de fase'),null,{timeout:30000});
   assert.equal(await page.evaluate(()=>pitchActive[1]),true);
