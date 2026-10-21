@@ -26,6 +26,7 @@
   }
   halt.disabled=true;
  }
+ window.stopSectionPreview=()=>{if(playing)haltPreview();};
  function refresh(){
   const list=window.montanaMarkerState();
   const wasFrom=from.value,wasTo=to.value;
