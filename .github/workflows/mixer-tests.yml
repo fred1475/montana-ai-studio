@@ -14,6 +14,7 @@ on:
       - 'mixer-master-audit.js'
       - 'mixer-wav-export.js'
       - 'tests/mixer-wav-export.cjs'
+      - 'tests/mixer-export-samplerate.cjs'
       - 'mixer-split.js'
       - 'mixer-crossfade.js'
       - 'mixer-clipboard.js'
@@ -90,6 +91,7 @@ jobs:
           node --check mixer-master-audit.js
           node --check mixer-wav-export.js
           node --check tests/mixer-wav-export.cjs
+          node --check tests/mixer-export-samplerate.cjs
           node --check mixer-split.js
           node --check mixer-crossfade.js
           node --check mixer-clipboard.js
@@ -162,6 +164,7 @@ jobs:
           node tests/mixer-loudness.cjs
           node tests/mixer-master-audit.cjs
           node tests/mixer-wav-export.cjs
+          node tests/mixer-export-samplerate.cjs
           node tests/mixer-split.cjs
           node tests/mixer-multiclip.cjs
           node tests/mixer-crossfade.cjs
@@ -206,7 +209,7 @@ jobs:
             '23. Active Auditoría de master WAV si desea JSON EBU de preentrega con CRC32 del PCM16 exacto.' \
             '24. Use hasta cuatro fragmentos, cuatro copias adicionales y BPM grid snap opcional (1/4, 1/8, 1/16) en la línea de tiempo.' \
             '25. hardware-check.html y hardware-loopback.html quedan reservados para probar la interfaz y estimar latencia SOLO en validación final, con loopback seguro.' \
-            '26. El master puede exportarse en PCM16 o PCM24 a 44.1 kHz; el dither TPDF opcional solo se aplica a 16 bits. Los stems siguen PCM16.' \
+            '26. El master puede exportarse en PCM16 o PCM24 a 44.1 o 48 kHz; el dither TPDF opcional solo se aplica a 16 bits. Los stems siguen PCM16 a 44.1 kHz.' \
             '27. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
