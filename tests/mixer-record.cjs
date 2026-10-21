@@ -56,6 +56,7 @@ for(let j=0;j<n;j++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*330*j/r
   const sessionPath=path.join(process.cwd(),'captured-session.json');await download.saveAs(sessionPath);
   const session=JSON.parse(fs.readFileSync(sessionPath,'utf8'));
   assert(session.tracks[2].data?.length>1000,'Recorded take must be recoverable from JSON backup');
+  assert.equal(session.recordFormat,'compressed','Legacy codec choice must be portable');
   const before=await page.evaluate(()=>originalFiles[2]?.size);
   page.on('dialog',d=>d.accept());
   await page.evaluate(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw Error('Permiso denegado en prueba')}});
@@ -67,6 +68,8 @@ for(let j=0;j<n;j++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*330*j/r
   await page.locator('#sessionFile').setInputFiles(sessionPath);
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'),null,{timeout:20000});
   assert.equal(await page.locator('#downloadSource').isDisabled(),false,'Restored take can be rescued as original');
+  assert.equal(await page.locator('#recordFormat').inputValue(),'compressed',
+   'Codec choice must restore exactly for saved sessions');
   const [restored]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadSource').click()]);
   const dest=path.join(process.cwd(),'captured-source-restored.webm');await restored.saveAs(dest);
   assert.deepEqual(fs.readFileSync(dest),captured,'Restored original recording must be byte-identical');
@@ -93,6 +96,18 @@ for(let j=0;j<n;j++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*330*j/r
   assert.equal(pcm.readUInt32LE(40),pcm.length-44);
   assert((await page.locator('#label2').innerText()).includes('toma-canal-3.webm'),
    'Second capture must not replace previous recording');
+  const [pcmSave]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const pcmSessionPath=path.join(process.cwd(),'captured-pcm24-session.json');
+  await pcmSave.saveAs(pcmSessionPath);
+  const pcmSession=JSON.parse(fs.readFileSync(pcmSessionPath,'utf8'));
+  assert.equal(pcmSession.recordFormat,'wav');
+  assert.equal(Buffer.from(pcmSession.tracks[3].data,'base64').compare(pcm),0,
+   'Session must store exactly the uncompressed WAV bytes');
+  await page.reload();
+  await page.locator('#sessionFile').setInputFiles(pcmSessionPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'),null,{timeout:20000});
+  assert.equal(await page.locator('#recordFormat').inputValue(),'wav');
+  assert((await page.locator('#label3').innerText()).includes('toma-canal-4.wav'));
   assert.deepEqual(errors,[]);
   console.log('PASS record: fake microphone overdub, completed capture rescue, embedded session, rejection retains previous, restored raw bytes');
  }finally{await browser.close()}
