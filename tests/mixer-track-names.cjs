@@ -82,7 +82,7 @@ function toneWav(rate=44100){
   assert.equal(await page.evaluate(()=>originalFiles[0]?.name),'beat-original.wav');
   // A session with no trackLabel is supported and resets default names.
   const legacy=JSON.parse(JSON.stringify(session));
-  legacy.tracks.forEach(track=>delete track.trackLabel);
+  delete legacy.manifestSha256;legacy.tracks.forEach(track=>delete track.trackLabel);
   await page.locator('#sessionFile').setInputFiles({
    name:'legacy-mixer.json',mimeType:'application/json',
    buffer:Buffer.from(JSON.stringify(legacy))
