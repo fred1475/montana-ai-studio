@@ -62,6 +62,8 @@ on:
       - 'tests/mixer-vocal-preflight.cjs'
       - 'tests/mixer-vocal-preflight-ui.cjs'
       - 'tests/mixer-vocal-dsp.cjs'
+      - 'tests/mixer-vocal-stereo-link.cjs'
+      - 'tests/mixer-vocal-stereo-browser.cjs'
       - 'tests/mixer-vocal-clean.cjs'
       - 'tests/mixer-limiter.cjs'
       - 'mixer-pitch.js'
@@ -156,6 +158,9 @@ jobs:
           node --check tests/mixer-vocal-preflight-ui.cjs
           node tests/mixer-vocal-preflight.cjs
           node --check tests/mixer-vocal-dsp.cjs
+          node --check tests/mixer-vocal-stereo-link.cjs
+          node --check tests/mixer-vocal-stereo-browser.cjs
+          node tests/mixer-vocal-stereo-link.cjs
           node --check tests/mixer-vocal-clean.cjs
           node tests/mixer-vocal-dsp.cjs
           node --check tests/mixer-limiter.cjs
@@ -218,6 +223,7 @@ jobs:
           node tests/mixer-loops.cjs
           node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
+          node tests/mixer-vocal-stereo-browser.cjs
           node tests/mixer-vocal-preflight-ui.cjs
           node tests/pitch-ui.cjs
       - name: Package manual mixer preview
