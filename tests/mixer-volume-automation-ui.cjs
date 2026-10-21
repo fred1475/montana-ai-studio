@@ -40,6 +40,8 @@ function rms(w,start,end){
   const normal=await exportWav('#export','dry');
   const baseline=rms(normal,.14,.28);
   assert(baseline>.015&&baseline<.15,'Audible baseline following mono-to-stereo equal-power panning');
+  await page.locator('#autoDetails0 summary').click();
+  assert.equal(await page.locator('#autoDetails0').evaluate(el=>el.open),true);
   await page.locator('#autoPoints0').fill('0:100, 0.5:0, 1:0, 1.5:100');
   await page.locator('#autoPoints0').dispatchEvent('change');
   await page.locator('#autoEnable0').check();
