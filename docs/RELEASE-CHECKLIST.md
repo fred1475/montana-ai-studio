@@ -89,6 +89,12 @@ La regresión sintética `tests/pitch-unvoiced-guard.cjs` verifica preservación
 
 El motor `correctChannel` ahora valida antes de procesar muestras la frecuencia de muestreo, las frecuencias de origen y destino, la correspondencia entre período calculado y grilla compartida, el tamaño/alcance de cada marca, su **orden estrictamente creciente**, la ventana de solapamiento y que todas las muestras sean finitas. Un plan de marcas inválido se rechaza explícitamente en vez de introducir NaN, saltos de índices o silencios inesperados en el WAV. Esta comprobación no cambia la corrección de notas con planes válidos. `tests/pitch-mark-validation.cjs` cubre marcas duplicadas, desordenadas, fuera de rango o no finitas, además del caso válido, la afinación real y la preservación del original.
 
+### Prueba de resistencia de ocho pistas (sintética, automatizada)
+
+`tests/mixer-eight-track-stress.cjs` carga en Chromium **8 WAV sintéticos de 30 segundos** (una pista instrumental y siete canales de voz), comprueba las ocho fuentes originales, calcula presupuesto de exportación, descarga un **master PCM24 a 48 kHz**, valida tamaño y encabezados, crea un **ZIP de 8 stems PCM16 a 44.1 kHz** con duración y orden consistentes, guarda una sesión JSON con fuentes originales y la restaura completa. Se exige ausencia de excepciones del navegador y conservación de las preferencias exportadoras tras recargar. Forma parte de la batería del mezclador.
+
+Esta aceptación verifica funcionamiento automático de un caso controlado de 8 pistas durante 30 segundos, **no** demuestra estabilidad durante horas, rendimiento en todos los dispositivos, fidelidad sonora percibida, seguridad ante una pérdida de energía o comportamiento en un equipo real. Las pruebas manuales de hardware y material propio siguen reservadas para la etapa final.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
