@@ -23,8 +23,15 @@
  async function analyzeWav(blob,measure,settings={}){
   if(!blob||typeof blob.arrayBuffer!=="function")throw Error("Se requiere un WAV exportado");
   if(typeof measure!=="function")throw Error("No hay motor de análisis");
-  const buffer=await blob.arrayBuffer(),bytes=new Uint8Array(buffer),view=new DataView(buffer);
-  if(buffer.byteLength<44||buffer.byteLength>56*1024*1024)throw Error("La auditoría admite WAV de hasta 56 MiB; el archivo original aún puede descargarse");
+  const maxAuditBytes=56*1024*1024;
+  // Refuse oversized exports BEFORE reading the Blob into a contiguous buffer.
+  // An oversized WAV may still be downloaded: only the optional audit is skipped.
+  if(typeof blob.size==="number"&&(!Number.isSafeInteger(blob.size)||blob.size>maxAuditBytes))
+   throw Error("La auditoría admite WAV de hasta 56 MiB; el archivo original aún puede descargarse");
+  const buffer=await blob.arrayBuffer();
+  if(buffer.byteLength<44||buffer.byteLength>maxAuditBytes)
+   throw Error("La auditoría admite WAV de hasta 56 MiB; el archivo original aún puede descargarse");
+  const bytes=new Uint8Array(buffer),view=new DataView(buffer);
   function fourcc(pos){return String.fromCharCode(...bytes.subarray(pos,pos+4))}
   const bits=view.getUint16(34,true),bytesPerSample=bits/8,stride=bytesPerSample*2;
   if(fourcc(0)!=="RIFF"||fourcc(8)!=="WAVE"||fourcc(12)!=="fmt "||fourcc(36)!=="data"||
