@@ -24,7 +24,37 @@
   for(const key of names)out[key]=value(raw[key]===undefined?null:raw[key]);
   return out;
  };
- function create({track,sourceName,pitch,qa,level,timbre,createdAt}){
+ function noteSummary(raw){
+  if(raw===null||raw===undefined)return null;
+  if(!raw||typeof raw!=="object"||!["sustain","melody"].includes(raw.mode)||
+     raw.method!=="autocorrelation-f0"||!Array.isArray(raw.segments)||
+     raw.segments.length<1||raw.segments.length>12)
+   throw Error("Informe de notas inválido");
+  const finite=(x,a,b)=>typeof x==="number"&&Number.isFinite(x)&&x>=a&&x<=b;
+  const maybe=(x,a,b)=>x===null||finite(x,a,b);
+  const notes=raw.segments.map(p=>{
+   if(!p||typeof p!=="object"||
+     !finite(p.startSeconds,0,15)||!finite(p.endSeconds,p.startSeconds+.15,15.001)||
+     !/^[A-G]#?-?\\d$/.test(p.originalNote)||
+     !/^[A-G]#?-?\\d$/.test(p.targetNote)||
+     !finite(p.originalHz,60,800)||!finite(p.targetNoteHz,60,800)||
+     !finite(p.plannedHz,60,800)||!finite(p.plannedCorrectionCents,-250,250)||
+     !maybe(p.measuredOutputHz,60,800)||
+     !maybe(p.measuredDeviationCents,-2400,2400)||
+     !maybe(p.detectorConfidence,0,1)||
+     (p.measuredOutputHz===null)!==(p.measuredDeviationCents===null))
+    throw Error("Dato de nota inválido");
+   return {startSeconds:p.startSeconds,endSeconds:p.endSeconds,
+    originalNote:p.originalNote,originalHz:p.originalHz,
+    targetNote:p.targetNote,targetNoteHz:p.targetNoteHz,
+    plannedHz:p.plannedHz,plannedCorrectionCents:p.plannedCorrectionCents,
+    measuredOutputHz:p.measuredOutputHz,measuredDeviationCents:p.measuredDeviationCents,
+    detectorConfidence:p.detectorConfidence};
+  });
+  return {method:"autocorrelation-f0",mode:raw.mode,segments:notes,
+   caveat:"Frecuencias y cents del audio mezclado aproximados. No constituyen prueba de exactitud de afinación, naturalidad ni formantes."};
+ }
+ function create({track,sourceName,pitch,qa,level,timbre,noteAnalysis,createdAt}){
   if(!Number.isInteger(track)||track<2||track>8||
      typeof sourceName!=="string"||!sourceName.trim()||sourceName.length>200||
      /[\u0000-\u001f\u007f]/.test(sourceName)||
@@ -68,6 +98,7 @@
     metrics:sanitize(qa.metrics),warnings},
    levelMatch:extra(level,"level"),
    spectralGuard:extra(timbre,"timbre"),
+   noteAnalysis:noteSummary(noteAnalysis),
    qualification:"Informe PCM heurístico local. No incluye muestras de audio. No certifica formantes, naturalidad vocal, LUFS/EBU R128, mastering ni calidad perceptiva."
   };
   if(JSON.stringify(audit).length>12000)throw Error("Informe vocal demasiado grande");
