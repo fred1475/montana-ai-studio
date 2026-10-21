@@ -11,7 +11,11 @@ async function createMixerSnapshot(){
    if(tracks[i]){region(i,tracks[i]);window.prepareCrossfadePlan(i,window.getTrackSegments(i,tracks[i]))} // Never create a backup that the loader cannot restore.
    if(tracks[i]&&f){
     if(f.size>50e6||(total+=f.size)>80e6)throw Error("Máximo 80 MB por sesión.");
-    items.push({...state,name:f.name,type:f.type,data:to64(new Uint8Array(await f.arrayBuffer()))});
+    const raw=new Uint8Array(await f.arrayBuffer());
+    // CRC32 detects accidental damage in portable and IndexedDB backups.
+    // It is an integrity checksum, not authentication or encryption.
+    const sourceCrc32=window.MontanaMasterAudit.crc32(raw).toString(16).padStart(8,"0");
+    items.push({...state,name:f.name,type:f.type,data:to64(raw),sourceCrc32});
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
@@ -74,10 +78,17 @@ async function restoreMixerSnapshot(s){
    if(t.data!==null){
     const raw=from64(t.data);bytes+=raw.byteLength;
     if(raw.byteLength>50e6||bytes>80e6)throw Error("Audio demasiado grande.");
+    // Backward compatibility: older sessions have no sourceCrc32.
+    if(t.sourceCrc32!==undefined){
+     if(typeof t.sourceCrc32!=="string"||!/^[0-9a-f]{8}$/.test(t.sourceCrc32)||
+        window.MontanaMasterAudit.crc32(raw).toString(16).padStart(8,"0")!==t.sourceCrc32)
+      throw Error("Integridad del audio fallida en canal "+(i+1)+": el respaldo puede estar dañado.");
+    }
     source=new File([raw],String(t.name||"pista-"+(i+1)+".wav").slice(0,200),{type:String(t.type||"audio/wav").slice(0,100)});
     decoded=await audio().decodeAudioData(raw.buffer.slice(0));
     if(decoded.duration>300)throw Error("Pista demasiado larga.");
    }
+   if(t.data===null&&t.sourceCrc32!==undefined)throw Error("Integridad del respaldo inválida: huella sin audio.");
    if(decoded&&(trimStart>=decoded.duration||trimEnd>decoded.duration+.001||(trimEnd!==0&&trimEnd<=trimStart)))throw Error("Recorte de pista inválido.");
    loaded.push({decoded,source,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd,repeat,fadeIn,fadeOut,alignMs,lowEQ,highEQ,compEnabled,compThreshold,compRatio,reverb,delayWet,delayMs});
   }
