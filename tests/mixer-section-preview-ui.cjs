@@ -18,10 +18,18 @@ function wav(){
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
    window.__sectionStarts=[];
+   window.__sectionCurves=[];
    const native=AudioBufferSourceNode.prototype.start;
    AudioBufferSourceNode.prototype.start=function(when,offset,duration){
     window.__sectionStarts.push({when,offset,duration,loop:this.loop});
     return native.apply(this,arguments);
+   };
+   const curveNative=AudioParam.prototype.setValueCurveAtTime;
+   AudioParam.prototype.setValueCurveAtTime=function(values,when,duration){
+    if(values.length>=65)window.__sectionCurves.push({
+     first:values[0],last:values[values.length-1],duration
+    });
+    return curveNative.apply(this,arguments);
    };
   });
   await page.goto('http://127.0.0.1:8765/mixer-8.html');
@@ -29,6 +37,7 @@ function wav(){
   const original=wav();
   await page.locator('#file1').setInputFiles({name:'seccion-voz.wav',mimeType:'audio/wav',buffer:original});
   await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('seccion-voz'));
+  await page.locator('#fadeIn1').fill('0.5');
   async function marker(label,at){
    await page.locator('#markerName').fill(label);
    await page.locator('#markerSeconds').fill(String(at));
@@ -46,6 +55,9 @@ function wav(){
   assert(Math.abs(samples[0].offset-.25)<.01,'No lead-in from full song');
   assert(Math.abs(samples[0].duration-.5)<.001,'Only 500ms section is scheduled');
   assert.equal(samples[0].loop,false);
+  const envelopes=await page.evaluate(()=>window.__sectionCurves.slice());
+  assert(envelopes.some(c=>Math.abs(c.first-.5)<.01&&Math.abs(c.last-1)<.01&&
+   Math.abs(c.duration-.5)<.001),'Fade begins halfway through its ORIGINAL 500ms ramp');
   await page.locator('#stop').click();
   assert.equal(await page.locator('#sectionHalt').isDisabled(),true,'Global stop cancels preview');
   assert(!((await page.locator('#sectionStatus').textContent()).includes('No se inició')));

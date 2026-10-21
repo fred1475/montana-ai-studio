@@ -23,7 +23,7 @@
   const plans=[];
   for(let i=0;i<8;i++){
    const entries=[];
-   for(const clip of clipSets[i]){
+   for(const [clipIndex,clip] of clipSets[i].entries()){
     if(!clip||![clip.offset,clip.start,clip.duration,clip.singleDuration].every(finite)||
        clip.offset<0||clip.offset>300.25||clip.start<0||
        clip.duration<=0||clip.singleDuration<=0||
@@ -41,7 +41,11 @@
     entries.push({
      track:i,when:left-start,sourceOffset,duration:right-left,
      loop:clip.repeat>1,loopStart:clip.start,
-     loopEnd:clip.start+clip.singleDuration
+     loopEnd:clip.start+clip.singleDuration,
+     // Keep the full arrangement coordinates so partial auditions can
+     // follow fades/crossfades already in progress at the marker boundary.
+     clipIndex,regionStart:clip.offset,regionDuration:clip.duration,
+     elapsed:advanced
     });
    }
    plans.push(entries);

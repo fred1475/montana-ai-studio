@@ -8,10 +8,13 @@ tracks[2]=[{offset:4,start:0,duration:1,singleDuration:1,repeat:1}];
 const plan=S.plan(1.25,2.75,tracks);
 assert.equal(plan.window.duration,1.5);
 assert.equal(plan.regions,2);
-assert.deepEqual(plan.tracks[0],[{track:0,when:0,sourceOffset:.55,duration:1.5,loop:true,loopStart:.3,loopEnd:1.3}]);
+assert.deepEqual(plan.tracks[0],[{track:0,when:0,sourceOffset:.55,duration:1.5,
+ loop:true,loopStart:.3,loopEnd:1.3,clipIndex:0,regionStart:0,regionDuration:3,elapsed:1.25}]);
 assert(Math.abs(plan.tracks[1][0].when)<1e-8);
 assert(Math.abs(plan.tracks[1][0].sourceOffset-.05)<1e-8);
 assert.equal(plan.tracks[1][0].duration,1.5);
+assert.equal(plan.tracks[1][0].clipIndex,0);
+assert(Math.abs(plan.tracks[1][0].elapsed-.05)<1e-8);
 assert.deepEqual(plan.tracks[2],[]);
 assert.equal(S.plan(0,1,Array.from({length:8},()=>[])).regions,0);
 const touching=S.plan(1,2,tracks);

@@ -1,14 +1,15 @@
 "use strict";
 /* Explicit local preview of an arrangement section. Uses the standard
- * fader/input trim/EQ/compression/space pipeline but approximate boundary
- * ramps, no exact clip crossfades or effect preroll. Full render unchanged.
+ * fader/input trim/EQ/compression/space pipeline and clip fades/crossfades
+ * on their original arrangement clock. Boundary gates and effect preroll
+ * remain approximate. Full render unchanged.
  */
 (function(){
  const $=id=>document.getElementById(id),M=MontanaSongMarkers,S=MontanaSectionPlan;
  const host=$("songMarkersPanel");if(!host)return;
  const title=document.createElement("h4");title.textContent="🎧 Escuchar sección entre marcadores";
  const help=document.createElement("p");
- help.textContent="Preescucha rápida de hasta 30 s: incluye pistas, fader, EQ, compresión y efectos, pero no reproduce exactamente crossfades, fundidos de clip ni colas de efectos anteriores. No exporta ni modifica el WAV.";
+ help.textContent="Preescucha rápida de hasta 30 s: incluye pistas, fader, EQ, compresión, efectos, fundidos y crossfades de los clips. El inicio/fin tiene una protección anticlic de 5 ms y no reproduce las colas de efectos anteriores a la sección. No exporta ni modifica el WAV.";
  const from=document.createElement("select");from.id="sectionFrom";from.setAttribute("aria-label","Marcador inicial");
  const to=document.createElement("select");to.id="sectionTo";to.setAttribute("aria-label","Marcador final");
  const listen=document.createElement("button");listen.id="sectionListen";listen.type="button";listen.textContent="▶ Escuchar sección";
@@ -69,6 +70,8 @@
    const selected=S.range(a.seconds,b.seconds);
    if(!tracks.some(Boolean))throw Error("Importa una pista antes de escuchar");
    const regions=tracks.map((buffer,i)=>buffer?window.getTrackSegments(i,buffer):[]);
+   const fades=regions.map((_,i)=>window.validateFades(i));
+   const crossfades=regions.map((clips,i)=>window.prepareCrossfadePlan(i,clips));
    // Validate every source before touching the playback already running.
    const plan=S.plan(selected.start,selected.end,regions);
    const buffers=tracks.map((buffer,i)=>buffer?window.getMixBuffer(i):null);
@@ -97,17 +100,19 @@
      addSpace(ac,addCompressor(ac,addEq(ac,eqIn,i),i),i).connect(stereo).connect(master);
      const pre=MontanaInputTrim.attach(ac,vol,Number($("inputTrim"+i).value));
      for(const clip of plan.tracks[i]){
-      const src=ac.createBufferSource(),gate=ac.createGain();
+      const src=ac.createBufferSource(),contour=ac.createGain(),gate=ac.createGain();
       src.buffer=buffers[i];src.loop=clip.loop;
       if(src.loop){src.loopStart=clip.loopStart;src.loopEnd=clip.loopEnd;}
       const when=at+clip.when,fade=Math.min(.005,clip.duration/4);
+      MontanaSectionEnvelope.schedule(contour.gain,when,clip,fades[i],
+       crossfades[i].enabled?crossfades[i].ramps[clip.clipIndex]:null,crossfades[i].curve);
       gate.gain.setValueAtTime(0,when);
       gate.gain.linearRampToValueAtTime(1,when+fade);
       gate.gain.setValueAtTime(1,when+clip.duration-fade);
       gate.gain.linearRampToValueAtTime(0,when+clip.duration);
-      src.connect(gate).connect(pre);
+      src.connect(contour).connect(gate).connect(pre);
       sources.push(src);
-      src.onended=()=>{try{src.disconnect();gate.disconnect()}catch(_){ }};
+      src.onended=()=>{try{src.disconnect();contour.disconnect();gate.disconnect()}catch(_){ }};
       src.start(when,clip.sourceOffset,clip.duration);
      }
     }
