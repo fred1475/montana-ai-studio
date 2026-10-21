@@ -74,7 +74,7 @@ function stereoWav(hz){
   assert.equal(await page.locator('#pitchMatch1').isChecked(),true);
   assert.equal(await page.evaluate(()=>originalFiles[1]?.name),'voz-match-original.wav');
   const legacy=JSON.parse(JSON.stringify(project));
-  legacy.tracks.forEach(t=>{if(t.pitch)delete t.pitch.matchLevel;});
+  delete legacy.manifestSha256;legacy.tracks.forEach(t=>{if(t.pitch)delete t.pitch.matchLevel;});
   await page.locator('#sessionFile').setInputFiles({
    name:'legacy-level.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))
   });
