@@ -73,7 +73,10 @@
   // Standard mono fold-down = (L+R)/2. Delta is relative to stereo channel
   // RMS, not an absolute perceived-loudness prediction. Null for silence.
   const monoFoldDownDeltaDb=rms>1e-10&&monoRms>1e-10?20*Math.log10(monoRms/rms):null;
-  const monoFoldDownSilent=rms>1e-8&&monoRms<=1e-10;
+  // PCM16/24 quantization can leave a tiny residue for inverse polarity.
+  // Treat < -76.5 dB relative fold-down as *practically* silent, not
+  // mathematically exact cancellation.
+  const monoFoldDownSilent=rms>1e-8&&monoRms/rms<.00015;
   const sideImbalance=stronger>1e-5&&(weaker/stronger)<.1;
   const monoCancellation=rms>1e-8&&monoRms/rms<.5;
   const highDc=Math.max(Math.abs(meanLeft),Math.abs(meanRight))>=.01;
