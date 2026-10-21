@@ -218,7 +218,7 @@ for(let i=1;i<8;i++){
   '<button id="pitchApply'+i+'" type="button">🎼 Procesar voz</button> <button id="pitchToggle'+i+'" type="button" disabled>Oír corregido</button> <button id="pitchAudit'+i+'" type="button" disabled>📋 Guardar informe QA</button> <button id="pitchAB'+i+'" type="button" disabled>🎧 Descargar comparativa A/B</button>'+
   '<p id="pitchState'+i+'">Original — sin corrección aplicada</p>'+
   '<p id="pitchQa'+i+'" role="status">Sin diagnóstico: procesa una toma vocal para comparar original y afinado.</p>'+
-  '<details><summary>🎼 Diagnóstico de notas y cents</summary><div id="pitchNoteAudit'+i+'">Sin notas medidas; procesa una toma vocal.</div></details>'+
+  '<section aria-label="Diagnóstico de notas y cents"><h4>🎼 Diagnóstico de notas y cents</h4><div id="pitchNoteAudit'+i+'">Sin notas medidas; procesa una toma vocal.</div></section>'+
   '<small>Las métricas QA son heurísticas PCM, no garantizan timbre, formantes ni calidad perceptual. La afinación sigue siendo offline, limitada a fragmentos breves; fuente sin alterar.</small>';
  document.querySelectorAll("article.track")[i].append(el);
  for(const key of ["pitchMode","pitchKey","pitchScale","pitchStrength","pitchWet","pitchMatch","pitchTimbre"]){
