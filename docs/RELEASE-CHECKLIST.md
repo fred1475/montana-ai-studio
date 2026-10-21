@@ -95,6 +95,12 @@ El motor `correctChannel` ahora valida antes de procesar muestras la frecuencia 
 
 Esta aceptación verifica funcionamiento automático de un caso controlado de 8 pistas durante 30 segundos, **no** demuestra estabilidad durante horas, rendimiento en todos los dispositivos, fidelidad sonora percibida, seguridad ante una pérdida de energía o comportamiento en un equipo real. Las pruebas manuales de hardware y material propio siguen reservadas para la etapa final.
 
+### QA de afinación vocal: medición comparativa de muestras originales y corregidas
+
+Cada uno de los siete canales vocales del mezclador muestra ahora un informe **local y no destructivo** tras procesar una afinación, con RMS de la fuente y de la toma afinada, variación de RMS, pico de muestra, incremento de pico y posibles discontinuidades súbitas nuevas. `pitch-quality.js` inspecciona Float32 PCM de origen y salida y valida muestras finitas, duración, frecuencia y número de canales. Emite avisos conservadores cuando el pico llega a escala completa, queda escaso margen, el RMS cambia más de 6 dB, aparecen saltos de muestra mayores de 0.25 en una muestra ausentes de la fuente o se pierde casi toda la energía. Estos umbrales son **heurísticos internos**, no estándares de masterización ni un detector seguro de clics.
+
+La UI `mixer-pitch.js` vuelve a calcular el QA después de restaurar una sesión con afinación activa; **no guarda métricas temporales en el JSON** y las borra cuando la toma original cambia o se invalida la corrección. Las pruebas `tests/pitch-quality.cjs` y `tests/mixer-pitch-quality-ui.cjs` incluyen silencio, clipping, variaciones de nivel, saltos bruscos, fuente inmutable, restauración de proyecto y limpieza de informes obsoletos. No se certifica preservación de formantes, timbre, ausencia de artefactos perceptuales, true peak ni EBU R128; se necesita escucha humana con material y equipo reales en la etapa final.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
