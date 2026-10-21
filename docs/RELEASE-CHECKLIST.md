@@ -15,6 +15,12 @@ Fecha de revisión: 2026-10-20. Repositorio `fred1475/montana-ai-studio`, rama p
 - El mezclador permite **seleccionar una entrada de audio** detectada para grabar, sin persistir los identificadores.
 - Tests automatizados de Chromium con micrófono **simulado**, PCM medido, registros JSON, regresión, compatibilidad anterior y comparación de loudness con FFmpeg.
 
+## Nuevo hito en QA de entrega: maestro PCM24 y dither TPDF de 16 bits
+
+El archivo `mixer-wav-export.js` permite exportar **solo el master** como WAV PCM16 (predeterminado, compatible con sesiones anteriores) o PCM24 a 44.1 kHz. El **dither TPDF opcional** se aplica únicamente al reducir a PCM16; no debe atribuirse mejora audible automática ni reducción de ruido por usarlo. Los stems individuales y ZIP permanecen **PCM16**. La opción se conserva en JSON y se valida antes de restaurar una sesión.
+
+`mixer-master-audit.js` reconoce WAV PCM16 y PCM24 y mide los **bytes exactos** exportados; su límite vigente de **56 MiB** puede impedir la auditoría de un master PCM24 extenso, sin impedir descargar el WAV. La regresión `tests/mixer-wav-export.cjs` compara cabeceras, muestras con signo, CRC32 y recuperación de preferencias en Chromium. La prueba automática no equivale a mezcla/master profesional ni certifica ITU/EBU.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
