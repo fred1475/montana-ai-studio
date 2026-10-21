@@ -16,6 +16,7 @@ on:
       - 'mixer-crossfade.js'
       - 'mixer-clipboard.js'
       - 'mixer-grid.js'
+      - 'docs/RELEASE-CHECKLIST.md'
       - 'hardware-check.html'
       - 'hardware-check.js'
       - 'hardware-diagnostics.js'
@@ -157,6 +158,7 @@ jobs:
         run: |
           mkdir -p mixer-preview
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
+          cp docs/RELEASE-CHECKLIST.md mixer-preview/CHECKLIST-ANTES-DE-PUBLICAR.md
           cp hardware-check.html hardware-check.js hardware-diagnostics.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
