@@ -27,6 +27,10 @@ El mezclador permite seleccionar **44.1 kHz** (predeterminado y compatible con s
 
 Prueba: `tests/mixer-export-samplerate.cjs`, con una fuente de un segundo a 44.1 kHz; compara master PCM16 predeterminado y master PCM24 a 48 kHz, duración, frecuencia de un tono de 1 kHz, encabezados RIFF, CRC del informe exacto, restauración, compatibilidad de sesiones antiguas y rechazo de valores corruptos. **No hay evidencia todavía de calibración de hardware ni certificación de remuestreo.**
 
+### Afinación experimental: protección del análisis estéreo
+
+`pitch-engine.js` y `pitch-melody.js` usan una referencia de detección a partir de los canales originales: en contrafase pronunciada o con un lado casi silencioso, seleccionan el canal vocal con mayor energía para **evitar cancelación durante la detección**. Las muestras de origen no se sustituyen ni sobrescriben. `tests/pitch-stereo-reference.cjs` comprueba casos sintéticos de frase, tono sostenido, NaN, duración y originales intactos; `tests/mixer-pitch.cjs` también comprueba desde la UI hasta el WAV. No supone preservación garantizada de imagen estéreo, formantes ni corrección profesional de voces reales.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
