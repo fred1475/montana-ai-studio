@@ -148,6 +148,14 @@ Prueba `tests/mixer-clipboard.cjs`: dos tonos distintos como fuente, copia separ
 
 **Limitaciones:** solo copia/pega dentro de la misma pista y únicamente fragmentos de su fuente original, no entre canales ni desde fuentes externas. El límite es cuatro copias adicionales a los cuatro fragmentos originales por pista, no una edición ilimitada. Los crossfades automáticos solo se habilitan cuando la ordenación y superposición de los fragmentos forman pares válidos. No garantiza ausencia de clics en cortes arbitrarios, elastic audio, MIDI ni edición sample-accurate de una forma de onda.
 
+## Cuadrícula musical BPM para mover y pegar clips (beta)
+
+`mixer-grid.js` añade **snap musical voluntario** basado en el tempo BPM (40–240), con subdivisiones de negra (1/4), corchea (1/8) y semicorchea (1/16). La duración de cada paso es `240 / (BPM × denominador)` segundos. Con snap activo, los movimientos mediante ratón saltan a la cuadrícula más cercana y las flechas avanzan a la posición musical siguiente; Shift + flecha avanza o retrocede un compás. El botón de pegar una copia también cuantiza su hora de inserción. Con snap desactivado el comportamiento anterior queda intacto.
+
+La selección de snap y subdivisión se guarda/restaura con validación fuerte en el JSON y la recuperación local; los proyectos anteriores mantienen snap desactivado. **No transforma los clips existentes al cambiar el BPM ni al abrir una sesión** y tampoco cambia el tono, la duración del audio ni la exportación PCM por sí solo. Se limita a cuantizar eventos de edición; no realiza detección automática de beats, warp, time-stretch, grid de compases multinivel ni procesamiento MIDI.
+
+`tests/mixer-grid.cjs` verifica matemáticamente posiciones de semicorchea y corchea a 120 BPM, cambio de BPM a 90, snap opcional al pegar, flechas y deshacer/rehacer, guardado/restauración, rechazo de subdivisiones inválidas y proyectos legados.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
