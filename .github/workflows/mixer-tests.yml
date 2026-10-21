@@ -75,6 +75,7 @@ on:
       - 'tests/pitch-stereo-reference.cjs'
       - 'tests/pitch-stereo-coherence.cjs'
       - 'tests/pitch-unvoiced-guard.cjs'
+      - 'tests/pitch-unvoiced-browser.cjs'
       - 'tests/pitch-ui.cjs'
       - 'mixer-timeline.js'
       - 'mixer-history.js'
@@ -176,6 +177,7 @@ jobs:
           node --check tests/pitch-stereo-reference.cjs
           node --check tests/pitch-stereo-coherence.cjs
           node --check tests/pitch-unvoiced-guard.cjs
+          node --check tests/pitch-unvoiced-browser.cjs
           node tests/pitch-melody.cjs
           node tests/pitch-stereo-reference.cjs
           node tests/pitch-stereo-coherence.cjs
@@ -229,6 +231,7 @@ jobs:
           node tests/mixer-vocal-stereo-browser.cjs
           node tests/mixer-vocal-preflight-ui.cjs
           node tests/pitch-ui.cjs
+          node tests/pitch-unvoiced-browser.cjs
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
