@@ -54,7 +54,31 @@
   return {method:"autocorrelation-f0",mode:raw.mode,segments:notes,
    caveat:"Frecuencias y cents del audio mezclado aproximados. No constituyen prueba de exactitud de afinación, naturalidad ni formantes."};
  }
- function create({track,sourceName,pitch,qa,level,timbre,noteAnalysis,createdAt}){
+ function artifactSummary(raw){
+  if(raw===undefined||raw===null)return null;
+  if(!raw||typeof raw!=="object"||raw.version!==1||raw.windowMs!==25||
+     !raw.counts||typeof raw.counts!=="object"||
+     !Array.isArray(raw.events)||raw.events.length>24||
+     typeof raw.truncated!=="boolean")
+   throw Error("Diagnóstico temporal inválido");
+  const counts={};
+  for(const code of ["dropout","step","peak"]){
+   const n=raw.counts[code];
+   if(!Number.isInteger(n)||n<0||n>100000)
+    throw Error("Conteo temporal inválido");
+   counts[code]=n;
+  }
+  const events=raw.events.map(e=>{
+   if(!e||!["dropout","step","peak"].includes(e.code)||
+      !Number.isFinite(e.timeSeconds)||e.timeSeconds<0||e.timeSeconds>15||
+      !Number.isInteger(e.channel)||e.channel<1||e.channel>2)
+    throw Error("Marca temporal inválida");
+   return {code:e.code,timeSeconds:e.timeSeconds,channel:e.channel};
+  });
+  return {version:1,windowMs:25,events,counts,truncated:raw.truncated,
+   caveat:"Marcas heurísticas PCM: posibles microcortes, clics y picos a escuchar. No identifica de forma fiable efectos robóticos ni garantiza naturalidad."};
+ }
+ function create({track,sourceName,pitch,qa,level,timbre,noteAnalysis,artifactTimeline,createdAt}){
   if(!Number.isInteger(track)||track<2||track>8||
      typeof sourceName!=="string"||!sourceName.trim()||sourceName.length>200||
      /[\u0000-\u001f\u007f]/.test(sourceName)||
@@ -99,6 +123,7 @@
    levelMatch:extra(level,"level"),
    spectralGuard:extra(timbre,"timbre"),
    noteAnalysis:noteSummary(noteAnalysis),
+   artifactTimeline:artifactSummary(artifactTimeline),
    qualification:"Informe PCM heurístico local. No incluye muestras de audio. No certifica formantes, naturalidad vocal, LUFS/EBU R128, mastering ni calidad perceptiva."
   };
   if(JSON.stringify(audit).length>12000)throw Error("Informe vocal demasiado grande");
