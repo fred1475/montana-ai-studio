@@ -5,7 +5,7 @@
  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
  const round=v=>window.gridSettings?.().on?Math.round(v*10000)/10000:Math.round(v*100)/100;
  function redraw(){
-  const end=Math.max(10,...tracks.map((b,i)=>{
+  const end=Math.max(10,...(window.montanaMarkerState?.()||[]).map(m=>m.seconds),...tracks.map((b,i)=>{
    if(!b)return 0;try{return Math.max(0,...window.getTrackSegments(i,b).map(t=>t.offset+t.duration+Math.max(2,t.duration*.1)))}catch(e){return 0}
   }));
   root.replaceChildren();
