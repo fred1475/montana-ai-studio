@@ -3,7 +3,7 @@
  const root=document.getElementById("timeline");if(!root)return;
  const colors=["#dfb85e","#64b5e8","#7ed1c0","#c3a0f4","#f2a2ae","#88c46a","#e0a66c","#9ea8ed"];
  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
- const round=v=>Math.round(v*100)/100;
+ const round=v=>window.gridSettings?.().on?Math.round(v*10000)/10000:Math.round(v*100)/100;
  function redraw(){
   const end=Math.max(10,...tracks.map((b,i)=>{
    if(!b)return 0;try{return Math.max(0,...window.getTrackSegments(i,b).map(t=>t.offset+t.duration+Math.max(2,t.duration*.1)))}catch(e){return 0}
@@ -30,8 +30,8 @@
         block.title=s;block.setAttribute("aria-label",s);
         block.setAttribute("aria-valuenow",String(current));block.setAttribute("aria-valuetext",s);
        };
-       const position=value=>{
-        current=round(clamp(value,0,300));
+       const position=(value,edit=false)=>{
+        current=round(clamp(edit?window.gridSnapTime(value):value,0,300));
         block.style.left=(100*current/end)+"%";description();
        };
        const commit=()=>{
@@ -51,7 +51,7 @@
         const onMove=e=>{
          if(!drag||e.pointerId!==drag.id)return;
          const width=bg.getBoundingClientRect().width;
-         if(width>0)position(drag.start+(e.clientX-drag.x)*end/width);
+         if(width>0)position(drag.start+(e.clientX-drag.x)*end/width,true);
         };
         const cleanup=()=>{
          window.removeEventListener("pointermove",onMove);
@@ -69,7 +69,7 @@
         if(!["ArrowLeft","ArrowRight","Home"].includes(event.key))return;
         event.preventDefault();
         const step=event.shiftKey?1:0.1;
-        position(event.key==="Home"?0:current+(event.key==="ArrowRight"?step:-step));
+        position(event.key==="Home"?0:(window.gridSettings().on?window.gridNudge(current,event.key==="ArrowRight"?1:-1,event.shiftKey):current+(event.key==="ArrowRight"?step:-step)));
         const shift=j===0&&i>0?Number($("alignMs"+i).value)/1000:0;
         $(fieldId).value=round(Math.max(0,current-shift));keysMoved=true;
        });
@@ -84,8 +84,8 @@
      const t=region(i,b),clip=document.createElement("div"),limit=Math.min(300,Math.max(0,end-t.duration));
      let current=t.offset,drag=null,keysMoved=false;
      const label=()=>{const s="Pista "+(i+1)+", inicio "+current.toFixed(2)+" segundos, duración "+t.duration.toFixed(2)+" segundos";clip.title=s;clip.setAttribute("aria-label",s);clip.setAttribute("aria-valuenow",current.toFixed(2));clip.setAttribute("aria-valuetext",s)};
-     const setPosition=value=>{
-       current=round(clamp(value,0,limit));
+     const setPosition=(value,edit=false)=>{
+       current=round(clamp(edit?window.gridSnapTime(value):value,0,limit));
        clip.style.left=(100*current/end)+"%";
        label();
      };
@@ -115,7 +115,7 @@
        const onMove=event=>{
          if(!drag||event.pointerId!==drag.pointerId)return;
          const width=bg.getBoundingClientRect().width;
-         if(width>0)setPosition(drag.offset+(event.clientX-drag.x)*end/width);
+         if(width>0)setPosition(drag.offset+(event.clientX-drag.x)*end/width,true);
        };
        const cleanup=()=>{
          window.removeEventListener("pointermove",onMove);
@@ -139,7 +139,7 @@
        if(!["ArrowLeft","ArrowRight","Home"].includes(e.key))return;
        e.preventDefault();
        const step=e.shiftKey?1:0.1;
-       setPosition(e.key==="Home"?0:current+(e.key==="ArrowRight"?step:-step));
+       setPosition(e.key==="Home"?0:(window.gridSettings().on?window.gridNudge(current,e.key==="ArrowRight"?1:-1,e.shiftKey):current+(e.key==="ArrowRight"?step:-step)));
        $("offset"+i).value=round(Math.max(0,current-(i===0?0:Number($("alignMs"+i).value)/1000)));keysMoved=true;
      });
      clip.addEventListener("keyup",e=>{
