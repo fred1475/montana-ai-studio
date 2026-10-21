@@ -159,6 +159,8 @@ La proporción queda en la sesión JSON y se reconstituye al restaurarla. Los pr
 
 Pruebas propuestas y conectadas a CI: `tests/beat-engine.cjs` para invariantes, MIDI y WAV, y `tests/beat-ui.cjs` en Chromium para interacción, JSON, MIDI, render offline, WAV y reproducción. La aprobación del código y del navegador debe verificarse en el commit correspondiente. La cuadrícula conserva el foco al alternar un golpe con el teclado; las pruebas verifican también el WAV a 48 kHz. El render es local y no solicita permisos de micrófono ni claves.
 
+**Stems sincronizados:** la función `isolate` del motor crea una copia independiente del patrón de una sola pista (bombo, caja, palmas, hi-hat o bajo), sin mutar el proyecto. El panel exporta cada stem WAV en PCM16 estéreo a 44.1/48 kHz, conservando **igual duración y origen en 0:00** que el ritmo completo. La validación del motor rechaza instrumentos desconocidos. El navegador compara duración, sample rate y contenido del stem frente al beat completo. Para importar en el mezclador, exportar cada pista por separado; por ahora no hay ZIP ni automatización de importación.
+
 **Límites:** esto es un secuenciador simple por pasos, no generación de música por IA. No es un piano roll MIDI completo, instrumento VST, grabador de beats externos, sample editor, masterizador profesional ni herramienta con swing humanizado avanzado. Los presets son puntos de partida rítmicos. El sintetizador no garantiza mezcla sin clipping ni calidad acústica de estudio. No confundir este hito con el 100 % de las capacidades solicitadas.
 
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
