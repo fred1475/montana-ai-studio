@@ -34,18 +34,27 @@
   const n=original[0]?.length;
   if(!Number.isSafeInteger(n)||n<1||n>rate*15)throw Error("Duración de QA vocal inválida");
   let sourcePeak=0,outputPeak=0,srcEnergy=0,outEnergy=0;
+  // Gain-independent upper-frequency energy comparison, not a formant measure.
+  const highPassAlpha=Math.exp(-2*Math.PI*2500/rate);
+  const lowPassGain=1-highPassAlpha;
+  let sourceHighEnergy=0,outputHighEnergy=0;
   let maxSourceStep=0,maxOutputStep=0,newLargeSteps=0;
   for(let ch=0;ch<original.length;ch++){
    const before=original[ch],after=corrected[ch];
    if(!(before instanceof Float32Array)||!(after instanceof Float32Array)||
       before.length!==n||after.length!==n)throw Error("Muestras QA vocal incompatibles");
    let previousBefore=0,previousAfter=0;
+   let sourceLow=0,outputLow=0;
    for(let i=0;i<n;i++){
     const src=before[i],dst=after[i];
     if(!Number.isFinite(src)||!Number.isFinite(dst))throw Error("Muestra QA vocal no finita");
     sourcePeak=Math.max(sourcePeak,Math.abs(src));
     outputPeak=Math.max(outputPeak,Math.abs(dst));
     srcEnergy+=src*src;outEnergy+=dst*dst;
+    sourceLow+=lowPassGain*(src-sourceLow);
+    outputLow+=lowPassGain*(dst-outputLow);
+    sourceHighEnergy+=(src-sourceLow)**2;
+    outputHighEnergy+=(dst-outputLow)**2;
     if(i>0){
      const a=Math.abs(src-previousBefore),b=Math.abs(dst-previousAfter);
      maxSourceStep=Math.max(maxSourceStep,a);
@@ -61,6 +70,12 @@
   const sourceRms=Math.sqrt(srcEnergy/count),outputRms=Math.sqrt(outEnergy/count);
   const rmsDeltaDb=sourceRms>1e-9&&outputRms>1e-9?db(outputRms/sourceRms):null;
   const peakIncreaseDb=sourcePeak>1e-9&&outputPeak>1e-9?db(outputPeak/sourcePeak):null;
+  const highBandShareDb=(band,total)=>
+   total>1e-8&&band>1e-12?10*Math.log10(band/total):null;
+  const sourceHighBandDb=highBandShareDb(sourceHighEnergy,srcEnergy);
+  const outputHighBandDb=highBandShareDb(outputHighEnergy,outEnergy);
+  const highBandDeltaDb=sourceHighBandDb!==null&&outputHighBandDb!==null?
+   outputHighBandDb-sourceHighBandDb:null;
   const stereo=original.length===2?{
    source:stereoSnapshot(original),output:stereoSnapshot(corrected)
   }:null;
@@ -76,6 +91,9 @@
     warnings.push({id:"stereo_balance_change",
      message:"El balance de nivel entre izquierdo y derecho cambió más de 3 dB; compara con la fuente."});
   }
+  if(highBandDeltaDb!==null&&Math.abs(highBandDeltaDb)>6)
+   warnings.push({id:"spectral_balance_shift",
+    message:"El balance relativo de frecuencias altas cambió más de 6 dB; escucha posibles cambios de brillo o aspereza en la voz."});
   if(outputPeak>=1)warnings.push({id:"sample_clip",message:"La voz afinada alcanza o supera 0 dBFS de pico de muestra; revisa ganancia y limitación."});
   else if(outputPeak>=.98 && outputPeak>sourcePeak+.01)warnings.push({id:"low_headroom",message:"La afinación deja muy poco margen de pico; revisa clipping al mezclar."});
   if(rmsDeltaDb!==null&&Math.abs(rmsDeltaDb)>6)
@@ -88,9 +106,10 @@
    version:1,channels:original.length,frames:n,sampleRate:rate,
    metrics:{sourcePeakDbfs:db(sourcePeak),outputPeakDbfs:db(outputPeak),
     sourceRmsDbfs:db(sourceRms),outputRmsDbfs:db(outputRms),
-    rmsDeltaDb,peakIncreaseDb,maxSourceStep,maxOutputStep,newLargeSteps},
+    rmsDeltaDb,peakIncreaseDb,maxSourceStep,maxOutputStep,newLargeSteps,
+    sourceHighBandDb,outputHighBandDb,highBandDeltaDb},
    stereo,warnings,
-   qualification:"Indicadores PCM heurísticos, no certificación de formantes, timbre, percepción, EBU R128 ni ausencia de artefactos."
+   qualification:"Indicadores PCM heurísticos (banda alta aproximada con filtro de un polo a 2.5 kHz); no certificación de formantes, timbre, percepción, EBU R128 ni ausencia de artefactos."
   };
  }
  return {analyze};
