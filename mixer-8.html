@@ -143,7 +143,7 @@ window.montanaLoadTrackFile=loadMixerTrackFile;
 for(let i=0;i<N;i++){
  $("inputTrim"+i).addEventListener("input",()=>{
   const db=Number($("inputTrim"+i).value);
-  $("inputTrimVal"+i).textContent=db.toFixed(1).replace(/\\.0$/,"")+" dB";
+  $("inputTrimVal"+i).textContent=(db%1===0?db.toFixed(0):db.toFixed(1))+" dB";
  });
  $("trackName"+i).addEventListener("change",()=>{
   const input=$("trackName"+i);
