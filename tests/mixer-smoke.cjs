@@ -188,6 +188,33 @@ const path=require('node:path');
   const restored=JSON.parse(fs.readFileSync(againPath,'utf8'));
   assert.equal(restored.tracks[0].data,session.tracks[0].data,'Source bytes survive another save');
   assert.equal(restored.tracks[1].data,session.tracks[1].data,'Vocal bytes survive another save');
+  // Portable-session integrity: check BOTH embedded audio and pre-restoration atomicity.
+  const audit=require('../mixer-master-audit.js');
+  for(const index of [0,1]){
+   const bytes=Buffer.from(session.tracks[index].data,'base64');
+   assert.equal(session.tracks[index].sourceCrc32,
+    audit.crc32(bytes).toString(16).padStart(8,'0'),
+    'Saved audio checksum must match the exact original bytes');
+   assert.equal(restored.tracks[index].sourceCrc32,session.tracks[index].sourceCrc32);
+  }
+  const corrupted=JSON.parse(JSON.stringify(session));
+  const damaged=Buffer.from(corrupted.tracks[0].data,'base64');
+  damaged[96]^=1; // Valid audio still decodes; the checksum must catch a silent byte change.
+  corrupted.tracks[0].data=damaged.toString('base64');
+  const damagedPath=path.join(process.cwd(),'test-mixer-corrupt-audio.json');
+  fs.writeFileSync(damagedPath,JSON.stringify(corrupted));
+  await page.locator('#sessionFile').setInputFiles(damagedPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Integridad del audio'));
+  assert((await page.locator('#label0').innerText()).includes('instrumental.wav'),
+   'Bad checksum must not overwrite the active project');
+  const legacy=JSON.parse(JSON.stringify(session));
+  for(const track of legacy.tracks)delete track.sourceCrc32;
+  const legacyPath=path.join(process.cwd(),'test-mixer-legacy-no-checksum.json');
+  fs.writeFileSync(legacyPath,JSON.stringify(legacy));
+  await page.locator('#sessionFile').setInputFiles(legacyPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  assert((await page.locator('#label1').innerText()).includes('voz.wav'),
+   'Existing sessions without CRC metadata must still load');
   // Regression: a rejected audio import must NEVER corrupt the next session backup.
   await page.locator('#file0').setInputFiles({name:'broken.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('not audio')});
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se pudo importar'));
