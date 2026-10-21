@@ -164,6 +164,55 @@
     }
     return output;
   }
+  // Shared voiced/unvoiced guard: preserve breaths, consonants and pauses
+  // rather than running PSOLA over aperiodic segments. The detector operates
+  // ONLY on the shared original mono reference, then uses one crossfade gain
+  // for every channel, preserving stereo polarity/level relationships.
+  // An autocorrelation at the detected pitch period is a conservative proxy
+  // for periodic voice; not an assurance of human-voice or formant quality.
+  function preserveUnvoiced(channels,corrected,reference,rate,frequency){
+    if(!Array.isArray(channels)||!Array.isArray(corrected)||channels.length!==corrected.length||
+       !channels.length||channels.length>2||!(reference instanceof Float32Array)||
+       !Number.isFinite(rate)||rate<8000||rate>192000||
+       !Number.isFinite(frequency)||frequency<=0)
+      throw Error('Protección de consonantes inválida');
+    const n=reference.length;
+    if(!n||channels.some((ch,i)=>!(ch instanceof Float32Array)||
+       !(corrected[i] instanceof Float32Array)||ch.length!==n||corrected[i].length!==n))
+      throw Error('Canales para protección vocal incompatibles');
+    const lag=Math.round(rate/frequency);
+    if(lag<2||lag*5>=n)throw Error('Período para protección vocal inválido');
+    const width=Math.max(Math.round(rate*.035),lag*3);
+    let cross=0,p0=0,p1=0,mix=0;
+    const response=1-Math.exp(-1/(rate*.009));
+    const result=corrected.map(c=>new Float32Array(c.length));
+    for(let i=0;i<n;i++){
+      if(!Number.isFinite(reference[i]))throw Error('Muestra vocal inválida');
+      if(i>=lag){
+        const a=reference[i],b=reference[i-lag];
+        cross+=a*b;p0+=a*a;p1+=b*b;
+        const expired=i-width;
+        if(expired>=lag){
+          const x=reference[expired],y=reference[expired-lag];
+          cross-=x*y;p0-=x*x;p1-=y*y;
+        }
+      }
+      const pairs=Math.min(width,Math.max(0,i-lag+1));
+      const energy=pairs?Math.sqrt(Math.max(0,p0)/pairs):0;
+      const denominator=Math.sqrt(Math.max(0,p0)*Math.max(0,p1));
+      const correlation=denominator>1e-12?cross/denominator:0;
+      const periodicity=Math.max(0,Math.min(1,(correlation-.50)/.30));
+      const volume=Math.max(0,Math.min(1,(energy-.003)/.012));
+      const target=periodicity*volume;
+      mix+=(target-mix)*response;
+      for(let ch=0;ch<channels.length;ch++){
+        const original=channels[ch][i],shifted=corrected[ch][i];
+        if(!Number.isFinite(original)||!Number.isFinite(shifted))throw Error('Muestra vocal inválida');
+        result[ch][i]=original*(1-mix)+shifted*mix;
+      }
+    }
+    return result;
+  }
   function process(channels,sampleRate,options={}){
     if(!Array.isArray(channels)||!channels.length||channels.length>2||channels.some(ch=>!(ch instanceof Float32Array)))throw Error('Solo audio mono o estéreo válido');
     if(!Number.isFinite(sampleRate)||sampleRate<8000||sampleRate>192000)throw Error('Frecuencia de muestreo inválida');
@@ -179,9 +228,11 @@
     // polarity, channel scaling, and stereo timing under a linear transform.
     const commonPlan=channels.length===2&&Math.abs(correctionCents)>=.3?
       pitchMarkPlan(reference.samples,sampleRate,measured.frequency):null;
-    const output=channels.map(ch=>Math.abs(correctionCents)<.3?Float32Array.from(ch):
+    const shifted=channels.map(ch=>Math.abs(correctionCents)<.3?Float32Array.from(ch):
       correctChannel(ch,sampleRate,measured.frequency,adjustedFrequency,commonPlan));
-    return {channels:output,analysis:{...measured,referenceMode:reference.mode},target,targetFrequency:adjustedFrequency,correctionCents,duration:n/sampleRate};
+    const output=Math.abs(correctionCents)<.3?shifted:
+      preserveUnvoiced(channels,shifted,reference.samples,sampleRate,measured.frequency);
+    return {channels:output,analysis:{...measured,referenceMode:reference.mode},target,targetFrequency:adjustedFrequency,correctionCents,duration:n/sampleRate,unvoicedGuardApplied:Math.abs(correctionCents)>=.3};
   }
-  return {detectPitch,analyze,nearestNote,process,correctChannel,pitchMarkPlan,vocalReference,noteName,notes,scales};
+  return {detectPitch,analyze,nearestNote,process,correctChannel,pitchMarkPlan,preserveUnvoiced,vocalReference,noteName,notes,scales};
 });
