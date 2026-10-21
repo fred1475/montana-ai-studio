@@ -3,7 +3,7 @@
 // A history entry records the BEFORE snapshot of an edit, not the audio data.
 (function(){
  const ids=Array.from({length:8},(_,i)=>(i===0?["offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","crossfadeOn","crossfadeCurve"]:["offset","trimStart","trimEnd","alignMs","repeat","fadeIn","fadeOut","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","crossfadeOn","crossfadeCurve"]).map(k=>k+i)).flat();
- const get=()=>ids.map(id=>document.getElementById(id).value);
+ const get=()=>ids.map(id=>{const el=$(id);return el.type==="checkbox"?(el.checked?"1":"0"):el.value});
  const same=(a,b)=>a.every((v,i)=>v===b[i]);
  let previous=get(),undo=[],redo=[],applying=false;
  function refresh(){
@@ -22,8 +22,9 @@
   try{
    ids.forEach((id,i)=>{
     const el=$(id);
-    if(el.value!==values[i]){
-     el.value=values[i];
+    const before=el.type==="checkbox"?(el.checked?"1":"0"):el.value;
+    if(before!==values[i]){
+     if(el.type==="checkbox")el.checked=values[i]==="1";else el.value=values[i];
      el.dispatchEvent(new Event("change",{bubbles:true}));
     }
    });
