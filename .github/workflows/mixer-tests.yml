@@ -68,6 +68,9 @@ on:
       - 'tests/mixer-vocal-clean.cjs'
       - 'tests/mixer-limiter.cjs'
       - 'mixer-pitch.js'
+      - 'pitch-quality.js'
+      - 'tests/pitch-quality.cjs'
+      - 'tests/mixer-pitch-quality-ui.cjs'
       - 'pitch-lab.html'
       - 'pitch-engine.js'
       - 'pitch-melody.js'
@@ -171,6 +174,10 @@ jobs:
           node --check tests/mixer-limiter.cjs
           node tests/mixer-limiter.cjs
           node --check mixer-pitch.js
+          node --check pitch-quality.js
+          node --check tests/pitch-quality.cjs
+          node --check tests/mixer-pitch-quality-ui.cjs
+          node tests/pitch-quality.cjs
           node --check tests/mixer-pitch.cjs
           node --check tests/mixer-sync.cjs
           node --check tests/mixer-record.cjs
@@ -209,6 +216,7 @@ jobs:
           sleep 2
           node tests/mixer-smoke.cjs
           node tests/mixer-pitch.cjs
+          node tests/mixer-pitch-quality-ui.cjs
           node tests/mixer-sync.cjs
           node tests/mixer-stems.cjs
           node tests/mixer-stems24.cjs
@@ -243,7 +251,7 @@ jobs:
           mkdir -p mixer-preview
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
           cp docs/RELEASE-CHECKLIST.md mixer-preview/CHECKLIST-ANTES-DE-PUBLICAR.md
-          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-quality.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
