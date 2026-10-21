@@ -15,11 +15,13 @@ async function createMixerSnapshot(){
     // CRC32 detects accidental damage in portable and IndexedDB backups.
     // It is an integrity checksum, not authentication or encryption.
     const sourceCrc32=window.MontanaMasterAudit.crc32(raw).toString(16).padStart(8,"0");
-    items.push({...state,name:f.name,type:f.type,data:to64(raw),sourceCrc32});
+    items.push({...state,name:f.name,type:f.type,data:to64(raw),sourceCrc32,sourceSha256:MontanaSessionIntegrity.hash(raw)});
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
-  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),recordFormat:$("recordFormat").value,bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,wavSampleRate:Number($("wavSampleRate").value),wavBits:Number($("wavBits").value),stemBits:Number($("stemBits").value),stemSampleRate:Number($("stemSampleRate").value),ditherOn:$("ditherOn").checked,tracks:items};
+  const snapshot={format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),recordFormat:$("recordFormat").value,bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,wavSampleRate:Number($("wavSampleRate").value),wavBits:Number($("wavBits").value),stemBits:Number($("stemBits").value),stemSampleRate:Number($("stemSampleRate").value),ditherOn:$("ditherOn").checked,tracks:items};
+  snapshot.manifestSha256=MontanaSessionIntegrity.manifest(snapshot);
+  return snapshot;
 }
 window.createMixerSnapshot=createMixerSnapshot;
 $("saveSession").addEventListener("click",async()=>{
@@ -33,6 +35,8 @@ $("saveSession").addEventListener("click",async()=>{
 $("loadSession").addEventListener("click",()=>$("sessionFile").click());
 async function restoreMixerSnapshot(s){
   if(s.format!=="montana-mixer-session"||s.version!==1||!Array.isArray(s.tracks)||s.tracks.length!==8)throw Error("Formato de sesión incompatible.");
+  // Reject modified settings before decoding or changing any active track.
+  MontanaSessionIntegrity.checkManifest(s);
   const masterGain=s.masterGain===undefined?80:Number(s.masterGain);
   if(!Number.isFinite(masterGain)||masterGain<0||masterGain>100)throw Error("Volumen maestro inválido.");
   const recordTrack=s.recordTrack===undefined?1:s.recordTrack;
@@ -86,6 +90,8 @@ async function restoreMixerSnapshot(s){
    if(t.data!==null){
     const raw=from64(t.data);bytes+=raw.byteLength;
     if(raw.byteLength>50e6||bytes>80e6)throw Error("Audio demasiado grande.");
+    // SHA-256 complements legacy CRC32, detecting changed audio even if CRC32 was also overwritten.
+    MontanaSessionIntegrity.checkAudio(t,raw);
     // Backward compatibility: older sessions have no sourceCrc32.
     if(t.sourceCrc32!==undefined){
      if(typeof t.sourceCrc32!=="string"||!/^[0-9a-f]{8}$/.test(t.sourceCrc32)||
@@ -96,7 +102,7 @@ async function restoreMixerSnapshot(s){
     decoded=await audio().decodeAudioData(raw.buffer.slice(0));
     if(decoded.duration>300)throw Error("Pista demasiado larga.");
    }
-   if(t.data===null&&t.sourceCrc32!==undefined)throw Error("Integridad del respaldo inválida: huella sin audio.");
+   if(t.data===null&&(t.sourceCrc32!==undefined||t.sourceSha256!==undefined))throw Error("Integridad del respaldo inválida: huella sin audio.");
    if(decoded&&(trimStart>=decoded.duration||trimEnd>decoded.duration+.001||(trimEnd!==0&&trimEnd<=trimStart)))throw Error("Recorte de pista inválido.");
    loaded.push({decoded,source,panAutomation:window.validatePanAutomationRestore(t.panAutomation,i),volumeAutomation:window.validateVolumeAutomationRestore(t.volumeAutomation,i),trackLabel,inputTrim,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd,repeat,fadeIn,fadeOut,alignMs,lowEQ,highEQ,compEnabled,compThreshold,compRatio,reverb,delayWet,delayMs});
   }
