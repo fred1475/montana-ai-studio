@@ -85,6 +85,10 @@ El motor `pitch-engine.js` incorpora una **protección conservadora de pasajes a
 
 La regresión sintética `tests/pitch-unvoiced-guard.cjs` verifica preservación de un estallido de ruido durante una nota larga, corrección medible del resto, afinación A3 y relación estéreo L/R a 44.1/48 kHz, así como compatibilidad del modo melodía, bypass y errores de parámetros. Es solo una protección experimental: **no certifica preservación de formantes, calidad perceptual, un análisis perfecto de consonantes o funcionamiento profesional con voces reales**. Requiere escucha final controlada antes de publicación.
 
+### Afinación: validación defensiva de las marcas PSOLA
+
+El motor `correctChannel` ahora valida antes de procesar muestras la frecuencia de muestreo, las frecuencias de origen y destino, la correspondencia entre período calculado y grilla compartida, el tamaño/alcance de cada marca, su **orden estrictamente creciente**, la ventana de solapamiento y que todas las muestras sean finitas. Un plan de marcas inválido se rechaza explícitamente en vez de introducir NaN, saltos de índices o silencios inesperados en el WAV. Esta comprobación no cambia la corrección de notas con planes válidos. `tests/pitch-mark-validation.cjs` cubre marcas duplicadas, desordenadas, fuera de rango o no finitas, además del caso válido, la afinación real y la preservación del original.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
