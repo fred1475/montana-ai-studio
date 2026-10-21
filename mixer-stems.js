@@ -11,11 +11,11 @@
  const rate=44100;
  function regionPlan(){
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
-  const clips=tracks.map((b,i)=>b?region(i,b):null);
-  const end=Math.max(...clips.map((clip,i)=>clip?clip.offset+clip.duration+effectTail(i):0));
+  const segments=tracks.map((b,i)=>b?window.getTrackSegments(i,b):[]);
+  const end=Math.max(0,...segments.flatMap((items,i)=>items.map(clip=>clip.offset+clip.duration+effectTail(i))));
   const frames=Math.ceil(end*rate);
   if(!frames||!Number.isSafeInteger(frames))throw Error("Duración de audio inválida");
-  return {clips,frames};
+  return {segments,frames};
  }
  function fileName(i){return String(i+1).padStart(2,"0")+"-"+labels[i].normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"-")+".wav"}
  async function renderStem(i,plan){
@@ -23,15 +23,16 @@
   if(!buffer)throw Error("El canal no tiene audio");
   const srcBuffer=window.getMixBuffer(i);
   const ctx=new OfflineAudioContext(2,plan.frames,rate);
-  const src=ctx.createBufferSource(),vol=ctx.createGain(),panNode=ctx.createStereoPanner();
-  src.buffer=srcBuffer;
+  const vol=ctx.createGain(),panNode=ctx.createStereoPanner();
   vol.gain.value=Number($("vol"+i).value)/100;
   panNode.pan.value=pan(i);
-  window.connectFades(ctx,src,vol,i,plan.clips[i],plan.clips[i].offset);
   addSpace(ctx,addCompressor(ctx,addEq(ctx,vol,i),i),i).connect(panNode).connect(ctx.destination);
-  const clip=plan.clips[i];
-  if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
-  src.start(clip.offset,clip.start,clip.duration);
+  for(const clip of plan.segments[i]){
+   const src=ctx.createBufferSource();src.buffer=srcBuffer;
+   if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
+   window.connectFades(ctx,src,vol,i,clip,clip.offset);
+   src.start(clip.offset,clip.start,clip.duration);
+  }
   const rendered=await ctx.startRendering();
   return wav(rendered.getChannelData(0),rendered.getChannelData(1),rate);
  }
