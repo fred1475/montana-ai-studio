@@ -60,6 +60,7 @@
     // remain untouched and will still be available in the session backup.
     const musicalNames=["Bombo","Caja","Palmas","Hi-hat","Bajo"];
     targets.forEach((track,i)=>window.setMixerTrackLabel(track,musicalNames[i]));
+    window.resetEditHistory?.();
     document.getElementById("bpm").value=String(item.bpm);
     replace.checked=false;pending=null;
     try{await MontanaBeatBridge.discard();}
@@ -73,6 +74,7 @@
     show("Verificando audio del Beat Lab antes de importarlo...");
     await window.montanaLoadTrackFile(0,file);
     window.setMixerTrackLabel(0,"Ritmo Beat Lab");
+    window.resetEditHistory?.();
     document.getElementById("bpm").value=String(item.bpm);
     document.getElementById("file0").value="";
     replace.checked=false;pending=null;
