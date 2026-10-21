@@ -51,7 +51,7 @@ function tone(rate=44100){
   const moved=await page.locator('#autoPoints0').inputValue();
   const movedData=await page.evaluate(()=>window.volumeAutomationState(0));
   assert(movedData.points[1].time>.60&&movedData.points[1].time<.79,
-   'Pointer drag moves point horizontally on correct timeline');
+   'Pointer drag time expected about 0.7 s; actual '+JSON.stringify({points:movedData.points,moved,first,svg,toX,toY}));
   assert(movedData.points[1].gain>=48&&movedData.points[1].gain<=72,
    'Pointer drag updates volume by Y position');
   assert.equal(movedData.points.length,4);
