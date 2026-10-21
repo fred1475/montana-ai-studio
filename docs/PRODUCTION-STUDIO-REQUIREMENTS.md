@@ -156,6 +156,12 @@ La selección de snap y subdivisión se guarda/restaura con validación fuerte e
 
 `tests/mixer-grid.cjs` verifica matemáticamente posiciones de semicorchea y corchea a 120 BPM, cambio de BPM a 90, snap opcional al pegar, flechas y deshacer/rehacer, guardado/restauración, rechazo de subdivisiones inválidas y proyectos legados.
 
+## Selección de interfaz dentro del mezclador (desarrollo completado en simulador)
+
+El mezclador `mixer-8.html` ahora incluye «Buscar entradas», una lista de dispositivos detectados y selección explícita de entrada de micrófono. `mixer-record.js` pasa el `deviceId` seleccionado como restricción exacta de `getUserMedia`, solicita captura mono cuando sea posible y desactiva procesamiento automático del navegador (supresión de ruido, AGC y cancelación de eco). Si se desconecta el equipo o no se concede permiso, **la pista anterior permanece intacta**. Los identificadores de entrada y etiquetas no se guardan en el respaldo JSON, ni se envían a ningún servidor. El navegador puede ignorar algunas preferencias de canal y cambiar dispositivos tras reconectar.
+
+La prueba `tests/mixer-record.cjs` en Chromium con micrófono simulado comprueba enumeración de dispositivos, elección de entrada, restricción `deviceId.exact` enviada a `getUserMedia`, grabación, conservación byte por byte de fuente rescatable, rechazo de permisos y restauración. **La prueba con la interfaz física sigue pospuesta para la revisión final del usuario.**
+
 ## Preparación de pruebas físicas de interfaz de audio — ejecución manual diferida
 
 `hardware-check.html` y `hardware-check.js` ofrecen una pantalla **independiente y voluntaria** para comprobar la entrada real de micrófono e interfaz en una **fase final**, no durante el desarrollo intermedio. Permite escoger dispositivo detectado, solicitar permiso mediante `getUserMedia`, registrar **8 segundos** de audio PCM por `AudioWorklet` y detener la captura, sin monitorear ni reproducir el micrófono hacia el usuario. Durante los primeros dos segundos se deja silencio para estimar un nivel de ruido digital relativo; durante los siguientes seis segundos se espera voz a volumen habitual. El motor `hardware-diagnostics.js` calcula picos en dBFS, RMS global, RMS de los primeros dos segundos, RMS posterior, muestras próximas al máximo digital y alertas de señal baja, saturación o diferencia pequeña entre fondo y voz. Se pueden descargar el WAV mono PCM16 y el JSON con resultados. Todo queda local en el dispositivo y el usuario decide cuándo ejecutar la prueba.
