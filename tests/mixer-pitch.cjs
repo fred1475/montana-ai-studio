@@ -75,7 +75,28 @@ for(let j=0;j<frames;j++)wave.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*2
   await page.locator('#sessionFile').setInputFiles(invalidPath);
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
   assert((await page.locator('#label1').innerText()).includes('voz-desafinada'),'Rejected session must preserve the existing audio');
+  // End-to-end phase-inverted stereo input: preserve source while enabling tuning.
+  const antiphase=Buffer.alloc(44+frames*4);
+  antiphase.write('RIFF',0);antiphase.writeUInt32LE(antiphase.length-8,4);
+  antiphase.write('WAVE',8);antiphase.write('fmt ',12);antiphase.writeUInt32LE(16,16);
+  antiphase.writeUInt16LE(1,20);antiphase.writeUInt16LE(2,22);
+  antiphase.writeUInt32LE(rate,24);antiphase.writeUInt32LE(rate*4,28);
+  antiphase.writeUInt16LE(4,32);antiphase.writeUInt16LE(16,34);
+  antiphase.write('data',36);antiphase.writeUInt32LE(frames*4,40);
+  for(let j=0;j<frames;j++){
+   const v=Math.round(10000*Math.sin(2*Math.PI*224.5*j/rate));
+   antiphase.writeInt16LE(v,44+4*j);antiphase.writeInt16LE(-v,46+4*j);
+  }
+  await page.locator('#file1').setInputFiles({name:'voz-estereo-contra-fase.wav',mimeType:'audio/wav',buffer:antiphase});
+  await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('contra-fase'));
+  await page.locator('#pitchApply1').click();
+  await page.waitForFunction(()=>document.querySelector('#pitchState1')?.textContent?.includes('Detector protegido contra cancelación de fase'),null,{timeout:30000});
+  assert.equal(await page.evaluate(()=>pitchActive[1]),true);
+  assert.equal(await page.evaluate(()=>originalFiles[1]?.name),'voz-estereo-contra-fase.wav');
+  const phaseExport=await exportWav('mixer-pitch-stereo-phase-safe.wav');
+  const phaseHz=pitch.detectPitch(phaseExport.samples,rate,.5)?.frequency;
+  assert(phaseHz&&Math.abs(1200*Math.log2(phaseHz/220))<19,'Antiphase stereo output should correct first channel to A3: '+phaseHz);
   assert.deepEqual(errors,[]);
-  console.log('PASS: experimental vocal pitch is audible in WAV, bypass works, source untouched, reopens active, legacy sessions work, bad sessions rejected.');
+  console.log('PASS: experimental vocal pitch and antiphase stereo UI/export; source unchanged, restore, bypass and invalid session checks.');
  }finally{await browser.close()}
 })().catch(err=>{console.error(err);process.exit(1)});
