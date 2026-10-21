@@ -115,6 +115,12 @@ Las sesiones JSON nuevas y las recuperaciones IndexedDB nuevas incluyen `sourceC
 
 `mixer-master-audit.js` comprueba el tamaño del Blob **antes** de reservar el `ArrayBuffer` de auditoría; el límite vigente sigue siendo 56 MiB y el WAV exportado puede descargarse aunque se omita el informe. También valida el tamaño real después de leerlo, incluso cuando faltan metadatos. `tests/mixer-master-stereo-qa.cjs` verifica que un archivo sobredimensionado no se lee para auditarlo y que la vía alternativa se rechaza con seguridad. No elimina los demás buffers de exportación ni resuelve los límites de memoria del navegador.
 
+### Grabación WAV PCM24 mono sin códec con pérdida (beta)
+
+`mixer-pcm-record.js` incorpora una captura de micrófono mono con AudioWorklet y salida WAV PCM24 local, seleccionable en el mezclador. El método anterior MediaRecorder (WebM/MP4 según navegador) se conserva como opción de compatibilidad. La señal del micrófono **no se monitoriza por altavoces** desde el worklet: el nodo emite silencio. Se preserva la toma previa si la captura falla, y las nuevas tomas WAV se descargan/restauran como fuente original junto a sus checksums de sesión. El límite es cinco minutos o 50 MB de WAV, el que ocurra primero.
+
+La prueba sintética `tests/mixer-pcm-record.cjs` valida RIFF mono PCM24, cuantización con signo, limites y fuente inmutable; `tests/mixer-record.cjs` recorre los dos modos con micrófono falso de Chromium y exporta bytes reales de WAV. **No se ha probado todavía el micrófono/interfaz física del usuario** y el navegador puede remuestrear o procesar la entrada antes del worklet. Por ello, la grabación no es bit-perfect garantizado, no compensa latencia, no conserva necesariamente un ADC de 24 bits genuinos, ni equivale a una DAW certificada. Mantener la prueba física completa diferida a la fase final acordada.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
