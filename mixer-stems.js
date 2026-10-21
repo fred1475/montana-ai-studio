@@ -10,7 +10,6 @@
  const maxArchive=145*1024*1024; // avoid exceeding browser RAM/file limits
  function sampleRate(){const rate=Number($("stemSampleRate").value);if(rate!==44100&&rate!==48000)throw Error("Frecuencia de stems inválida");return rate}
  function formatBits(){const bits=Number($("stemBits").value);if(bits!==16&&bits!==24)throw Error("Profundidad de stems inválida");return bits}
- function estimatedWavBytes(frames,bits){return 44+frames*2*(bits/8)}
  function regionPlan(rate){
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
   const segments=tracks.map((b,i)=>b?window.getTrackSegments(i,b):[]);
@@ -90,7 +89,8 @@
   try{
    const i=Number($("stemTrack").value),bits=formatBits(),plan=regionPlan(sampleRate());
    if(!tracks[i])throw Error("Selecciona un canal con audio");
-   if(estimatedWavBytes(plan.frames,bits)>145*1024*1024)throw Error("La pista excede el límite de exportación de 145 MB");
+   // Reject unsafe sizes before processed vocal buffers and Web Audio allocation.
+   MontanaExportPreflight.estimate({frames:plan.frames,rate:plan.rate,bits,kind:"stem"});
    report("Renderizando "+labels[i]+" como WAV independiente...");
    const blob=await renderStem(i,plan,bits);download(blob,fileName(i));
    report("Stem WAV PCM"+bits+" a "+(plan.rate/1000).toFixed(1)+" kHz descargado: "+labels[i]+". Conserva la posición y efectos del canal. No aplica el volumen/limitador maestro ni el mute/solo.");
@@ -101,8 +101,8 @@
   const button=$("exportStems");button.disabled=true;
   try{
    const bits=formatBits(),plan=regionPlan(sampleRate()),indices=tracks.map((b,i)=>b?i:-1).filter(i=>i>=0);
-   const estimated=indices.length*estimatedWavBytes(plan.frames,bits)+10240;
-   if(estimated>maxArchive)throw Error("El ZIP de stems superaría 145 MB. Exporta las pistas individualmente.");
+   // Budget check happens before the first costly offline render.
+   MontanaExportPreflight.estimate({frames:plan.frames,rate:plan.rate,bits,kind:"stems",stemCount:indices.length});
    const files=[];
    for(const i of indices){
     report("Exportando stem "+files.length+"/"+indices.length+": "+labels[i]+"...");
