@@ -14,7 +14,6 @@ function close(actual,expected,tolerance,label){assert(Math.abs(actual-expected)
  assert(a.gatedBlocks>0&&a.totalBlocks>0);
  const samples=tone(rate/4,.9,Math.PI/4);
  const interp=await meter.measure(samples,samples.slice(),rate);
- assert(interp.truePeak>interp.truePeak?false:true); // evaluated below with meaningful separate assertion
  assert(interp.truePeak>Math.pow(10,interp.samplePeakDbfs/20)*1.14,'Oversampling must find peak between samples');
  assert(interp.truePeak<1.15,'Reconstruction cannot produce pathological overshoot for sinusoid');
  const silence=new Float32Array(n),z=await meter.measure(silence,silence.slice(),rate);
