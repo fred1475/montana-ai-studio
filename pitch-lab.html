@@ -18,12 +18,12 @@
 </section>
 <section class="pane">
 <h2>2. Resultado</h2>
-<output id="results">Todavía no hay un análisis.</output>
+<output id="results">Todavía no hay un análisis.</output><p id="pitchQuality" role="status">El control de calidad aparece después de procesar la voz.</p>
 <div><button id="original" type="button" disabled>▶ Original</button><button id="corrected" type="button" disabled>▶ Corregido</button><button id="stop" type="button">■ Detener</button></div>
 <button id="download" type="button" disabled>⬇ Descargar WAV corregido</button>
 <small>El procesamiento ocurre localmente en el navegador. Las frases cambiantes aún son experimentales. Los resultados pueden contener artefactos: escucha antes de utilizarlos.</small>
 </section>
-<script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script>
+<script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script src="pitch-quality.js"></script><script>
 'use strict';
 const $=id=>document.getElementById(id);
 let raw=null,processed=null,ctx=null,source=null;
@@ -34,6 +34,7 @@ $('file').addEventListener('change',()=>{
  stop();raw=null;processed=null;
  $('original').disabled=true;$('corrected').disabled=true;$('download').disabled=true;
  $('results').textContent='Todavía no hay un análisis.';
+ $('pitchQuality').textContent='El control de calidad aparece después de procesar la voz.';
  const file=$('file').files?.[0];status(file?'Listo para analizar: '+file.name:'Selecciona un audio vocal.');
 });
 function encodeWav(channels,rate){
@@ -51,6 +52,7 @@ function encodeWav(channels,rate){
 }
 $('process').addEventListener('click',async()=>{
  const btn=$('process');btn.disabled=true;processed=null;raw=null;$('download').disabled=true;$('corrected').disabled=true;
+ $('pitchQuality').textContent='Control de calidad pendiente de la nueva toma.';
  try{
   const file=$('file').files?.[0];if(!file)throw Error('Primero selecciona un archivo de voz.');
   if(file.size>20e6)throw Error('El audio supera 20 MB.');
@@ -62,6 +64,14 @@ $('process').addEventListener('click',async()=>{
   const channels=Array.from({length:audio.numberOfChannels},(_,i)=>audio.getChannelData(i).slice());
   const options={key:$('key').value,scale:$('scale').value,strength:Number($('strength').value)};
   const result=mode==='melody'?MontanaMelody.processMelody(channels,audio.sampleRate,options):MontanaPitch.process(channels,audio.sampleRate,options);
+  const qa=MontanaPitchQA.analyze(channels,result.channels,audio.sampleRate);
+  const format=v=>v===null?'N/D':v.toFixed(1);
+  $('pitchQuality').textContent='QA orientativo: RMS original '+format(qa.metrics.sourceRmsDbfs)+
+   ' dBFS → corregido '+format(qa.metrics.outputRmsDbfs)+' dBFS; cambio '+
+   format(qa.metrics.rmsDeltaDb)+' dB; pico final '+format(qa.metrics.outputPeakDbfs)+
+   ' dBFS; saltos nuevos '+qa.metrics.newLargeSteps+'. '+
+   (qa.warnings.length?'Avisos: '+qa.warnings.map(w=>w.message).join(' '):
+    'Sin alarmas de PCM en estos criterios; falta escucha de artefactos y formantes.');
   processed={channels:result.channels,rate:audio.sampleRate};raw={channels,rate:audio.sampleRate};
   if(mode==='melody'){
    $('results').textContent='Modo frase experimental. Notas: '+result.segments.map(s=>s.targetNote).join(' → ')+'\n'
@@ -73,7 +83,7 @@ $('process').addEventListener('click',async()=>{
   }
   $('original').disabled=false;$('corrected').disabled=false;$('download').disabled=false;
   status('Fragmento procesado. Escucha ambas versiones antes de utilizarlo.');
- }catch(e){$('results').textContent='Sin salida válida.';status('No se pudo corregir: '+e.message)}finally{btn.disabled=false}
+ }catch(e){$('results').textContent='Sin salida válida.';$('pitchQuality').textContent='Sin diagnóstico válido de afinación.';status('No se pudo corregir: '+e.message)}finally{btn.disabled=false}
 });
 async function play(value){if(!value)return;stop();ctx=ctx||new AudioContext();await ctx.resume();const b=ctx.createBuffer(value.channels.length,value.channels[0].length,value.rate);value.channels.forEach((ch,i)=>b.copyToChannel(ch,i));source=ctx.createBufferSource();source.buffer=b;source.connect(ctx.destination);source.onended=()=>{source=null};source.start()}
 $('original').addEventListener('click',()=>play(raw).catch(e=>status('Error: '+e.message)));
