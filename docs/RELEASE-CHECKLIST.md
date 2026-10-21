@@ -132,6 +132,11 @@ Estos requisitos **NO están completados** y no se deduce su cumplimiento de una
 - **Pruebas de aceptación real:** voces y beats propios consentidos, escucha de artefactos, coherencia y compatibilidad de la interfaz, latencia, clipping por hardware, estabilidad bajo sesiones largas, varios navegadores y accesibilidad.
 - **Editor profesional completo:** copia entre canales, edición de clips ilimitados, cuantización de eventos sample-accurate y time-stretch/warp todavía faltan.
 
+### QA estéreo de afinación: fase y balance (nuevo)
+`pitch-quality.js` ahora compara, sobre **PCM original y afinado sin alterarlos**, la correlación L/R con DC eliminada y el balance energético izquierdo/derecho. En una fuente claramente correlacionada (|r| ≥ 0.70), alerta si la correlación cambia más de 0.45; además, advierte cambios de balance superiores a 3 dB. Evita inferir balance o fase en canales digitalmente silenciosos. Las métricas y avisos aparecen en el laboratorio de afinación y en el mezclador. `tests/pitch-quality.cjs` contiene ejemplos sintéticos con inversión de fase, balance, contrafase mantenida, canal en silencio y bypass mono.
+
+**Alcance:** son umbrales internos heurísticos de prevención. Ni la correlación ni el balance garantizan timbre/formantes preservados, calidad percibida, ausencia de clics ni certificación EBU; las pruebas perceptivas con voces reales siguen aplazadas hasta validación final.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
