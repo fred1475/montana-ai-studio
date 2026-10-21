@@ -157,6 +157,7 @@ on:
       - 'tests/pitch-mark-validation.cjs'
       - 'tests/pitch-ui.cjs'
       - 'mixer-timeline.js'
+      - 'tests/mixer-timeline-zoom.cjs'
       - 'mixer-history.js'
       - 'mixer-metronome.js'
       - 'tests/mixer-smoke.cjs'
@@ -367,6 +368,7 @@ jobs:
           node --check tests/pitch-ui.cjs
           node tests/pitch-engine.cjs
           node --check mixer-timeline.js
+          node --check tests/mixer-timeline-zoom.cjs
           node --check mixer-history.js
           node --check mixer-metronome.js
       - name: Install browser tooling
@@ -413,6 +415,7 @@ jobs:
           node tests/mixer-session-integrity-ui.cjs
           node tests/mixer-song-markers-ui.cjs
           node tests/mixer-section-preview-ui.cjs
+          node tests/mixer-timeline-zoom.cjs
           node tests/mixer-export-levels.cjs
           node tests/mixer-export-preflight-ui.cjs
           node tests/mixer-eight-track-stress.cjs

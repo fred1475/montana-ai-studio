@@ -4,14 +4,39 @@
  const colors=["#dfb85e","#64b5e8","#7ed1c0","#c3a0f4","#f2a2ae","#88c46a","#e0a66c","#9ea8ed"];
  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
  const round=v=>window.gridSettings?.().on?Math.round(v*10000)/10000:Math.round(v*100)/100;
+ // Visual-only zoom. The source offsets, BPM grid, render/export clocks and
+ // signed session schema never depend on this viewport setting.
+ const zoomLevels=[1,2,4,8];let zoomIndex=0;
+ root.setAttribute("role","region");root.style.overflowX="auto";
+ root.style.maxWidth="100%";root.setAttribute("aria-label","Editor temporal de ocho pistas con desplazamiento horizontal");
+ const controls=document.createElement("div");
+ controls.style.cssText="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0";
+ const minus=document.createElement("button"),plus=document.createElement("button"),reset=document.createElement("button"),status=document.createElement("output");
+ minus.type=plus.type=reset.type="button";
+ minus.id="timelineZoomOut";plus.id="timelineZoomIn";reset.id="timelineZoomFit";status.id="timelineZoomStatus";
+ minus.textContent="− Alejar";plus.textContent="+ Acercar";reset.textContent="Ajustar vista";
+ status.setAttribute("aria-live","polite");
+ controls.append(minus,plus,reset,status);root.before(controls);
+ function setZoom(index){
+  zoomIndex=clamp(index,0,zoomLevels.length-1);
+  minus.disabled=zoomIndex===0;plus.disabled=zoomIndex===zoomLevels.length-1;
+  status.textContent="Zoom ×"+zoomLevels[zoomIndex]+" · desplázate horizontalmente para ver más";
+  redraw();
+ }
+ minus.addEventListener("click",()=>setZoom(zoomIndex-1));
+ plus.addEventListener("click",()=>setZoom(zoomIndex+1));
+ reset.addEventListener("click",()=>setZoom(0));
+ window.montanaTimelineZoomState=()=>({factor:zoomLevels[zoomIndex],index:zoomIndex});
  function redraw(){
   const end=Math.max(10,...(window.montanaMarkerState?.()||[]).map(m=>m.seconds),...tracks.map((b,i)=>{
    if(!b)return 0;try{return Math.max(0,...window.getTrackSegments(i,b).map(t=>t.offset+t.duration+Math.max(2,t.duration*.1)))}catch(e){return 0}
   }));
   root.replaceChildren();
+  const minWidth=Math.max(500,root.clientWidth||800)*zoomLevels[zoomIndex];
   tracks.forEach((b,i)=>{
    const lane=document.createElement("div");
    lane.style.cssText="display:grid;grid-template-columns:minmax(90px,120px) minmax(0,1fr);align-items:center;gap:8px;min-height:36px";
+   lane.style.minWidth=minWidth+"px";
    const title=document.createElement("span");title.textContent=(i+1)+". "+labels[i];title.style.fontSize="12px";
    const bg=document.createElement("div");bg.style.cssText="height:32px;position:relative;border:1px solid #46516a;border-radius:5px;background:repeating-linear-gradient(90deg,#202c40 0px,#202c40 1px,#172132 1px,#172132 10%)";
    if(b){try{
@@ -153,9 +178,9 @@
    lane.append(title,bg);root.append(lane);
   });
   const markerRuler=window.renderSongMarkerRuler?.(end);
-  if(markerRuler)root.prepend(markerRuler);
+  if(markerRuler){markerRuler.style.minWidth=minWidth+"px";root.prepend(markerRuler)}
   const footer=document.createElement("small");
-  footer.textContent="0 s — "+end.toFixed(1)+" s · Arrastra cualquier fragmento para moverlo. Flechas: 0.1 s; Shift + flecha: 1 s. Los archivos originales no cambian.";
+  footer.textContent="0 s — "+end.toFixed(1)+" s · Zoom visual ×"+zoomLevels[zoomIndex]+". Arrastra cualquier fragmento para moverlo. Flechas: 0.1 s; Shift + flecha: 1 s. Los archivos originales no cambian.";
   root.append(footer);
  }
  const observer=new MutationObserver(redraw);
@@ -163,5 +188,6 @@
  for(let i=0;i<8;i++)["offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","file","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","copyCount","copySource0_","copyOffset0_","copySource1_","copyOffset1_","copySource2_","copyOffset2_","copySource3_","copyOffset3_",...(i>0?["alignMs"]:[])].forEach(k=>$(k+i).addEventListener("change",redraw));
  // Imported session labels are updated only after decoding; observed DOM changes redraw on completion.
  window.montanaTimelineRedraw=redraw;
- redraw();
+ window.addEventListener("resize",redraw);
+ setZoom(0);
 })();

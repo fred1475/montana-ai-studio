@@ -311,6 +311,10 @@ El mezclador incluye **«Escuchar sección entre marcadores»** debajo de la est
 
 Pruebas `tests/mixer-section-plan.cjs`: intervalos, validaciones, loops cruzando vueltas, regiones multiclip, solapamientos, silencio y sin mutación. `tests/mixer-section-envelope.cjs`: rampas de entrada/salida iniciadas previamente, crossfades lineales/de potencia igual, validación y tamaño acotado. `tests/mixer-section-preview-ui.cjs`: Chromium registra `AudioBufferSourceNode.start` y las curvas AudioParam para comprobar los offsets reales de fuente/fundido, rechaza orden invertido, detiene con el transporte general, cancela reproducción si cambian marcadores, reconstruye tras restaurar proyecto y comprueba los bytes WAV fuente originales. No sustituye las pruebas físicas y perceptuales finales.
 
+### Zoom horizontal de edición — solo visual (beta)
+
+`mixer-timeline.js` incorpora controles **Acercar / Alejar / Ajustar vista** con factores ×1, ×2, ×4 y ×8. La regla temporal, los marcadores y las ocho pistas comparten la anchura de edición ampliada; el contenedor permite desplazamiento horizontal sin cambiar la posición numérica de los fragmentos ni sus archivos de origen. Los bloques siguen operables con ratón y teclado. La preferencia de zoom es temporal en la pantalla: no se escribe al JSON de sesión ni altera el BPM, la duración, la exportación WAV o el resultado de la mezcla. No constituye aún un editor de forma de onda a nivel de muestra ni time-stretch/warp. La regresión `tests/mixer-timeline-zoom.cjs` comprueba desplazamiento horizontal, controles, inicio del fragmento y WAV original byte por byte en Chromium.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
