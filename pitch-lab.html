@@ -13,6 +13,7 @@
 <label for="key">Tonalidad</label><select id="key"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select>
 <label for="scale">Escala</label><select id="scale"><option value="chromatic">Cromática (nota más cercana)</option><option value="major">Mayor</option><option value="minor">Menor</option></select>
 <label for="strength">Fuerza de corrección: <output id="strengthValue">100%</output></label><input id="strength" type="range" min="0" max="100" step="10" value="100">
+<label for="wet">Mezcla de voz procesada: <output id="wetValue">100%</output></label><input id="wet" type="range" min="0" max="100" step="10" value="100">
 <button type="button" id="process">🎼 Analizar y corregir</button>
 <p id="status" role="status" aria-live="polite">Selecciona un audio vocal.</p>
 </section>
@@ -23,11 +24,22 @@
 <button id="download" type="button" disabled>⬇ Descargar WAV corregido</button>
 <small>El procesamiento ocurre localmente en el navegador. Las frases cambiantes aún son experimentales. Los resultados pueden contener artefactos: escucha antes de utilizarlos.</small>
 </section>
-<script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script src="pitch-quality.js"></script><script>
+<script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script src="pitch-quality.js"></script><script src="pitch-blend.js"></script><script>
 'use strict';
 const $=id=>document.getElementById(id);
 let raw=null,processed=null,ctx=null,source=null;
-$('strength').addEventListener('input',()=>{$('strengthValue').textContent=$('strength').value+'%'});
+// Parameter edits cannot leave the old WAV downloadable under new settings.
+function invalidateOutput(){
+ stop();processed=null;$('corrected').disabled=true;$('download').disabled=true;
+ $('pitchQuality').textContent='Ajustes modificados: vuelve a procesar antes de exportar.';
+}
+$('strength').addEventListener('input',()=>{
+ $('strengthValue').textContent=$('strength').value+'%';invalidateOutput();
+});
+$('wet').addEventListener('input',()=>{
+ $('wetValue').textContent=$('wet').value+'%';invalidateOutput();
+});
+for(const id of ['mode','key','scale'])$(id).addEventListener('change',invalidateOutput);
 function stop(){if(source){try{source.stop()}catch(e){}try{source.disconnect()}catch(e){}source=null}}
 function status(s){$('status').textContent=s}
 $('file').addEventListener('change',()=>{
@@ -64,7 +76,9 @@ $('process').addEventListener('click',async()=>{
   const channels=Array.from({length:audio.numberOfChannels},(_,i)=>audio.getChannelData(i).slice());
   const options={key:$('key').value,scale:$('scale').value,strength:Number($('strength').value)};
   const result=mode==='melody'?MontanaMelody.processMelody(channels,audio.sampleRate,options):MontanaPitch.process(channels,audio.sampleRate,options);
-  const qa=MontanaPitchQA.analyze(channels,result.channels,audio.sampleRate);
+  const wet=Number($('wet').value);
+  const mixed=MontanaPitchBlend.blend(channels,result.channels,wet);
+  const qa=MontanaPitchQA.analyze(channels,mixed,audio.sampleRate);
   const format=v=>v===null?'N/D':v.toFixed(1);
   $('pitchQuality').textContent='QA orientativo: RMS original '+format(qa.metrics.sourceRmsDbfs)+
    ' dBFS → corregido '+format(qa.metrics.outputRmsDbfs)+' dBFS; cambio '+
@@ -79,17 +93,17 @@ $('process').addEventListener('click',async()=>{
     format(qa.stereo.source.balanceDb)+' → '+format(qa.stereo.output.balanceDb)+' dB. ':'')+
    (qa.warnings.length?'Avisos: '+qa.warnings.map(w=>w.message).join(' '):
     'Sin alarmas de PCM en estos criterios; falta escucha de artefactos y formantes.');
-  processed={channels:result.channels,rate:audio.sampleRate};raw={channels,rate:audio.sampleRate};
+  processed={channels:mixed,rate:audio.sampleRate};raw={channels,rate:audio.sampleRate};
   if(mode==='melody'){
    $('results').textContent='Modo frase experimental. Notas: '+result.segments.map(s=>s.targetNote).join(' → ')+'\n'
     +result.segments.map(s=>s.startSeconds.toFixed(2)+'–'+s.endSeconds.toFixed(2)+' s: '+s.inputHz.toFixed(1)+' Hz → '+s.targetNote+', '+s.correctionCents.toFixed(1)+' cents').join('\n')
     +'\nDuración conservada: '+result.duration.toFixed(2)+' s. Escucha para detectar artefactos.';
   }else{
    const correctedPitch=MontanaPitch.analyze(result.channels[0],audio.sampleRate);
-   $('results').textContent='Entrada: '+result.analysis.frequency.toFixed(2)+' Hz\nObjetivo: '+result.target.note+' ('+result.target.frequency.toFixed(2)+' Hz)\nCorrección solicitada: '+result.correctionCents.toFixed(1)+' cents\nNota medida después: '+correctedPitch.frequency.toFixed(2)+' Hz\nDuración original: '+audio.duration.toFixed(2)+' s; salida: '+result.duration.toFixed(2)+' s.';
+   $('results').textContent='Entrada: '+result.analysis.frequency.toFixed(2)+' Hz\nObjetivo: '+result.target.note+' ('+result.target.frequency.toFixed(2)+' Hz)\nCorrección solicitada: '+result.correctionCents.toFixed(1)+' cents\nNota afinada al 100% (antes de mezclar): '+correctedPitch.frequency.toFixed(2)+' Hz\nDuración original: '+audio.duration.toFixed(2)+' s; salida: '+result.duration.toFixed(2)+' s.';
   }
   $('original').disabled=false;$('corrected').disabled=false;$('download').disabled=false;
-  status('Fragmento procesado. Escucha ambas versiones antes de utilizarlo.');
+  status('Fragmento procesado. Mezcla procesada '+wet+'%. Escucha ambas versiones antes de utilizarlo.');
  }catch(e){$('results').textContent='Sin salida válida.';$('pitchQuality').textContent='Sin diagnóstico válido de afinación.';status('No se pudo corregir: '+e.message)}finally{btn.disabled=false}
 });
 async function play(value){if(!value)return;stop();ctx=ctx||new AudioContext();await ctx.resume();const b=ctx.createBuffer(value.channels.length,value.channels[0].length,value.rate);value.channels.forEach((ch,i)=>b.copyToChannel(ch,i));source=ctx.createBufferSource();source.buffer=b;source.connect(ctx.destination);source.onended=()=>{source=null};source.start()}
