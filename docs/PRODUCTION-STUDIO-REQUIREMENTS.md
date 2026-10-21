@@ -138,6 +138,16 @@ Para evitar transiciones ambiguas, el modo activo requiere fragmentos ordenados 
 
 `tests/mixer-crossfade.cjs` comprueba dos tonos en fragmentos solapados, atenuación real de la entrada y la salida, diferencia PCM entre potencia igual y lineal, stems, continuidad de duración, historial y restauración retrocompatible. **Limitación:** esto no reemplaza crossfades automáticos para cortes ilimitados, edición sample-accurate de extremos, elastic audio ni evaluación acústica con voces reales. La potencia igual puede aumentar el nivel cuando dos señales estén correlacionadas; escuchar y verificar pico final.
 
+## Herramienta nueva: copiar y pegar clips sin duplicar audio (beta)
+
+`mixer-clipboard.js` añade **hasta cuatro instancias copiadas** a cada una de las ocho pistas. El usuario puede elegir cualquiera de los fragmentos originales del canal (1–4), seleccionar el tiempo de pegado en la canción y reutilizar ese mismo fragmento varias veces. Los clips pegados apuntan al buffer de audio ya cargado; no se reencodan ni se insertan múltiples copias binarias del origen en el respaldo JSON. Las instancias aparecen en la línea de tiempo y pueden moverse con el ratón o las flechas.
+
+La planificación de regiones se ordena temporalmente antes de reproducirlas y exportarlas, de modo que las copias se incluyen en el WAV maestro, WAVs individuales, ZIP de stems y guía de referencia para grabación. Deshacer/Rehacer cubre el número de copias, la elección de fragmento y la posición. La sesión JSON y el autoguardado IndexedDB conservan el número de copias y sus referencias, y validan de forma atómica el índice del fragmento, el límite de cuatro y la posición entre 0 y 300 s. Sesiones antiguas continúan sin copias. Reemplazar el audio original descarta automáticamente las copias de esa pista para evitar referencias obsoletas.
+
+Prueba `tests/mixer-clipboard.cjs`: dos tonos distintos como fuente, copia separada de cada uno con intervalos silenciosos, medición de frecuencias en PCM16 real y en stem, historial de edición, límite máximo, restauración y rechazo de referencias inválidas.
+
+**Limitaciones:** solo copia/pega dentro de la misma pista y únicamente fragmentos de su fuente original, no entre canales ni desde fuentes externas. El límite es cuatro copias adicionales a los cuatro fragmentos originales por pista, no una edición ilimitada. Los crossfades automáticos solo se habilitan cuando la ordenación y superposición de los fragmentos forman pares válidos. No garantiza ausencia de clics en cortes arbitrarios, elastic audio, MIDI ni edición sample-accurate de una forma de onda.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
