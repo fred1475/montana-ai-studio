@@ -32,7 +32,8 @@ async function inspect(l,r,bits=16){
   const outOfPhase=await inspect(sine,opposite,bits);
   assert(outOfPhase.metrics.stereoCorrelation<-.99999,'Anti-phase must be detected');
   assert.equal(outOfPhase.metrics.monoFoldDownSilent,true,'Anti-phase WAV cancels in mono');
-  assert.equal(outOfPhase.metrics.monoFoldDownDeltaDb,null,'Silent fold-down has no finite dB');
+  assert(outOfPhase.metrics.monoFoldDownDeltaDb===null||outOfPhase.metrics.monoFoldDownDeltaDb< -70,
+   'PCM inverse polarity must nearly vanish in mono even with quantization');
   assert.equal(outOfPhase.checks.find(c=>c.id==='stereo_phase').status,'warning');
   const check=outOfPhase.checks.find(c=>c.id==='mono_compatibility');
   assert.equal(check.status,'warning');
