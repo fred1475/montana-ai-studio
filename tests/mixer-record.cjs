@@ -32,6 +32,7 @@ for(let j=0;j<n;j++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*330*j/r
   assert.equal(await page.evaluate(()=>recordingSupported()),true,'Headless Chromium must support fake microphone');
   await page.locator('#file0').setInputFiles({name:'beat.wav',mimeType:'audio/wav',buffer:wav});
   await page.waitForFunction(()=>document.querySelector('#label0')?.textContent?.includes('beat.wav'));
+  await page.locator('#recordFormat').selectOption('compressed'); // retain legacy codec test
   await page.locator('#recordTrack').selectOption('2'); // empty channel 3
   assert.equal(await page.locator('#downloadSource').isDisabled(),true);
   await page.locator('#recordStart').click();
@@ -69,6 +70,29 @@ for(let j=0;j<n;j++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*330*j/r
   const [restored]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadSource').click()]);
   const dest=path.join(process.cwd(),'captured-source-restored.webm');await restored.saveAs(dest);
   assert.deepEqual(fs.readFileSync(dest),captured,'Restored original recording must be byte-identical');
+  // New option: uncompressed WAV from simulated AudioWorklet input, with no network.
+  await page.locator('#recordFormat').selectOption('wav');
+  await page.locator('#recordTrack').selectOption('3'); // empty channel 4
+  await page.locator('#recordStart').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('WAV PCM24'),null,{timeout:10000});
+  await page.waitForTimeout(1400);
+  await page.locator('#recordStop').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Toma guardada en canal 4'),null,{timeout:20000});
+  assert((await page.locator('#label3').innerText()).includes('toma-canal-4.wav'));
+  const [wavDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadSource').click()]);
+  const wavPath=path.join(process.cwd(),'captured-original-pcm24.wav');
+  await wavDownload.saveAs(wavPath);
+  const pcm=fs.readFileSync(wavPath);
+  assert.equal(pcm.toString('ascii',0,4),'RIFF');
+  assert.equal(pcm.toString('ascii',8,12),'WAVE');
+  assert.equal(pcm.readUInt16LE(22),1,'Capture must be mono');
+  assert.equal(pcm.readUInt16LE(34),24,'Capture must be PCM24');
+  assert.equal(pcm.readUInt16LE(20),1,'Capture must be uncompressed integer PCM');
+  assert([44100,48000].includes(pcm.readUInt32LE(24)),'Expected simulated browser audio rate');
+  assert(pcm.length>pcm.readUInt32LE(24)*3*.8,'WAV should hold real microphone samples');
+  assert.equal(pcm.readUInt32LE(40),pcm.length-44);
+  assert((await page.locator('#label2').innerText()).includes('toma-canal-3.webm'),
+   'Second capture must not replace previous recording');
   assert.deepEqual(errors,[]);
   console.log('PASS record: fake microphone overdub, completed capture rescue, embedded session, rejection retains previous, restored raw bytes');
  }finally{await browser.close()}
