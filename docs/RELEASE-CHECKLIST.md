@@ -65,6 +65,12 @@ El master y los stems ahora validan los límites de PCM/ZIP antes de procesar vo
 
 El codificador `mixer-wav-export.js` ahora compone WAV PCM16/PCM24 en bloques de **32 768 fotogramas estéreo** (además de la cabecera RIFF de 44 bytes), conservando el orden de muestras, cuantización y generador TPDF determinista entre bloques. Esto evita reservar un **único ArrayBuffer de hasta 150 MiB** solo para la salida codificada, y afecta tanto al master como a los stems porque comparten el codificador. Se conserva el límite total anterior de 150 MiB. El nuevo test `tests/mixer-wav-chunks.cjs` compara el archivo completo byte por byte, CRC32, PCM16/24, 44.1/48 kHz, dither con semilla fija y longitudes en los límites de bloque con una implementación independiente del codificador anterior. También comprueba entradas no finitas y que las fuentes Float32 originales no se alteran.
 
+### ZIP de stems: CRC32 por streaming
+
+La exportación ZIP de stems ahora calcula el CRC32 de cada WAV utilizando `Blob.stream()`, sin convertir previamente cada audio entero en un segundo `ArrayBuffer`/Uint8Array. El ZIP conserva formato STORE sin compresión, cabeceras locales, directorio central y CRC32 correctos. El archivo `LEEME-STEMS.txt` y los archivos WAV PCM16/24 mantienen el mismo contenido. `tests/mixer-stems-streamed.cjs` verifica en Chromium una exportación ZIP PCM24/48 kHz con dos stems, CRC32 de cada entrada, integridad de RIFF, formato y ausencia de llamadas a `Blob.arrayBuffer()` sobre WAV durante ese proceso. El bloque se incluye en la batería completa del mezclador.
+
+El ZIP final, los WAV codificados, el render Web Audio y el navegador siguen ocupando RAM; esto **no es una garantía de consumo bajo ni una prueba de rendimiento real con ocho pistas largas**.
+
 **Límite importante:** usar bloques no implica que el proceso completo consuma poca memoria. El Blob de salida, el render Web Audio, el ZIP de varios stems, la auditoría exacta y el navegador todavía requieren otros buffers; no se garantiza rendimiento estable en sesiones extensas de producción real.
 
 ## 2. Bloqueos de lanzamiento profesional pendientes
