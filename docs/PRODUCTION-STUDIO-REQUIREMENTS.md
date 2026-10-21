@@ -126,6 +126,18 @@ Límites intencionales: **máximo cuatro fragmentos por pista**, no hay aún fra
 
 Pruebas incluidas: una fuente que contiene 330 Hz y 660 Hz en mitades sucesivas, más una prueba multiclips con tonos de 220/440/880 Hz, cuatro fragmentos, cambios independientes de posición y fragmentos que se superponen o dejan silencio, movimiento de la segunda región para insertar silencio, comprobación de ambas frecuencias en PCM16 real, stems alineados, duración, undo/redo, integridad al guardar/restaurar y rechazo de posiciones de corte inválidas sin destruir el proyecto activo. El editor **sigue en desarrollo** hasta ampliar el manejo de clips y las pruebas con audio musical complejo.
 
+## Crossfades no destructivos en fragmentos contiguos (beta, octubre 2026)
+
+`mixer-crossfade.js` incorpora transiciones cruzadas **optativas por pista**, con dos curvas audibles:
+- **Potencia igual**: ganancia `cos(πx/2)` en el fragmento saliente y `sin(πx/2)` en el entrante.
+- **Lineal**: ganancia `1−x` en el saliente y `x` en el entrante.
+
+Al activarlo, el sistema calcula el intervalo de solapamiento real entre fragmentos consecutivos procedentes de la misma pista (hasta **3 segundos** por transición). La curva se programa con automatización WebAudio sobre la ganancia individual de cada fragmento, **antes de la cadena de EQ, compresor, reverb y delay del canal**. Los fundidos generales de entrada/salida se conservan en una capa aparte. La misma automatización se aplica al monitor en directo, la guía de grabación, WAV maestro y WAV/stems individuales. El origen del audio no se modifica.
+
+Para evitar transiciones ambiguas, el modo activo requiere fragmentos ordenados de izquierda a derecha, sin fragmentos anidados ni triple superposición durante la misma transición. Cuando el modo está desactivado, se conserva el comportamiento antiguo de mezclado simultáneo sin cruces. Las preferencias de cada pista se guardan/restauran de forma validada en el JSON y autoguardado, y están incluidas en Deshacer/Rehacer. Las sesiones antiguas mantienen crossfade desactivado.
+
+`tests/mixer-crossfade.cjs` comprueba dos tonos en fragmentos solapados, atenuación real de la entrada y la salida, diferencia PCM entre potencia igual y lineal, stems, continuidad de duración, historial y restauración retrocompatible. **Limitación:** esto no reemplaza crossfades automáticos para cortes ilimitados, edición sample-accurate de extremos, elastic audio ni evaluación acústica con voces reales. La potencia igual puede aumentar el nivel cuando dos señales estén correlacionadas; escuchar y verificar pico final.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
