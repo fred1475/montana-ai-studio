@@ -86,7 +86,7 @@ function stereoRms(w,start,end){
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
   assert.equal(await page.locator('#panAutoEnable1').isChecked(),true);
   assert.equal(await page.locator('#panAutoPoints1').inputValue(),'0:0, 1:100');
-  const legacy=JSON.parse(JSON.stringify(session));legacy.tracks.forEach(t=>delete t.panAutomation);
+  const legacy=JSON.parse(JSON.stringify(session));delete legacy.manifestSha256;legacy.tracks.forEach(t=>delete t.panAutomation);
   await page.locator('#sessionFile').setInputFiles({name:'legacy-pan.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'),null,{timeout:25000});
   assert.equal(await page.locator('#panAutoEnable1').isChecked(),false);
