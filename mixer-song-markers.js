@@ -20,7 +20,7 @@
       /[\u0000-\u001f\u007f<>]/.test(m.label)||
       typeof m.seconds!=="number"||!Number.isFinite(m.seconds)||
       m.seconds<0||m.seconds>END||
-      Math.round(m.seconds*1000)!==m.seconds*1000)
+      Math.abs(Math.round(m.seconds*1000)-m.seconds*1000)>1e-7)
     throw Error("Marcador inválido número "+(index+1));
    const key=Math.round(m.seconds*1000);
    if(positions.has(key))throw Error("Dos marcadores no pueden compartir el mismo segundo");
