@@ -21,10 +21,14 @@ function wav(frequency){
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8765/pitch-lab.html');
   assert((await page.locator('h1').innerText()).includes('Laboratorio de afinación'));
+  assert((await page.locator('#pitchQuality').textContent()).includes('después de procesar'));
   await page.locator('#file').setInputFiles({name:'a3-desafinada.wav',mimeType:'audio/wav',buffer:wav(224.5)});
   await page.locator('#process').click();
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Fragmento procesado'),null,{timeout:30000});
   assert((await page.locator('#results').innerText()).includes('Objetivo: A3'));
+  assert((await page.locator('#pitchQuality').textContent()).includes('QA orientativo'));
+  assert((await page.locator('#pitchQuality').textContent()).includes('pico final'));
+  assert((await page.locator('#pitchQuality').textContent()).includes('RMS original'));
   assert.equal(await page.locator('#download').isDisabled(),false);
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);
   const filename=path.join(process.cwd(),'pitch-lab-output.wav');await download.saveAs(filename);
@@ -49,6 +53,8 @@ function wav(frequency){
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Fragmento procesado'),null,{timeout:30000});
   const report=await page.locator('#results').innerText();
   assert(report.includes('A3 → C4'),'Browser must display both corrected notes: '+report);
+  assert((await page.locator('#pitchQuality').textContent()).includes('QA orientativo'));
+  assert.equal(await page.evaluate(()=>typeof MontanaPitchQA.analyze),'function');
   const [phraseDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);
   const phrasePath=path.join(process.cwd(),'pitch-two-note-output.wav');await phraseDownload.saveAs(phrasePath);
   const phrase=fs.readFileSync(phrasePath);
@@ -63,6 +69,7 @@ function wav(frequency){
   await page.locator('#process').click();
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se pudo corregir'));
   assert.equal(await page.locator('#download').isDisabled(),true);
+  assert((await page.locator('#pitchQuality').textContent()).includes('Sin diagnóstico válido'));
   assert.deepEqual(errors,[]);
   console.log('PASS: monophonic offline pitch correction UI, accurate exported WAV, equal duration and silence guard.');
  }finally{await browser.close()}
