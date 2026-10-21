@@ -70,6 +70,8 @@ $('process').addEventListener('click',async()=>{
    ' dBFS → corregido '+format(qa.metrics.outputRmsDbfs)+' dBFS; cambio '+
    format(qa.metrics.rmsDeltaDb)+' dB; pico final '+format(qa.metrics.outputPeakDbfs)+
    ' dBFS; saltos nuevos '+qa.metrics.newLargeSteps+'. '+
+   'Ventanas de posible microcorte: '+qa.metrics.dropoutWindowCount+
+    (qa.metrics.firstDropoutSeconds===null?'.':', primera en '+qa.metrics.firstDropoutSeconds.toFixed(2)+' s.')+' '+
    'Cambio relativo de altas (aprox. 2.5 kHz) '+format(qa.metrics.highBandDeltaDb)+' dB. '+
    (qa.stereo?'Estéreo: correlación '+format(qa.stereo.source.correlation)+
     ' → '+format(qa.stereo.output.correlation)+'; balance L/R '+
