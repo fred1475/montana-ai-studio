@@ -70,8 +70,10 @@
   const sourceRms=Math.sqrt(srcEnergy/count),outputRms=Math.sqrt(outEnergy/count);
   const rmsDeltaDb=sourceRms>1e-9&&outputRms>1e-9?db(outputRms/sourceRms):null;
   const peakIncreaseDb=sourcePeak>1e-9&&outputPeak>1e-9?db(outputPeak/sourcePeak):null;
+  // Use mean-square gating rather than duration-dependent integrated
+  // energy: near-silence should remain "not measurable" at any clip length.
   const highBandShareDb=(band,total)=>
-   total>1e-8&&band>1e-12?10*Math.log10(band/total):null;
+   total/count>1e-10&&band/count>1e-16?10*Math.log10(band/total):null;
   const sourceHighBandDb=highBandShareDb(sourceHighEnergy,srcEnergy);
   const outputHighBandDb=highBandShareDb(outputHighEnergy,outEnergy);
   const highBandDeltaDb=sourceHighBandDb!==null&&outputHighBandDb!==null?
