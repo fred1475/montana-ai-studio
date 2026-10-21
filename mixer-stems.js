@@ -30,6 +30,7 @@
   window.connectFades(ctx,src,vol,i,plan.clips[i],plan.clips[i].offset);
   addSpace(ctx,addCompressor(ctx,addEq(ctx,vol,i),i),i).connect(panNode).connect(ctx.destination);
   const clip=plan.clips[i];
+  if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
   src.start(clip.offset,clip.start,clip.duration);
   const rendered=await ctx.startRendering();
   return wav(rendered.getChannelData(0),rendered.getChannelData(1),rate);
