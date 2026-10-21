@@ -39,18 +39,29 @@
   const lowPassGain=1-highPassAlpha;
   let sourceHighEnergy=0,outputHighEnergy=0;
   let maxSourceStep=0,maxOutputStep=0,newLargeSteps=0;
+  // Short fixed windows give an advisory about a local missing syllable,
+  // compared against the overall gain to ignore uniform gain changes.
+  const windowFrames=Math.max(1,Math.round(rate*.025));
+  const energyWindows=[];
   for(let ch=0;ch<original.length;ch++){
    const before=original[ch],after=corrected[ch];
    if(!(before instanceof Float32Array)||!(after instanceof Float32Array)||
       before.length!==n||after.length!==n)throw Error("Muestras QA vocal incompatibles");
    let previousBefore=0,previousAfter=0;
    let sourceLow=0,outputLow=0;
+   let windowSource=0,windowOutput=0;
    for(let i=0;i<n;i++){
     const src=before[i],dst=after[i];
     if(!Number.isFinite(src)||!Number.isFinite(dst))throw Error("Muestra QA vocal no finita");
     sourcePeak=Math.max(sourcePeak,Math.abs(src));
     outputPeak=Math.max(outputPeak,Math.abs(dst));
     srcEnergy+=src*src;outEnergy+=dst*dst;
+    windowSource+=src*src;windowOutput+=dst*dst;
+    if((i+1)%windowFrames===0){
+     energyWindows.push({start:i+1-windowFrames,frames:windowFrames,
+      sourceEnergy:windowSource,outputEnergy:windowOutput});
+     windowSource=0;windowOutput=0;
+    }
     sourceLow+=lowPassGain*(src-sourceLow);
     outputLow+=lowPassGain*(dst-outputLow);
     sourceHighEnergy+=(src-sourceLow)**2;
@@ -65,11 +76,27 @@
     }
     previousBefore=src;previousAfter=dst;
    }
+   // Ignore partial trailing windows to avoid edge artifacts.
   }
   const count=n*original.length;
   const sourceRms=Math.sqrt(srcEnergy/count),outputRms=Math.sqrt(outEnergy/count);
   const rmsDeltaDb=sourceRms>1e-9&&outputRms>1e-9?db(outputRms/sourceRms):null;
   const peakIncreaseDb=sourcePeak>1e-9&&outputPeak>1e-9?db(outputPeak/sourcePeak):null;
+  const overallGain=sourceRms>.01&&outputRms>1e-5?outputRms/sourceRms:null;
+  let dropoutWindowCount=0,firstDropoutSeconds=null;
+  if(overallGain!==null&&overallGain>.05){
+   const edgeGuard=Math.ceil(rate*.075);
+   for(const w of energyWindows){
+    if(w.start<edgeGuard||w.start+w.frames>n-edgeGuard)continue;
+    const beforeRms=Math.sqrt(w.sourceEnergy/w.frames);
+    const afterRms=Math.sqrt(w.outputEnergy/w.frames);
+    if(beforeRms>.015&&afterRms<beforeRms*overallGain*.12){
+     dropoutWindowCount++;
+     if(firstDropoutSeconds===null||w.start/rate<firstDropoutSeconds)
+      firstDropoutSeconds=w.start/rate;
+    }
+   }
+  }
   // Use mean-square gating rather than duration-dependent integrated
   // energy: near-silence should remain "not measurable" at any clip length.
   const highBandShareDb=(band,total)=>
@@ -100,6 +127,9 @@
   else if(outputPeak>=.98 && outputPeak>sourcePeak+.01)warnings.push({id:"low_headroom",message:"La afinación deja muy poco margen de pico; revisa clipping al mezclar."});
   if(rmsDeltaDb!==null&&Math.abs(rmsDeltaDb)>6)
    warnings.push({id:"rms_change",message:"El RMS cambió más de 6 dB respecto al original; compara niveles antes de aprobar."});
+  if(dropoutWindowCount>0)
+   warnings.push({id:"local_dropouts",
+    message:"Posibles microcortes en la voz procesada: comprueba fragmentos que hayan perdido señal frente a la toma original."});
   if(newLargeSteps>0)
    warnings.push({id:"new_steps",message:"Aparecieron saltos rápidos de muestra ausentes en la fuente; escucha posibles clics."});
   if(sourceRms>1e-5&&outputRms<sourceRms*.03)
@@ -109,9 +139,10 @@
    metrics:{sourcePeakDbfs:db(sourcePeak),outputPeakDbfs:db(outputPeak),
     sourceRmsDbfs:db(sourceRms),outputRmsDbfs:db(outputRms),
     rmsDeltaDb,peakIncreaseDb,maxSourceStep,maxOutputStep,newLargeSteps,
-    sourceHighBandDb,outputHighBandDb,highBandDeltaDb},
+    sourceHighBandDb,outputHighBandDb,highBandDeltaDb,
+    dropoutWindowCount,firstDropoutSeconds},
    stereo,warnings,
-   qualification:"Indicadores PCM heurísticos (banda alta aproximada con filtro de un polo a 2.5 kHz); no certificación de formantes, timbre, percepción, EBU R128 ni ausencia de artefactos."
+   qualification:"Indicadores PCM heurísticos (banda alta aproximada con filtro de un polo a 2.5 kHz; ventanas de 25 ms para pérdida local); no certificación de formantes, timbre, percepción, EBU R128 ni ausencia de artefactos."
   };
  }
  return {analyze};
