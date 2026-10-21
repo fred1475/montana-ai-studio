@@ -13,6 +13,7 @@ on:
       - 'mixer-loudness.js'
       - 'tests/mixer-loudness.cjs'
       - 'tests/mixer-ebu-reference.cjs'
+      - 'docs/EBU-R128-VALIDATION.md'
       - 'tests/mixer-loops.cjs'
       - 'tests/mixer-export-levels.cjs'
       - 'tests/mixer-recovery.cjs'
@@ -119,6 +120,7 @@ jobs:
       - name: Package manual mixer preview
         run: |
           mkdir -p mixer-preview
+          cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
           cp mixer-8.html mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
