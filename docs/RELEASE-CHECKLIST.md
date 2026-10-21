@@ -147,6 +147,13 @@ El control no destructivo `pitch-quality.js` ahora contrasta ventanas de **25 ms
 
 **Alcance limitado:** un fundido intencional dentro de una frase, edición autorizada o automatización puede activar el aviso; un artefacto más corto que 25 ms puede pasar inadvertido. No mide inteligibilidad, percepción ni preservación completa de sílabas. Si la señal completa desaparece, sigue siendo responsable el aviso independiente de pérdida global. `tests/pitch-quality.cjs` contrasta microcortes artificiales, pausas naturales, volumen uniforme, mute completo y estéreo a 44.1/48 kHz. La interfaz informa los avisos como diagnóstico, no certificación.
 
+### Mezcla vocal seca/procesada (wet/dry), offline y reversible
+`pitch-blend.js` incorpora una combinación de **ganancia lineal** entre la toma fuente y el audio afinado (0 % = original, 100 % = afinado, valores intermedios = mezcla); no reemplaza ni sobrescribe el archivo original. Se aplica en el laboratorio experimental y en los canales vocales 2–8 del mezclador; la exportación WAV utiliza la mezcla elegida, y el QA analiza exactamente el PCM mezclado previo a la exportación. Los controles de intensidad y proporción procesada son independientes. El cambio de parámetros invalida la salida anterior hasta volver a procesar.
+
+La proporción queda en la sesión JSON y se reconstituye al restaurarla. Los proyectos antiguos sin campo `wet` usan **100 % procesado** para conservar su resultado anterior; valores no finitos, negativos o superiores a 100 se rechazan antes de reemplazar el proyecto activo. La prueba unitaria `tests/pitch-blend.cjs` cubre extremos 0/100, mezcla intermedia, estéreo, datos inválidos e inmutabilidad; las pruebas Chromium `tests/mixer-pitch.cjs` y `tests/pitch-ui.cjs` cubren exportación de WAV y restauración.
+
+**Límite importante:** la mezcla lineal de una voz afinada con su original puede provocar batidos y cancelaciones de fase, especialmente al 50 %, porque no hay alineación de fase ni compensación de retardo dedicada. No se garantizan preservación de formantes, masterización ni idoneidad profesional. La escucha con material real queda pospuesta para la fase final acordada.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
