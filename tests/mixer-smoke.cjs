@@ -208,7 +208,8 @@ const path=require('node:path');
   assert((await page.locator('#label0').innerText()).includes('instrumental.wav'),
    'Bad checksum must not overwrite the active project');
   const legacy=JSON.parse(JSON.stringify(session));
-  for(const track of legacy.tracks)delete track.sourceCrc32;
+  delete legacy.manifestSha256;
+   for(const track of legacy.tracks){delete track.sourceCrc32;delete track.sourceSha256;}
   const legacyPath=path.join(process.cwd(),'test-mixer-legacy-no-checksum.json');
   fs.writeFileSync(legacyPath,JSON.stringify(legacy));
   await page.locator('#sessionFile').setInputFiles(legacyPath);
