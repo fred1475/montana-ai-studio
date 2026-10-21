@@ -101,7 +101,7 @@ function inspectWav(buffer,rate,bits){
    assert((await page.locator('#status').innerText()).includes('No se restauró'),'Invalid setting must reject entire session');
    assert.equal(await page.locator('#wavSampleRate').inputValue(),'48000','Failed restore must preserve active rate');
   }
-  const legacy={...saved};delete legacy.wavSampleRate;
+  const legacy={...saved};delete legacy.manifestSha256;delete legacy.wavSampleRate;
   await page.reload();
   await restore(legacy,'samplerate-legacy.json');
   assert((await page.locator('#status').innerText()).includes('Sesión restaurada'),'Legacy import must succeed');
