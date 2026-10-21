@@ -108,7 +108,7 @@ function pitchEstimate(buffer,rate,bits,startSec,endSec){
   await restore(invalid,'stem-rate-invalid.json');
   assert((await page.locator('#status').innerText()).includes('No se restauró'),'Numeric strings must not bypass validation');
   assert.equal(await page.locator('#stemSampleRate').inputValue(),'48000','Rejected session must keep active format');
-  const legacy={...project};delete legacy.stemSampleRate;
+  const legacy={...project};delete legacy.manifestSha256;delete legacy.stemSampleRate;
   await page.reload();await restore(legacy,'stem-rate-legacy.json');
   assert.equal(await page.locator('#stemSampleRate').inputValue(),'44100');
   assert.equal(await page.locator('#stemBits').inputValue(),'24');
