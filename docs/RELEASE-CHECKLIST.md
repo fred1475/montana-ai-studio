@@ -165,6 +165,14 @@ Pruebas propuestas y conectadas a CI: `tests/beat-engine.cjs` para invariantes, 
 
 **Límites:** esto es un secuenciador simple por pasos, no generación de música por IA. No es un piano roll MIDI completo, instrumento VST, grabador de beats externos, sample editor, masterizador profesional ni herramienta con swing humanizado avanzado. Los presets son puntos de partida rítmicos. El sintetizador no garantiza mezcla sin clipping ni calidad acústica de estudio. No confundir este hito con el 100 % de las capacidades solicitadas.
 
+### Beat Lab → Mezclador: traspaso local y confirmado
+
+El botón «Enviar ritmo al mezclador» exporta el ritmo completo WAV estéreo PCM16 (44.1/48 kHz) en memoria y lo guarda temporalmente en **IndexedDB, mismo origen** con `beat-bridge.js`. Luego abre el mezclador con un envío **pendiente**: no importa ni sustituye audio automáticamente. El usuario debe pulsar «Importar beat pendiente en canal 1»; si el canal instrumental ya contiene audio, debe marcar una autorización de reemplazo. Alternativamente puede descartar el envío. El mezclador utiliza la misma función que la importación WAV normal, valida y decodifica antes de alterar `tracks[0]`, registra la fuente para el backup y adopta el BPM del patrón **solo después** de una importación correcta.
+
+El envío se limita a WAV estéreo PCM16 RIFF con frecuencia 44.1/48 kHz, máximo 12 MiB y vigencia de 24 h; se valida tamaño, formato PCM, cabeceras RIFF, frecuencia y CRC32 antes de aceptarlo. El CRC evita daños accidentales, **no** es autenticación. Si no hay IndexedDB, se bloquea la transferencia y todavía es posible exportar WAV manualmente. El almacenamiento es local al **mismo origen de navegador**, no permite transferencias entre file://, dominios, dispositivos o perfiles diferentes; no sustituye un backup descargado. Se elimina la copia temporal solo después de importar con éxito o al descartarla. Para conservar el beat dentro de una sesión, hay que guardar la sesión del mezclador.
+
+`tests/beat-bridge-ui.cjs` verifica navegación e importación en Chromium, fuente guardada en el JSON, origen sin cambios antes de confirmar, bloqueo al sobrescribir un canal ya usado, reemplazo solo mediante casilla explícita, validación de integridad y descarte. No se ha realizado prueba del navegador real con equipo de audio; permanece reservada para la última fase. Este traspaso transfiere **el master del ritmo**, no cinco stems separados; para ellos continúa disponible el ZIP.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
