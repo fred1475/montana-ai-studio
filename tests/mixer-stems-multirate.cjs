@@ -94,6 +94,7 @@ function pitchEstimate(buffer,rate,bits,startSec,endSec){
   assert.equal(project.wavSampleRate,44100);
   await page.reload();
   async function restore(data,name){
+   await page.evaluate(()=>document.querySelector('#status').textContent='Validando el proyecto seleccionado...');
    await page.locator('#sessionFile').setInputFiles({name,mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
    await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada')||document.querySelector('#status')?.textContent?.includes('No se restauró'),null,{timeout:35000});
   }
