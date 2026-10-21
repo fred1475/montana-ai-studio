@@ -35,6 +35,8 @@ on:
       - 'tests/mixer-split.cjs'
       - 'tests/mixer-multiclip.cjs'
       - 'tests/mixer-master-audit.cjs'
+      - 'tests/mixer-master-stereo-qa.cjs'
+      - 'tests/mixer-master-stereo-browser.cjs'
       - 'tests/mixer-loudness.cjs'
       - 'tests/mixer-ebu-reference.cjs'
       - 'tests/mixer-ebu-multirate.cjs'
@@ -118,6 +120,9 @@ jobs:
           node --check tests/mixer-split.cjs
           node --check tests/mixer-multiclip.cjs
           node --check tests/mixer-master-audit.cjs
+          node --check tests/mixer-master-stereo-qa.cjs
+          node --check tests/mixer-master-stereo-browser.cjs
+          node tests/mixer-master-stereo-qa.cjs
           node --check tests/mixer-loudness.cjs
           node --check tests/mixer-ebu-reference.cjs
           node --check tests/mixer-ebu-multirate.cjs
@@ -184,6 +189,7 @@ jobs:
           node tests/mixer-export-levels.cjs
           node tests/mixer-loudness.cjs
           node tests/mixer-master-audit.cjs
+          node tests/mixer-master-stereo-browser.cjs
           node tests/mixer-wav-export.cjs
           node tests/mixer-export-samplerate.cjs
           node tests/mixer-split.cjs
