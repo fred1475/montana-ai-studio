@@ -36,8 +36,19 @@ const {chromium}=require('playwright');
    assert(label.includes(sent.names[i]),'Correct mapped stem '+i);
    const info=await page.evaluate(i=>({size:originalFiles[i]?.size,
     rate:tracks[i]?.sampleRate,frames:tracks[i]?.length}),i+3);
-   assert.equal(info.size,sent.lengths[i]);assert.equal(info.rate,48000);
-   assert.equal(info.frames,sent.frames);
+   assert.equal(info.size,sent.lengths[i]);
+   // Web Audio decodes at the current AudioContext rate; uploaded bytes
+   // retain their original 48k WAV header and sample frames for backups.
+   const playbackRate=await page.evaluate(()=>audio().sampleRate);
+   assert.equal(info.rate,playbackRate);
+   assert(Math.abs(info.frames-Math.round(sent.frames*playbackRate/sent.rate))<=2,
+    'Expected browser decode resampling, not source replacement');
+   const storedHeader=await page.evaluate(async index=>{
+    const data=new DataView(await originalFiles[index].arrayBuffer());
+    return {rate:data.getUint32(24,true),frames:data.getUint32(40,true)/4};
+   },i+3);
+   assert.equal(storedHeader.rate,48000);
+   assert.equal(storedHeader.frames,sent.frames);
   }
   assert.equal(await page.evaluate(()=>MontanaBeatBridge.read()),null,'Inbox consumed');
   const [saved]=await Promise.all([page.waitForEvent('download',{timeout:40000}),page.locator('#saveSession').click()]);
