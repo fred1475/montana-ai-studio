@@ -84,6 +84,7 @@ function pitchInvalidate(i){
  updatePitchTimbre(i,null,i>0&&$("pitchTimbre"+i).checked);
  if(i>0){
   $("pitchState"+i).textContent="Original — sin corrección aplicada";
+  $("pitchAudit"+i).disabled=true;
   $("pitchToggle"+i).disabled=true;
   $("pitchToggle"+i).textContent="Oír corregido";
  }
@@ -145,6 +146,7 @@ window.commitPitchRestore=restored=>{
   $("pitchWet"+i).value=settings.wet;$("pitchWetValue"+i).textContent=settings.wet+"%";
   $("pitchMatch"+i).checked=settings.matchLevel;
   $("pitchTimbre"+i).checked=settings.protectTimbre;
+  $("pitchAudit"+i).disabled=!buffer;
   $("pitchToggle"+i).disabled=!buffer;
   $("pitchToggle"+i).textContent=settings.enabled?"Oír original":"Oír corregido";
   $("pitchState"+i).textContent=buffer?"Afinación restaurada y activa":"Original — sin corrección aplicada";
@@ -164,7 +166,7 @@ for(let i=1;i<8;i++){
   '<label><input id="pitchTimbre'+i+'" type="checkbox"> Protección experimental del carácter espectral</label>'+
   '<small>Si la afinación cambia mucho el balance entre bandas graves/medias/agudas, se reduce parte de la corrección. Puede dejar notas parcialmente desafinadas. NO identifica ni garantiza conservar formantes.</small>'+
   '<p id="pitchTimbreStatus'+i+'" role="status">Protección de carácter espectral desactivada.</p>'+ 
-  '<button id="pitchApply'+i+'" type="button">🎼 Procesar voz</button> <button id="pitchToggle'+i+'" type="button" disabled>Oír corregido</button>'+
+  '<button id="pitchApply'+i+'" type="button">🎼 Procesar voz</button> <button id="pitchToggle'+i+'" type="button" disabled>Oír corregido</button> <button id="pitchAudit'+i+'" type="button" disabled>📋 Guardar informe QA</button>'+
   '<p id="pitchState'+i+'">Original — sin corrección aplicada</p>'+
   '<p id="pitchQa'+i+'" role="status">Sin diagnóstico: procesa una toma vocal para comparar original y afinado.</p>'+
   '<small>Las métricas QA son heurísticas PCM, no garantizan timbre, formantes ni calidad perceptual. La afinación sigue siendo offline, limitada a fragmentos breves; fuente sin alterar.</small>';
@@ -193,6 +195,7 @@ for(let i=1;i<8;i++){
    pitchBuffers[i]=result.buffer;pitchActive[i]=true;updatePitchQa(i,result.qa);
    updatePitchMatch(i,result.match,state.matchLevel);
    updatePitchTimbre(i,result.timbre,state.protectTimbre);
+   $("pitchAudit"+i).disabled=false;
    $("pitchToggle"+i).disabled=false;$("pitchToggle"+i).textContent="Oír original";
    $("pitchState"+i).textContent="Afinación activa: "+result.notes+" · Mezcla procesada "+state.wet+"%"+(result.referenceMode==="phase-safe-channel"?" · Detector protegido contra cancelación de fase":result.referenceMode==="stronger-channel"?" · Detector usando canal más fuerte":"");
    report("Canal "+(i+1)+" afinado (beta). Alterna original/corregido y escucha antes de exportar.");
