@@ -156,6 +156,14 @@ La selección de snap y subdivisión se guarda/restaura con validación fuerte e
 
 `tests/mixer-grid.cjs` verifica matemáticamente posiciones de semicorchea y corchea a 120 BPM, cambio de BPM a 90, snap opcional al pegar, flechas y deshacer/rehacer, guardado/restauración, rechazo de subdivisiones inválidas y proyectos legados.
 
+## Preparación de pruebas físicas de interfaz de audio — ejecución manual diferida
+
+`hardware-check.html` y `hardware-check.js` ofrecen una pantalla **independiente y voluntaria** para comprobar la entrada real de micrófono e interfaz en una **fase final**, no durante el desarrollo intermedio. Permite escoger dispositivo detectado, solicitar permiso mediante `getUserMedia`, registrar **8 segundos** de audio PCM por `AudioWorklet` y detener la captura, sin monitorear ni reproducir el micrófono hacia el usuario. Durante los primeros dos segundos se deja silencio para estimar un nivel de ruido digital relativo; durante los siguientes seis segundos se espera voz a volumen habitual. El motor `hardware-diagnostics.js` calcula picos en dBFS, RMS global, RMS de los primeros dos segundos, RMS posterior, muestras próximas al máximo digital y alertas de señal baja, saturación o diferencia pequeña entre fondo y voz. Se pueden descargar el WAV mono PCM16 y el JSON con resultados. Todo queda local en el dispositivo y el usuario decide cuándo ejecutar la prueba.
+
+**No estima latencia real de ida y vuelta, compensación automática de driver, sensibilidad acústica en dB SPL ni ruido calibrado en dBu**. También requiere HTTPS o localhost, permiso expreso, interfaz conectada y escucha humana para evaluar distorsión física. La preferencia del usuario es posponer TODAS las pruebas manuales con equipo hasta que se complete la candidata de lanzamiento y se hayan agotado las revisiones automáticas. No pedir muestra ni repetir instrucciones de hardware antes de ese momento.
+
+Pruebas automatizadas `tests/hardware-check.cjs` simulan señales con dos niveles, verifican alertas de saturación y el WAV, y ejecutan una grabación mediante micrófono **simulado de Chromium** para comprobar permiso, lista de entradas, captura silenciosa y descarga WAV/JSON. **Simulación no valida la interfaz ni micrófono del usuario**. El requisito de calibración automática de latencia sigue abierto y necesitaría un método físico reproducible de loopback con el hardware.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
