@@ -122,7 +122,7 @@
    try{
     if(!tracks[i])throw Error("Importa audio primero");
     const base=baseSegments(i,tracks[i]),index=Number($("copySelect"+i).value),
-     offset=Number($("copyAt"+i).value),count=Number($("copyCount"+i).value);
+     offset=window.gridSnapTime(Number($("copyAt"+i).value)),count=Number($("copyCount"+i).value);
     if(count>=maxCopies)throw Error("Máximo de 4 copias por pista");
     validate({copies:[{sourceIndex:index,offset}]},i,base,true);
     $("copySource"+count+"_"+i).value=String(index);
