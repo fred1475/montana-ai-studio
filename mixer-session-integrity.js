@@ -92,7 +92,7 @@
  function checkAudio(track,bytes){
   if(track.sourceSha256===undefined)return false; // Legacy session
   if(!valid(track.sourceSha256)||hash(bytes)!==track.sourceSha256)
-   throw Error("Integridad SHA-256 del audio fallida");
+   throw Error("Integridad del audio SHA-256 fallida");
   return true;
  }
  return {hash,manifest,checkManifest,checkAudio,valid};
