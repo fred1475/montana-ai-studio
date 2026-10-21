@@ -125,7 +125,7 @@ async function restoreMixerSnapshot(s){
    tracks[i]=t.decoded;originalFiles[i]=t.source;
    window.setMixerTrackLabel(i,t.trackLabel);
    $("inputTrim"+i).value=String(t.inputTrim);
-   $("inputTrimVal"+i).textContent=t.inputTrim.toFixed(1).replace(/\\.0$/,"")+" dB";
+   $("inputTrimVal"+i).textContent=(t.inputTrim%1===0?t.inputTrim.toFixed(0):t.inputTrim.toFixed(1))+" dB";
    window.resetVocalPreflight?.(i);
    // Reset file inputs so the restored bytes are authoritative on next save.
    $("file"+i).value="";
