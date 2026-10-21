@@ -37,8 +37,11 @@
      view.getUint32(4,true)!==bytes.length-8||length+44!==bytes.length||length%stride!==0)
    throw Error("Estructura o duración del WAV inválida");
   const frames=length/stride,left=new Float32Array(frames),right=new Float32Array(frames);
-  const readSample=(offset)=>bits===16?view.getInt16(offset,true):
-    (bytes[offset]|(bytes[offset+1]<<8)|(bytes[offset+2]<<16));
+  const readSample=(offset)=>{
+   if(bits===16)return view.getInt16(offset,true);
+   const value=bytes[offset]|(bytes[offset+1]<<8)|(bytes[offset+2]<<16);
+   return value&0x800000?value-0x1000000:value;
+  };
   const divisor=bits===16?32768:8388608;
   const maxPositive=bits===16?32767:8388607,minNegative=-divisor;
   let peak=0,clippedSamples=0,energy=0;
