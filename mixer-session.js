@@ -19,7 +19,7 @@ async function createMixerSnapshot(){
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
-  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,wavSampleRate:Number($("wavSampleRate").value),wavBits:Number($("wavBits").value),stemBits:Number($("stemBits").value),stemSampleRate:Number($("stemSampleRate").value),ditherOn:$("ditherOn").checked,tracks:items};
+  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),recordFormat:$("recordFormat").value,bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,wavSampleRate:Number($("wavSampleRate").value),wavBits:Number($("wavBits").value),stemBits:Number($("stemBits").value),stemSampleRate:Number($("stemSampleRate").value),ditherOn:$("ditherOn").checked,tracks:items};
 }
 window.createMixerSnapshot=createMixerSnapshot;
 $("saveSession").addEventListener("click",async()=>{
@@ -37,6 +37,8 @@ async function restoreMixerSnapshot(s){
   if(!Number.isFinite(masterGain)||masterGain<0||masterGain>100)throw Error("Volumen maestro inválido.");
   const recordTrack=s.recordTrack===undefined?1:s.recordTrack;
   if(!Number.isInteger(recordTrack)||recordTrack<1||recordTrack>7)throw Error("Canal de grabación inválido.");
+  const recordFormat=s.recordFormat===undefined?"wav":s.recordFormat;
+  if(recordFormat!=="wav"&&recordFormat!=="compressed")throw Error("Formato de grabación inválido.");
   const bpm=s.bpm===undefined?100:s.bpm,metronomeOn=s.metronomeOn===undefined?false:s.metronomeOn;
   if(typeof bpm!=="number"||!Number.isFinite(bpm)||bpm<40||bpm>240||typeof metronomeOn!=="boolean")throw Error("Metrónomo o BPM inválido.");
   const limiterOn=s.limiterOn===undefined?false:s.limiterOn,limiterCeiling=s.limiterCeiling===undefined?-1:s.limiterCeiling;
@@ -102,7 +104,7 @@ async function restoreMixerSnapshot(s){
   window.validateCopyCrossfadeRestore(loaded,preparedSplit,preparedCopies,preparedCrossfade);
   stop();
   $("masterGain").value=masterGain;$("masterValue").textContent=masterGain+"%";
-  $("recordTrack").value=String(recordTrack);
+  $("recordTrack").value=String(recordTrack);$("recordFormat").value=recordFormat;
   $("bpm").value=bpm;$("metronomeOn").checked=metronomeOn;
   window.restoreGrid(preparedGrid);
   $("limiterOn").checked=limiterOn;$("limiterCeiling").value=limiterCeiling;$("limiterCeilingVal").textContent=limiterCeiling+" dBFS";
