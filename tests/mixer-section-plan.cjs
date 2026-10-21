@@ -19,7 +19,7 @@ assert(Math.abs(touching.tracks[1][0].when-.2)<1e-8,'Native floating-point timin
 const last=S.plan(2.5,3.5,tracks);
 assert.equal(last.tracks[0][0].duration,.5);
 assert.equal(last.tracks[0][0].sourceOffset,.8);
-assert.equal(last.tracks[1][0].duration,.7);
+assert(Math.abs(last.tracks[1][0].duration-.7)<1e-8,'Durations use sub-sample floating-point tolerance');
 const copies=JSON.stringify(tracks);
 S.plan(0,2,tracks);
 assert.equal(JSON.stringify(tracks),copies,'Planner never mutates clip states');
