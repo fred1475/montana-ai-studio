@@ -42,23 +42,24 @@
   // Short fixed windows give an advisory about a local missing syllable,
   // compared against the overall gain to ignore uniform gain changes.
   const windowFrames=Math.max(1,Math.round(rate*.025));
-  const energyWindows=[];
+  const energyWindows=[],channelEnergy=[];
   for(let ch=0;ch<original.length;ch++){
    const before=original[ch],after=corrected[ch];
    if(!(before instanceof Float32Array)||!(after instanceof Float32Array)||
       before.length!==n||after.length!==n)throw Error("Muestras QA vocal incompatibles");
    let previousBefore=0,previousAfter=0;
    let sourceLow=0,outputLow=0;
-   let windowSource=0,windowOutput=0;
+   let windowSource=0,windowOutput=0,channelSource=0,channelOutput=0;
    for(let i=0;i<n;i++){
     const src=before[i],dst=after[i];
     if(!Number.isFinite(src)||!Number.isFinite(dst))throw Error("Muestra QA vocal no finita");
     sourcePeak=Math.max(sourcePeak,Math.abs(src));
     outputPeak=Math.max(outputPeak,Math.abs(dst));
     srcEnergy+=src*src;outEnergy+=dst*dst;
+    channelSource+=src*src;channelOutput+=dst*dst;
     windowSource+=src*src;windowOutput+=dst*dst;
     if((i+1)%windowFrames===0){
-     energyWindows.push({start:i+1-windowFrames,frames:windowFrames,
+     energyWindows.push({channel:ch,start:i+1-windowFrames,frames:windowFrames,
       sourceEnergy:windowSource,outputEnergy:windowOutput});
      windowSource=0;windowOutput=0;
     }
@@ -77,23 +78,29 @@
     previousBefore=src;previousAfter=dst;
    }
    // Ignore partial trailing windows to avoid edge artifacts.
+   channelEnergy.push({sourceEnergy:channelSource,outputEnergy:channelOutput});
   }
   const count=n*original.length;
   const sourceRms=Math.sqrt(srcEnergy/count),outputRms=Math.sqrt(outEnergy/count);
   const rmsDeltaDb=sourceRms>1e-9&&outputRms>1e-9?db(outputRms/sourceRms):null;
   const peakIncreaseDb=sourcePeak>1e-9&&outputPeak>1e-9?db(outputPeak/sourcePeak):null;
-  const overallGain=sourceRms>.01&&outputRms>1e-5?outputRms/sourceRms:null;
-  let dropoutWindowCount=0,firstDropoutSeconds=null;
-  if(overallGain!==null&&overallGain>.05){
-   const edgeGuard=Math.ceil(rate*.075);
-   for(const w of energyWindows){
-    if(w.start<edgeGuard||w.start+w.frames>n-edgeGuard)continue;
-    const beforeRms=Math.sqrt(w.sourceEnergy/w.frames);
-    const afterRms=Math.sqrt(w.outputEnergy/w.frames);
-    if(beforeRms>.015&&afterRms<beforeRms*overallGain*.12){
-     dropoutWindowCount++;
-     if(firstDropoutSeconds===null||w.start/rate<firstDropoutSeconds)
-      firstDropoutSeconds=w.start/rate;
+  const channelGains=channelEnergy.map(c=>{
+   const src=Math.sqrt(c.sourceEnergy/n),dst=Math.sqrt(c.outputEnergy/n);
+   return src>.01&&dst>1e-5?dst/src:null;
+  });
+  let dropoutWindowCount=0,firstDropoutSeconds=null,firstDropoutChannel=null;
+  const edgeGuard=Math.ceil(rate*.075);
+  for(const w of energyWindows){
+   const gain=channelGains[w.channel];
+   if(gain===null||gain<=.05||w.start<edgeGuard||w.start+w.frames>n-edgeGuard)
+    continue;
+   const beforeRms=Math.sqrt(w.sourceEnergy/w.frames);
+   const afterRms=Math.sqrt(w.outputEnergy/w.frames);
+   if(beforeRms>.015&&afterRms<beforeRms*gain*.12){
+    dropoutWindowCount++;
+    if(firstDropoutSeconds===null||w.start/rate<firstDropoutSeconds){
+     firstDropoutSeconds=w.start/rate;
+     firstDropoutChannel=w.channel+1;
     }
    }
   }
@@ -140,7 +147,7 @@
     sourceRmsDbfs:db(sourceRms),outputRmsDbfs:db(outputRms),
     rmsDeltaDb,peakIncreaseDb,maxSourceStep,maxOutputStep,newLargeSteps,
     sourceHighBandDb,outputHighBandDb,highBandDeltaDb,
-    dropoutWindowCount,firstDropoutSeconds},
+    dropoutWindowCount,firstDropoutSeconds,firstDropoutChannel},
    stereo,warnings,
    qualification:"Indicadores PCM heurísticos (banda alta aproximada con filtro de un polo a 2.5 kHz; ventanas de 25 ms para pérdida local); no certificación de formantes, timbre, percepción, EBU R128 ni ausencia de artefactos."
   };
