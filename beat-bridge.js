@@ -35,7 +35,35 @@
    throw Error("Solo WAV PCM16 estéreo 44.1/48 kHz válido");
   return {rate:v.getUint32(24,true),frames:(bytes.length-44)/4};
  }
+ const STEMS=Object.freeze(["kick","snare","clap","hat","bass"]);
+ const STEM_LIMIT=42*1024*1024;
+ function validateStems(record,now=Date.now()){
+  if(!record||record.id!==ID||record.format!=="montana-beat-stems-transfer"||
+     record.version!==2||!Number.isInteger(record.bpm)||record.bpm<60||record.bpm>200||
+     !Number.isSafeInteger(record.created)||record.created>now+60000||
+     record.created<now-AGE_MS||![44100,48000].includes(record.rate)||
+     !Number.isSafeInteger(record.frames)||record.frames<1||
+     !Array.isArray(record.stems)||record.stems.length!==STEMS.length)
+   throw Error("Envío de instrumentos inválido o caducado");
+  let total=0;
+  const stems=record.stems.map((stem,i)=>{
+   const kind=STEMS[i];
+   if(!stem||stem.kind!==kind||typeof stem.filename!=="string"||
+      stem.filename!=="montana-stem-"+kind+"-"+(record.rate/1000).toFixed(1)+"k.wav"||
+      !Number.isInteger(stem.crc32)||stem.crc32<0||stem.crc32>0xffffffff)
+    throw Error("Instrumento o nombre inválido: "+kind);
+   const info=inspect(stem.bytes);
+   total+=stem.bytes.length;
+   if(total>STEM_LIMIT||info.rate!==record.rate||info.frames!==record.frames||
+      crc(stem.bytes)!==stem.crc32)
+    throw Error("Integridad o alineación de stems inválida");
+   return {kind,filename:stem.filename,bytes:stem.bytes.slice(),crc32:stem.crc32};
+  });
+  return {id:ID,format:record.format,version:2,created:record.created,
+   bpm:record.bpm,rate:record.rate,frames:record.frames,stems};
+ }
  function validate(record,now=Date.now()){
+  if(record?.format==="montana-beat-stems-transfer")return validateStems(record,now);
   if(!record||record.id!==ID||record.format!=="montana-beat-transfer"||
      record.version!==1||!Number.isInteger(record.bpm)||record.bpm<60||record.bpm>200||
      !Number.isSafeInteger(record.created)||record.created>now+60000||
@@ -86,7 +114,24 @@
   await transact("readwrite",s=>s.put(record));
   return {rate:info.rate,frames:info.frames,bpm,filename};
  }
+ async function saveStems({stems,bpm,created=Date.now()}){
+  if(!Array.isArray(stems)||stems.length!==STEMS.length||
+     !Number.isInteger(bpm)||bpm<60||bpm>200)
+    throw Error("Envío de instrumentos inválido");
+  const audio=stems.map((s,i)=>{
+   if(!s||s.kind!==STEMS[i]||!(s.bytes instanceof Uint8Array))
+    throw Error("Instrumento inválido o fuera de orden");
+   const bytes=s.bytes.slice(),info=inspect(bytes);
+   return {kind:s.kind,filename:s.filename,bytes,crc32:crc(bytes),rate:info.rate,frames:info.frames};
+  });
+  const record={id:ID,format:"montana-beat-stems-transfer",version:2,
+   bpm,created,rate:audio[0].rate,frames:audio[0].frames,
+   stems:audio.map(({kind,filename,bytes,crc32})=>({kind,filename,bytes,crc32}))};
+  validateStems(record,created);
+  await transact("readwrite",store=>store.put(record));
+  return {bpm,rate:record.rate,frames:record.frames,stemCount:record.stems.length};
+ }
  async function read(){const item=await transact("readonly",s=>s.get(ID));return item?validate(item):null;}
  async function discard(){await transact("readwrite",s=>s.delete(ID));}
- return {inspect,validate,save,read,discard,LIMIT,AGE_MS};
+ return {inspect,validate,validateStems,save,saveStems,read,discard,LIMIT,AGE_MS,STEMS,STEM_LIMIT};
 });
