@@ -22,6 +22,19 @@ async function inspect(l,r,bits=16){
  return result;
 }
 (async()=>{
+ // Optional WAV audit must not copy oversized audio to an ArrayBuffer.
+ // The master remains downloadable independently of this report.
+ let oversizedRead=false;
+ const oversized={
+  size:56*1024*1024+1,
+  async arrayBuffer(){oversizedRead=true;throw Error('Oversized source was read');}
+ };
+ await assert.rejects(()=>audit.analyzeWav(oversized,measure),/hasta 56 MiB/);
+ assert.equal(oversizedRead,false,'Audit budget must be checked before reading bytes');
+ // Metadata can be missing or forged: enforce the limit again after reading.
+ await assert.rejects(()=>audit.analyzeWav({
+  async arrayBuffer(){return new ArrayBuffer(56*1024*1024+1)}
+ },measure),/hasta 56 MiB/);
  for(const bits of [16,24]){
   const inPhase=await inspect(sine,double,bits);
   assert(inPhase.metrics.stereoCorrelation>.99999,'Identical channels must be correlated');
