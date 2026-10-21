@@ -51,6 +51,7 @@
    if(!$("blindStart"+i).disabled)status("Voz procesada lista. Prepara un nuevo sorteo A/B cuando quieras.");
   };
   $("blindStart"+i).addEventListener("click",()=>{
+   $("stop").click(); // avoid accidentally hearing the entire mixer during blind tests
    stop();answer=null;trial=null;refs=null;
    if(!tracks[i]||!pitchBuffers[i]||!pitchReports[i]){
     enable();return;
@@ -73,7 +74,7 @@
    !!pitchReports[i];
   const play=choice=>{
    if(!stillValid()){enable();return;}
-   stop();
+   stop();$("stop").click();
    try{
     const context=audio();
     if(context.state==="suspended")context.resume().catch(()=>{});
