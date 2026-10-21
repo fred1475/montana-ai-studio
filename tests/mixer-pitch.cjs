@@ -97,6 +97,16 @@ for(let j=0;j<frames;j++)wave.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*2
   const phaseExport=await exportWav('mixer-pitch-stereo-phase-safe.wav');
   const phaseHz=pitch.detectPitch(phaseExport.samples,rate,.5)?.frequency;
   assert(phaseHz&&Math.abs(1200*Math.log2(phaseHz/220))<19,'Antiphase stereo output should correct first channel to A3: '+phaseHz);
+  // Shared PSOLA marks must preserve the inverted right channel in the actual
+  // 16-bit stereo export, not just inside an isolated DSP unit test.
+  let maximumMismatch=0,leftPeak=0;
+  for(let j=0;j<frames;j+=13){
+   const a=phaseExport.wav.readInt16LE(44+j*4),b=phaseExport.wav.readInt16LE(46+j*4);
+   maximumMismatch=Math.max(maximumMismatch,Math.abs(a+b));
+   leftPeak=Math.max(leftPeak,Math.abs(a));
+  }
+  assert(leftPeak>1000,'Stereo corrected WAV must retain an audible-level source channel');
+  assert(maximumMismatch<=3,'PCM16 export must preserve anti-phase stereo to quantization precision: '+maximumMismatch);
   assert.deepEqual(errors,[]);
   console.log('PASS: experimental vocal pitch and antiphase stereo UI/export; source unchanged, restore, bypass and invalid session checks.');
  }finally{await browser.close()}
