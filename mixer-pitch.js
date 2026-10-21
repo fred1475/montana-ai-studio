@@ -14,7 +14,8 @@ function pitchQaText(report){
   fmt(m.rmsDeltaDb)+" dB. Pico corregido "+fmt(m.outputPeakDbfs)+
   " dBFS. Saltos nuevos: "+m.newLargeSteps+". "+
   "Ventanas de posible microcorte: "+m.dropoutWindowCount+
-   (m.firstDropoutSeconds===null?".":", primera en "+m.firstDropoutSeconds.toFixed(2)+" s.")+" "+
+   (m.firstDropoutSeconds===null?".":", primera en "+m.firstDropoutSeconds.toFixed(2)+
+    " s (canal "+m.firstDropoutChannel+").")+" "+
   "Cambio relativo de altas (aprox. 2.5 kHz): "+fmt(m.highBandDeltaDb)+" dB. "+
   (report.stereo?"Estéreo: correlación "+fmt(report.stereo.source.correlation)+
    " → "+fmt(report.stereo.output.correlation)+"; balance L/R "+
