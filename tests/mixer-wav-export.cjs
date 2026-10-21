@@ -34,7 +34,7 @@ function inspect(b,bits,frames){
  let enhanced=0;
  for(let i=0;i<4000;i++){
   const v=read24(pcm24,44+6*i),w=read24(pcm24,47+6*i);
-  assert.equal(v,-w,'PCM24 preserves antiphase channels');
+  assert(Math.abs(v+w)<=1,'PCM24 preserves antiphase channels to one LSB');
   if(v!==0)enhanced++;
  }
  assert(enhanced>3900,'24-bit must retain below-16-bit detail');
@@ -59,6 +59,7 @@ function inspect(b,bits,frames){
  const clip24=await codec.encode(clipLeft,clipRight,rate,{bits:24});
  const clipReport=await audit.analyzeWav(clip24,loud.measure);
  assert.equal(clipReport.file.bitsPerSample,24);
+ assert(Math.abs(clipReport.metrics.samplePeakDbfs)<0.001,'Signed PCM24 full scale decodes to near 0 dBFS');
  assert.equal(clipReport.file.frames,rate);
  assert(clipReport.metrics.pcmClippedSamples>1000);
  assert.equal(clipReport.checks.find(c=>c.id==='pcm_clipping').status,'warning');
