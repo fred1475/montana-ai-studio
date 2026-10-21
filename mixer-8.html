@@ -162,7 +162,7 @@ $("export").onclick=async()=>{
    $("auditStatus").textContent="Midiendo PCM exacto del master exportado...";
    try{
     const audit=await MontanaMasterAudit.analyzeWav(blob,MontanaLoudness.measure,{
-      normalizationApplied:!!normalization,limiterApplied:!!limiter,yieldToBrowser:true
+      normalizationApplied:!!normalization,limiterApplied:!!limiter,ditherApplied:exportDither,yieldToBrowser:true
     });
     window.montanaLastAudit=audit;
     $("downloadAudit").disabled=false;
