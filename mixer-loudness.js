@@ -1,7 +1,7 @@
 /* Montana Music Production LLC — BS.1770-5 / EBU R128-derived offline loudness diagnostics.
  * K weighting; 400ms blocks with 75% overlap and absolute/relative gates.
  * Includes ungated momentary (400ms), short-term (3s), gated integrated\n * and EBU Tech 3342 LRA (10th to 95th percentiles, -20 LU relative gate).\n * Stereo 1+1 channels (each weight 1). Intersample peak estimated using
- * polyphase windowed-sinc 4x; not independently certified to EBU R128.
+ * polyphase 40-tap Blackman-windowed sinc 4x; not independently certified to EBU R128.
  */
 (function(root,factory){
  const api=factory();
@@ -29,10 +29,10 @@
   };
  }
  const kernel=(()=>{
-  const out=[];const radius=6;
+  const out=[];const radius=20; // 40-tap Blackman window improves intersample noise test accuracy
   for(const f of [.25,.5,.75]){
    const weights=[];
-   for(let k=-5;k<=6;k++){
+   for(let k=1-radius;k<=radius;k++){
     const x=k-f,z=Math.PI*x;
     const sinc=Math.abs(x)<1e-12?1:Math.sin(z)/z;
     const window=Math.abs(x)<radius?(0.42+0.5*Math.cos(Math.PI*x/radius)+0.08*Math.cos(2*Math.PI*x/radius)):0;
@@ -51,8 +51,8 @@
     peak=Math.max(peak,Math.abs(channel[i]));
     for(let phase=0;phase<3;phase++){
      const h=kernel[phase];let y=0;
-     for(let k=0;k<12;k++){
-      const idx=i+k-5;
+     for(let k=0;k<40;k++){
+      const idx=i+k-19;
       if(idx>=0&&idx<n)y+=channel[idx]*h[k];
      }
      peak=Math.max(peak,Math.abs(y));
