@@ -21,8 +21,8 @@
   if(channels.some(c=>c.length!==n)||n<rate*.65||n>rate*10)throw Error("La frase debe durar entre 0.65 y 10 segundos");
   const strength=opts.strength===undefined?100:Number(opts.strength);
   if(!Number.isFinite(strength)||strength<0||strength>100)throw Error("Intensidad inválida");
-  const mono=new Float32Array(n);
-  for(let j=0;j<n;j++){let v=0;for(const ch of channels)v+=ch[j];mono[j]=v/channels.length}
+  const reference=pitch.vocalReference(channels);
+  const mono=reference.samples;
   const hop=Math.max(1,Math.round(rate*.075)),half=2048,frames=[];
   for(let center=half;center+half<n;center+=hop){
    const result=pitch.detectPitch(mono,rate,center/n);
@@ -89,7 +89,7 @@
     }
    }
   }
-  return {channels:out,segments,duration:n/rate,mode:"melody-experimental",transitionGuardMs:guardMs};
+  return {channels:out,segments,duration:n/rate,mode:"melody-experimental",referenceMode:reference.mode,transitionGuardMs:guardMs};
  }
  return {processMelody};
 });
