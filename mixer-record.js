@@ -60,7 +60,7 @@ $("recordStart").addEventListener("click",async()=>{
     // Atomic replacement happens only after a full successful decode.
     tracks[i]=decoded;originalFiles[i]=file;
     window.resetPitch?.(i);window.resetClean?.(i);
-    $("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("fadeIn"+i).value=0;$("fadeOut"+i).value=0;
+    $("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("fadeIn"+i).value=0;$("fadeOut"+i).value=0;$("repeat"+i).value=1;
     $("offset"+i).value=0;
     if(i>0){$("alignMs"+i).value=0;$("alignVal"+i).textContent="0 ms"}
     $("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
@@ -84,7 +84,7 @@ $("recordStart").addEventListener("click",async()=>{
     src.buffer=guide.buffer;g.gain.value=gain(index);p.pan.value=pan(index);
     window.connectFades(audio(),src,g,index,guide.clip,at+guide.clip.offset);const eq=addEq(audio(),g,index),comp=addCompressor(audio(),eq,index),fx=addSpace(audio(),comp,index);
     window.attachTrackMeter(audio(),fx,index).connect(p).connect(m);
-    src.start(at+guide.clip.offset,guide.clip.start,guide.clip.duration);players.push(src);
+    if(guide.clip.repeat>1){src.loop=true;src.loopStart=guide.clip.start;src.loopEnd=guide.clip.start+guide.clip.singleDuration}src.start(at+guide.clip.offset,guide.clip.start,guide.clip.duration);players.push(src);
    }
    if($("metronomeOn").checked)window.startMetronome(audio(),at);
   }else if($("metronomeOn").checked){
