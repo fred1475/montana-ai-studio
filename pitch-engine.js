@@ -100,23 +100,47 @@
     if(spread>35)throw Error('La afinación cambia dentro del clip; esta beta solo corrige una nota sostenida.');
     return {frequency:center,confidence:tries.reduce((sum,p)=>sum+p.confidence,0)/tries.length,spreadCents:spread};
   }
-  function correctChannel(input,sampleRate,sourceFrequency,targetFrequency){
-    const n=input.length,period=sampleRate/sourceFrequency,ratio=targetFrequency/sourceFrequency;
-    // Correct at most 250 cents per correction, to avoid severe artifacts.
-    if(!Number.isFinite(ratio)||ratio<Math.pow(2,-250/1200)||ratio>Math.pow(2,250/1200))throw Error('Corrección fuera del rango seguro de 250 cents.');
+  // A single PSOLA time grid is shared across related stereo channels.
+  // Separate peak trackers can land half a period apart on inverted signals,
+  // destroying the intended L/R relationship even if pitch detection succeeded.
+  function pitchMarkPlan(reference,sampleRate,sourceFrequency){
+    if(!(reference instanceof Float32Array)||!reference.length||
+       !Number.isFinite(sampleRate)||sampleRate<8000||sampleRate>192000||
+       !Number.isFinite(sourceFrequency)||sourceFrequency<=0)
+      throw Error('Referencia de afinación inválida');
+    const n=reference.length,period=sampleRate/sourceFrequency;
+    if(!Number.isFinite(period)||period<2||period>n/4)throw Error('Período de afinación inválido');
     const span=Math.ceil(period),phaseLead=Math.max(1,Math.floor(period*2));
     let first=0,high=-Infinity;
-    for(let i=0;i<Math.min(n,phaseLead);i++)if(input[i]>high){high=input[i];first=i}
-    // Track positive waveform peaks around predicted times in each input pitch cycle.
+    for(let i=0;i<Math.min(n,phaseLead);i++){
+      const v=reference[i];
+      if(!Number.isFinite(v))throw Error('Muestra vocal inválida');
+      if(v>high){high=v;first=i}
+    }
     const marks=[];
     for(let prediction=first;prediction<n;prediction+=period){
       const center=Math.round(prediction),search=Math.max(2,Math.floor(period*.18));
       const lo=Math.max(0,center-search),hi=Math.min(n-1,center+search);
       let mark=lo,peak=-Infinity;
-      for(let i=lo;i<=hi;i++)if(input[i]>peak){peak=input[i];mark=i}
+      for(let i=lo;i<=hi;i++){
+        const v=reference[i];
+        if(!Number.isFinite(v))throw Error('Muestra vocal inválida');
+        if(v>peak){peak=v;mark=i}
+      }
       marks.push(mark);
     }
     if(marks.length<5)throw Error('Toma demasiado corta para corrección de afinación.');
+    return {first,marks,period,span,frames:n};
+  }
+  function correctChannel(input,sampleRate,sourceFrequency,targetFrequency,sharedPlan){
+    if(!(input instanceof Float32Array))throw Error('Canal vocal inválido');
+    const n=input.length,ratio=targetFrequency/sourceFrequency;
+    // Correct at most 250 cents per correction, to avoid severe artifacts.
+    if(!Number.isFinite(ratio)||ratio<Math.pow(2,-250/1200)||ratio>Math.pow(2,250/1200))throw Error('Corrección fuera del rango seguro de 250 cents.');
+    const plan=sharedPlan||pitchMarkPlan(input,sampleRate,sourceFrequency);
+    if(plan.frames!==n||!Number.isFinite(plan.first)||!Number.isFinite(plan.period)||!Number.isInteger(plan.span)||
+       !Array.isArray(plan.marks)||plan.marks.length<5)throw Error('Marcas de afinación incompatibles');
+    const {first,marks,period,span}=plan;
     const output=new Float32Array(n),weight=new Float32Array(n);
     const newPeriod=period/ratio;
     for(let position=first;position<n+span;position+=newPeriod){
@@ -151,8 +175,13 @@
     const measured=analyze(reference.samples,sampleRate),target=nearestNote(measured.frequency,key,scale);
     const adjustedFrequency=measured.frequency*Math.pow(target.frequency/measured.frequency,strength/100);
     const correctionCents=cents(adjustedFrequency,measured.frequency);
-    const output=channels.map(ch=>Math.abs(correctionCents)<.3?Float32Array.from(ch):correctChannel(ch,sampleRate,measured.frequency,adjustedFrequency));
+    // Keep the same sample destinations AND source marks in L/R to preserve
+    // polarity, channel scaling, and stereo timing under a linear transform.
+    const commonPlan=channels.length===2&&Math.abs(correctionCents)>=.3?
+      pitchMarkPlan(reference.samples,sampleRate,measured.frequency):null;
+    const output=channels.map(ch=>Math.abs(correctionCents)<.3?Float32Array.from(ch):
+      correctChannel(ch,sampleRate,measured.frequency,adjustedFrequency,commonPlan));
     return {channels:output,analysis:{...measured,referenceMode:reference.mode},target,targetFrequency:adjustedFrequency,correctionCents,duration:n/sampleRate};
   }
-  return {detectPitch,analyze,nearestNote,process,correctChannel,vocalReference,noteName,notes,scales};
+  return {detectPitch,analyze,nearestNote,process,correctChannel,pitchMarkPlan,vocalReference,noteName,notes,scales};
 });
