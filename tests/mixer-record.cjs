@@ -15,6 +15,20 @@ for(let j=0;j<n;j++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*330*j/r
   const page=await browser.newPage({acceptDownloads:true,permissions:['microphone']});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:8765/mixer-8.html');
+  await page.locator('#scanMicInputs').click();
+  await page.waitForFunction(()=>document.querySelector('#micInputStatus')?.textContent?.includes('entrada(s) detectadas'));
+  assert((await page.locator('#micInput option').count())>=2,'Fake audio interface must be listed');
+  const fakeDevice=await page.locator('#micInput option').nth(1).getAttribute('value');
+  assert(fakeDevice,'Chromium fake mic must have an id');
+  await page.locator('#micInput').selectOption(fakeDevice);
+  await page.evaluate(()=>{
+   const original=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+   navigator.mediaDevices.getUserMedia=async settings=>{
+    window.__montanaMicTestConstraints=settings;
+    return original(settings);
+   };
+  });
+
   assert.equal(await page.evaluate(()=>recordingSupported()),true,'Headless Chromium must support fake microphone');
   await page.locator('#file0').setInputFiles({name:'beat.wav',mimeType:'audio/wav',buffer:wav});
   await page.waitForFunction(()=>document.querySelector('#label0')?.textContent?.includes('beat.wav'));
@@ -22,6 +36,10 @@ for(let j=0;j<n;j++)wav.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*330*j/r
   assert.equal(await page.locator('#downloadSource').isDisabled(),true);
   await page.locator('#recordStart').click();
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Grabando canal'),null,{timeout:10000});
+  assert.equal(await page.evaluate(()=>window.__montanaMicTestConstraints?.audio?.deviceId?.exact),fakeDevice,
+   'The selected audio interface input must be passed to getUserMedia');
+  assert((await page.locator('#micInputStatus').innerText()).includes('Grabando desde:'));
+
   assert.equal(await page.locator('#recordStart').isDisabled(),true);
   assert.equal(await page.locator('#downloadSource').isDisabled(),true);
   await page.waitForTimeout(1400);
