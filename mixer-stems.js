@@ -1,7 +1,7 @@
 "use strict";
 /* Montana Music Production — isolated stems and dependency-free ZIP archive.
  * Every file includes timeline leading silence, trim, input gain, track gain, timeline automation, pan, EQ,
- * compressor, reverb, delay, and experimental selected vocal DSP.
+ * compressor, reverb, delay, automated stereo panorama and experimental selected vocal DSP.
  * Mute/solo, master gain, and master limiter deliberately do NOT print into
  * stems; they are isolated sources for later mixing.
  * Local ZIP uses STORE (no compression) and CRC32, portable to any OS.
@@ -30,7 +30,7 @@
   vol.connect(automated);
   const pre=MontanaInputTrim.attach(ctx,vol,Number($("inputTrim"+i).value));
   vol.gain.value=Number($("vol"+i).value)/100;
-  panNode.pan.value=pan(i);
+  MontanaPanAutomation.schedule(panNode,window.panAutomationState(i),pan(i),0);
   addSpace(ctx,addCompressor(ctx,addEq(ctx,eqIn,i),i),i).connect(panNode).connect(ctx.destination);
   const crossfadePlan=window.prepareCrossfadePlan(i,plan.segments[i]);
   for(const [clipIndex,clip] of plan.segments[i].entries()){
