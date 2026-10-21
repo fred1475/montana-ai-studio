@@ -1,6 +1,6 @@
 /* Montana Music Production LLC — WAV PCM stereo export, 16/24 bit.
  * Offline export only. Optional TPDF dither at 16-bit quantization, no proprietary DSP.
- * Default remains original PCM16 path; stems retain existing PCM16 format.
+ * Default PCM16 preserves old sessions; PCM24 is now available for master and stems.
  */
 (function(root,factory){
  const api=factory();
