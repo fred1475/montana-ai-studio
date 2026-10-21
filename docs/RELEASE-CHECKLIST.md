@@ -61,6 +61,12 @@ Se incorpora el cálculo local **sin renderizar** para master WAV y stems WAV/ZI
 
 El master y los stems ahora validan los límites de PCM/ZIP antes de procesar voces o crear un `OfflineAudioContext`; se evita desperdiciar memoria en renders que inequívocamente superarían límites ya existentes (150 MiB master, 145 MiB stem/ZIP). El botón no sube material ni modifica audio. Pruebas: `tests/mixer-export-preflight.cjs` (planes sintéticos de 60–600 s, PCM16/24, auditoría, ZIP, formatos inválidos) y `tests/mixer-export-preflight-ui.cjs` (navegador, botón, rechazo temprano antes de DSP, originales intactos). **No se ha comprobado todavía rendimiento real de 8 pistas durante minutos en todos los equipos y navegadores.**
 
+### Exportación WAV en bloques — memoria contigua acotada
+
+El codificador `mixer-wav-export.js` ahora compone WAV PCM16/PCM24 en bloques de **32 768 fotogramas estéreo** (además de la cabecera RIFF de 44 bytes), conservando el orden de muestras, cuantización y generador TPDF determinista entre bloques. Esto evita reservar un **único ArrayBuffer de hasta 150 MiB** solo para la salida codificada, y afecta tanto al master como a los stems porque comparten el codificador. Se conserva el límite total anterior de 150 MiB. El nuevo test `tests/mixer-wav-chunks.cjs` compara el archivo completo byte por byte, CRC32, PCM16/24, 44.1/48 kHz, dither con semilla fija y longitudes en los límites de bloque con una implementación independiente del codificador anterior. También comprueba entradas no finitas y que las fuentes Float32 originales no se alteran.
+
+**Límite importante:** usar bloques no implica que el proceso completo consuma poca memoria. El Blob de salida, el render Web Audio, el ZIP de varios stems, la auditoría exacta y el navegador todavía requieren otros buffers; no se garantiza rendimiento estable en sesiones extensas de producción real.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
