@@ -118,6 +118,14 @@ Cada canal admite **1–8 repeticiones** de la región establecida mediante reco
 
 Las pruebas incluyen voces sintéticas con secciones activas/silenciosas, tres repeticiones audibles, precisión temporal, stems, respaldo/restauración, validación de 1–8 y compatibilidad hacia atrás. **No es un editor multipista con regiones independientes, time-stretch, grid/snap, crossfades entre fragmentos ni MIDI.**
 
+## Editor de clips: primera división no destructiva (beta)
+
+`mixer-split.js` permite **una división por canal**, creando dos regiones independientes que referencian la **misma fuente original**. El usuario elige «Dividir región por mitad», cambia el punto de corte en segundos y mueve de forma independiente el inicio del segundo fragmento. Cada región es una fuente WebAudio independiente y pasa por la misma cadena de efectos del canal; los fragmentos se ven separados en la línea de tiempo. El WAV maestro, las pistas individuales (stems) y la guía de grabación usan esas posiciones. El corte y la posición independiente están en el JSON y en la recuperación IndexedDB; se admiten Deshacer/Rehacer y lectura de sesiones antiguas (sin división).
+
+Límites intencionales: **máximo dos fragmentos por pista**, no hay aún fragmentos ilimitados, operaciones copy/paste, biblioteca de clips, edición con zoom sample-accurate, crossfade automático ni time-stretch. La división solo se permite con `Repetir región = 1`. Los fundidos generales del canal se aplican por fragmento cuando están activados; escuche las transiciones para evitar chasquidos. No se borra material del archivo fuente. Los segmentos fuera del tiempo cero se limitan a la línea de tiempo del proyecto.
+
+Pruebas incluidas: una fuente que contiene 330 Hz y 660 Hz en mitades sucesivas, movimiento de la segunda región para insertar silencio, comprobación de ambas frecuencias en PCM16 real, stems alineados, duración, undo/redo, integridad al guardar/restaurar y rechazo de posiciones de corte inválidas sin destruir el proyecto activo. El editor **sigue en desarrollo** hasta ampliar el manejo de clips y las pruebas con audio musical complejo.
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
