@@ -46,7 +46,7 @@ function processVocal(buffer,settings){
   corrected.copyToChannel(channel,ch);
  });
  const notes=settings.mode==="melody"?result.segments.map(s=>s.targetNote).join(" → "):result.target.note;
- return {buffer:corrected,notes};
+ return {buffer:corrected,notes,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
 }
 window.resetPitch=pitchInvalidate;
 window.pitchSessionState=i=>{
@@ -107,7 +107,7 @@ for(let i=1;i<8;i++){
    const result=processVocal(tracks[i],state);
    pitchBuffers[i]=result.buffer;pitchActive[i]=true;
    $("pitchToggle"+i).disabled=false;$("pitchToggle"+i).textContent="Oír original";
-   $("pitchState"+i).textContent="Afinación activa: "+result.notes;
+   $("pitchState"+i).textContent="Afinación activa: "+result.notes+(result.referenceMode==="phase-safe-channel"?" · Detector protegido contra cancelación de fase":result.referenceMode==="stronger-channel"?" · Detector usando canal más fuerte":"");
    report("Canal "+(i+1)+" afinado (beta). Alterna original/corregido y escucha antes de exportar.");
   }catch(err){report("No se aplicó afinación: "+err.message)}finally{btn.disabled=false}
  });
