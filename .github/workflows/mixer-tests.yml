@@ -16,6 +16,10 @@ on:
       - 'mixer-crossfade.js'
       - 'mixer-clipboard.js'
       - 'mixer-grid.js'
+      - 'hardware-check.html'
+      - 'hardware-check.js'
+      - 'hardware-diagnostics.js'
+      - 'tests/hardware-check.cjs'
       - 'tests/mixer-grid.cjs'
       - 'tests/mixer-clipboard.cjs'
       - 'tests/mixer-crossfade.cjs'
@@ -79,6 +83,9 @@ jobs:
           node --check mixer-crossfade.js
           node --check mixer-clipboard.js
           node --check mixer-grid.js
+          node --check hardware-check.js
+          node --check hardware-diagnostics.js
+          node --check tests/hardware-check.cjs
           node --check tests/mixer-grid.cjs
           node --check tests/mixer-clipboard.cjs
           node --check tests/mixer-crossfade.cjs
@@ -141,6 +148,7 @@ jobs:
           node tests/mixer-crossfade.cjs
           node tests/mixer-clipboard.cjs
           node tests/mixer-grid.cjs
+          node tests/hardware-check.cjs
           node tests/mixer-loops.cjs
           node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
@@ -149,7 +157,7 @@ jobs:
         run: |
           mkdir -p mixer-preview
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
-          cp mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp hardware-check.html hardware-check.js hardware-diagnostics.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-session.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -176,7 +184,8 @@ jobs:
             '22. Puede repetir 1–8 veces una región recortada en su pista, escuchándola y exportando WAV/stems.' \
             '23. Active Auditoría de master WAV si desea JSON EBU de preentrega con CRC32 del PCM16 exacto.' \
             '24. Use hasta cuatro fragmentos, cuatro copias adicionales y BPM grid snap opcional (1/4, 1/8, 1/16) en la línea de tiempo.' \
-            '25. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
+            '25. Hardware check preparado: abra hardware-check.html para probar físicamente la interfaz SOLO cuando lleguemos a la validación final.' \
+            '26. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
