@@ -30,7 +30,7 @@ for(const inputs of [
  [[],tuned],[dry,[]],[dry,[tuned[0]]],[dry,[tuned[0],tuned[1].subarray(1)]],
  [dry,[new Float32Array(n).fill(NaN),tuned[1]]],
  [dry,[new Float32Array(n).fill(Infinity),tuned[1]]]
-])assert.throws(()=>M.match(inputs[0],inputs[1]),/inválid|incompatibles|no finita/);
+])assert.throws(()=>M.match(inputs[0],inputs[1]),/inválid|incompatibles|no finita|misma duración/);
 const many=[new Float32Array(192000*15+1)];
 assert.throws(()=>M.inspect(many),/inválido/);
 console.log('PASS vocal level matcher: global RMS, stereo preservation, +/-6dB guard, peak cap, silence bypass, finite PCM and original immutability.');
