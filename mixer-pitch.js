@@ -6,7 +6,51 @@
  */
 const pitchBuffers=Array(8).fill(null),pitchActive=Array(8).fill(false);
 const pitchReports=Array(8).fill(null),pitchLevelReports=Array(8).fill(null);
-const pitchTimbreReports=Array(8).fill(null);
+const pitchTimbreReports=Array(8).fill(null),pitchNoteReports=Array(8).fill(null);
+function updatePitchNotes(i,diagnosis){
+ pitchNoteReports[i]=diagnosis;
+ if(i===0)return;
+ const container=$("pitchNoteAudit"+i);
+ container.replaceChildren();
+ if(!diagnosis){
+  container.textContent="Sin notas medidas; procesa una toma vocal.";
+  return;
+ }
+ const title=document.createElement("p");
+ title.textContent="Notas detectadas: "+diagnosis.segments.length+
+  ". Cents planificados ≠ desviación medida después del procesamiento.";
+ container.append(title);
+ const table=document.createElement("table");
+ table.style.cssText="width:100%;font-size:.8rem;border-collapse:collapse";
+ const head=document.createElement("tr");
+ for(const label of ["Tiempo","Detectada","Objetivo","Corrección planeada","Resultado medido"]){
+  const cell=document.createElement("th");cell.textContent=label;
+  cell.style.cssText="padding:3px;text-align:left;border-bottom:1px solid #74829a";
+  head.append(cell);
+ }
+ table.append(head);
+ for(const entry of diagnosis.segments){
+  const row=document.createElement("tr");
+  const values=[
+   entry.startSeconds+"–"+entry.endSeconds+" s",
+   entry.originalNote+" ("+entry.originalHz+" Hz)",
+   entry.targetNote+" ("+entry.targetNoteHz+" Hz)",
+   (entry.plannedCorrectionCents>=0?"+":"")+entry.plannedCorrectionCents+" cents",
+   entry.measuredOutputHz===null?"No medible":
+    entry.measuredOutputHz+" Hz / "+
+    (entry.measuredDeviationCents>=0?"+":"")+entry.measuredDeviationCents+" cents vs. objetivo"
+  ];
+  for(const val of values){
+   const cell=document.createElement("td");cell.textContent=val;
+   cell.style.cssText="padding:3px;border-bottom:1px solid #35445b";row.append(cell);
+  }
+  table.append(row);
+ }
+ container.append(table);
+ const caution=document.createElement("small");
+ caution.textContent="Estimación F0 de una ventana por nota; vibrato, ruido, consonantes y mezclas pueden impedir medir el tono. No certifica artefactos, formantes ni calidad perceptual.";
+ container.append(caution);
+}
 function pitchTimbreText(info,enabled){
  if(!enabled)return "Protección de carácter espectral desactivada.";
  if(!info)return "Protección espectral sin análisis disponible.";
@@ -80,7 +124,7 @@ function checkPitch(p,i){
 }
 function pitchInvalidate(i){
  window.montanaBlindReset?.(i);
- pitchBuffers[i]=null;pitchActive[i]=false;updatePitchQa(i,null);
+ pitchBuffers[i]=null;pitchActive[i]=false;updatePitchQa(i,null);updatePitchNotes(i,null);
  updatePitchMatch(i,null,i>0&&$("pitchMatch"+i).checked);
  updatePitchTimbre(i,null,i>0&&$("pitchTimbre"+i).checked);
  if(i>0){
@@ -116,7 +160,8 @@ function processVocal(buffer,settings){
  });
  const notes=settings.mode==="melody"?result.segments.map(s=>s.targetNote).join(" → "):result.target.note;
  const qa=MontanaPitchQA.analyze(channels,mixedChannels,buffer.sampleRate);
- return {buffer:corrected,notes,qa,match:matched?.report||null,timbre:guarded?.report||null,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
+ const noteAudit=MontanaPitchNoteAudit.create(result,settings.mode,mixedChannels,buffer.sampleRate,settings);
+ return {buffer:corrected,notes,qa,noteAudit,match:matched?.report||null,timbre:guarded?.report||null,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
 }
 window.resetPitch=pitchInvalidate;
 window.pitchSessionState=i=>{
@@ -132,14 +177,14 @@ window.preparePitchRestore=(loaded,records)=>{
   if(p.enabled&&!loaded[i].decoded)throw Error("Afinación sin voz en canal "+(i+1));
   // Build all corrected buffers before changing the open session (atomic restore).
   const processed=p.enabled?processVocal(loaded[i].decoded,p):null;
-  restored.push({settings:{...p},buffer:processed?.buffer||null,qa:processed?.qa||null,match:processed?.match||null,timbre:processed?.timbre||null});
+  restored.push({settings:{...p},buffer:processed?.buffer||null,qa:processed?.qa||null,noteAudit:processed?.noteAudit||null,match:processed?.match||null,timbre:processed?.timbre||null});
  }
  return restored;
 };
 window.commitPitchRestore=restored=>{
- restored.forEach(({settings,buffer,qa,match,timbre},i)=>{
+ restored.forEach(({settings,buffer,qa,noteAudit,match,timbre},i)=>{
   pitchBuffers[i]=buffer;pitchActive[i]=settings.enabled;
-  if(i>0){updatePitchQa(i,qa);updatePitchMatch(i,match,settings.matchLevel);
+  if(i>0){updatePitchQa(i,qa);updatePitchNotes(i,noteAudit);updatePitchMatch(i,match,settings.matchLevel);
    updatePitchTimbre(i,timbre,settings.protectTimbre);}
   if(i===0)return;
   $("pitchMode"+i).value=settings.mode;$("pitchKey"+i).value=settings.key;
@@ -173,6 +218,7 @@ for(let i=1;i<8;i++){
   '<button id="pitchApply'+i+'" type="button">🎼 Procesar voz</button> <button id="pitchToggle'+i+'" type="button" disabled>Oír corregido</button> <button id="pitchAudit'+i+'" type="button" disabled>📋 Guardar informe QA</button> <button id="pitchAB'+i+'" type="button" disabled>🎧 Descargar comparativa A/B</button>'+
   '<p id="pitchState'+i+'">Original — sin corrección aplicada</p>'+
   '<p id="pitchQa'+i+'" role="status">Sin diagnóstico: procesa una toma vocal para comparar original y afinado.</p>'+
+  '<details><summary>🎼 Diagnóstico de notas y cents</summary><div id="pitchNoteAudit'+i+'">Sin notas medidas; procesa una toma vocal.</div></details>'+
   '<small>Las métricas QA son heurísticas PCM, no garantizan timbre, formantes ni calidad perceptual. La afinación sigue siendo offline, limitada a fragmentos breves; fuente sin alterar.</small>';
  document.querySelectorAll("article.track")[i].append(el);
  for(const key of ["pitchMode","pitchKey","pitchScale","pitchStrength","pitchWet","pitchMatch","pitchTimbre"]){
@@ -197,6 +243,7 @@ for(let i=1;i<8;i++){
    await new Promise(resolve=>setTimeout(resolve,0));
    const result=processVocal(tracks[i],state);
    pitchBuffers[i]=result.buffer;pitchActive[i]=true;updatePitchQa(i,result.qa);
+   updatePitchNotes(i,result.noteAudit);
    updatePitchMatch(i,result.match,state.matchLevel);
    updatePitchTimbre(i,result.timbre,state.protectTimbre);
    $("pitchAudit"+i).disabled=false;
