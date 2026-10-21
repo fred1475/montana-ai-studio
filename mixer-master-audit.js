@@ -125,7 +125,7 @@
     ditherApplied:settings.ditherApplied===true,
     originalSourcesPreserved:true
    },
-   qualification:"ESTIMACIONES PARA REVISIÓN DE AUDIO. Correlación y caída mono son indicadores matemáticos, no evaluación perceptual; no implica certificación EBU R128/ITU, conformidad true-peak, ausencia de distorsión ni garantía de calidad.",
+   qualification:"ESTIMACIONES PARA REVISIÓN DE AUDIO. Correlación y caída mono son indicadores matemáticos, no evaluación perceptual. No implica certificación EBU R128/ITU, conformidad true-peak, ausencia de distorsión ni garantía de calidad.",
    reproducibility:"El CRC32 permite comprobar que este informe corresponde exactamente a los bytes del WAV descargado. No es una firma criptográfica.",
    reference:"EBU R128 / ITU BS.1770; tolerancias internas de verificación, no homologación."
   };
