@@ -40,7 +40,7 @@ function toneWav(rate=44100){
   const invalid=await page.evaluate(()=>{
    const old=labels[0];
    const errors=[];
-   for(const proposed of ['<img>', 'line\\nnext', 'x'.repeat(41), '']) {
+   for(const proposed of ['<img>', 'line'+String.fromCharCode(10)+'next', 'x'.repeat(41), '']) {
     try{window.setMixerTrackLabel(0,proposed);errors.push('ACCEPTED');}
     catch(e){errors.push(e.message);}
    }
