@@ -6,7 +6,8 @@
 (function(){
  const $=id=>document.getElementById(id),engine=window.MontanaLoopback;
  const status=$("loopStatus"),button=$("measureLoop");
- let busy=false;
+ let busy=false,lastReport=null;
+ const reportButton=$("downloadLoopReport");
  const say=s=>{status.textContent=s};
  const ready=()=>button.disabled=busy||!$("confirmSafe").checked;
  $("confirmSafe").addEventListener("change",ready);
@@ -25,7 +26,7 @@
   if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia||!window.AudioWorkletNode){
    say("Necesitas Chrome/Edge compatible, localhost o HTTPS y permiso del micrófono.");return;
   }
-  busy=true;ready();let stream=null,ctx=null,node=null,src=null,output=null,url=null;
+  busy=true;ready();lastReport=null;reportButton.disabled=true;let stream=null,ctx=null,node=null,src=null,output=null,url=null;
   const chunks=[];
   try{
    const selected=$("loopInput").value;
@@ -75,6 +76,10 @@
    const captured=new Float32Array(finalFrame-firstFrame);
    for(const c of chunks)captured.set(c.data,c.frame-firstFrame);
    const estimated=engine.estimate(captured,probe,ctx.sampleRate,startFrame,firstFrame,750);
+   lastReport={format:"montana-loopback-estimate",version:1,createdAt:new Date().toISOString(),
+    measurement:estimated,inputName:stream.getAudioTracks()[0]?.label||"entrada desconocida",
+    output:"salida predeterminada del sistema",note:"Solo estimación en bucle físico; sin compensación automática ni validación certificada."};
+   reportButton.disabled=false;
    $("loopResults").textContent="Latencia de ida y vuelta estimada: "+estimated.estimatedRoundTripMs.toFixed(2)+" ms"+
     "\nCoincidencia con señal: "+estimated.matchScore.toFixed(3)+
     "\nFrecuencia: "+estimated.sourceRate+" Hz"+
@@ -93,6 +98,14 @@
    if(url)URL.revokeObjectURL(url);
    busy=false;ready();
   }
+ });
+ reportButton.addEventListener("click",()=>{
+  if(!lastReport)return;
+  const bytes=JSON.stringify(lastReport,null,2)+"\n",blob=new Blob([bytes],{type:"application/json"}),
+   url=URL.createObjectURL(blob),link=document.createElement("a");
+  link.href=url;link.download="montana-latencia-loopback-estimada.json";
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
  });
  scan().catch(()=>{});
  ready();
