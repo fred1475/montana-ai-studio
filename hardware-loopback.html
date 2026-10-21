@@ -1,0 +1,17 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Montana AI Studio — Latencia física de interfaz (validación final)</title>
+<style>:root{color-scheme:dark;font:16px system-ui;background:#090e19;color:#f7f8fb}*{box-sizing:border-box}body{max-width:870px;margin:24px auto;padding:16px}h1,a{color:#efc36e}.panel{border:1px solid #45526a;border-radius:12px;padding:16px;background:#172132;margin:16px 0}label{display:block;margin:14px 0}button,select{font:inherit;padding:10px;border-radius:8px}button{background:#efc36e;color:#19120a;font-weight:700}button:disabled{opacity:.5}pre{white-space:pre-wrap;overflow-wrap:anywhere}p,small{color:#c2ccdc}</style></head>
+<body><a href="hardware-check.html">← Volver al diagnóstico de interfaz</a>
+<h1>🎚️ Calibración de latencia por loopback (experimental)</h1>
+<div class="panel"><p>Herramienta preparada para nuestra <strong>validación final con equipo real</strong>. No es necesario usarla durante el desarrollo de la beta.</p>
+<p><strong>SEGURIDAD:</strong> solo usa la función de loopback interno de tu interfaz o una ruta de <em>línea</em> apropiada según su manual. Nunca conectes una salida de audio a una entrada de micrófono con alimentación phantom activada. Baja el volumen de salida antes de comenzar. Si desconoces la conexión correcta, no realices esta prueba.</p>
+<p>El navegador emitirá pulsos breves de bajo nivel por la <strong>salida predeterminada del sistema</strong> y analizará la señal devuelta por la entrada elegida. No monitoriza en voz alta la entrada ni sube audio a internet.</p>
+<label><input id="confirmSafe" type="checkbox"> Confirmo que he preparado una ruta de loopback segura y bajado el nivel de salida.</label>
+<label for="loopInput">Entrada de retorno de la interfaz</label><select id="loopInput"><option value="">Entrada predeterminada</option></select>
+<button id="scanLoop" type="button">Buscar entradas</button>
+<button id="measureLoop" type="button" disabled>Medir latencia de ida y vuelta</button>
+<p id="loopStatus" role="status">Todavía no se ha ejecutado ninguna medición.</p>
+<pre id="loopResults">Pendiente para la revisión final con hardware.</pre>
+<small>La latencia calculada es una estimación digital del trayecto de salida y entrada, no una compensación automática ni una medición certificada. Para precisión absoluta, la ruta de loopback y el reloj deben mantenerse sincronizados.</small>
+</div>
+<script src="hardware-loopback.js"></script><script src="hardware-loopback-ui.js"></script></body></html>
