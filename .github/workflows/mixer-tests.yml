@@ -22,6 +22,10 @@ on:
       - 'mixer-vocal-audit-ui.js'
       - 'mixer-vocal-ab.js'
       - 'mixer-vocal-ab-ui.js'
+      - 'mixer-vocal-blind.js'
+      - 'mixer-vocal-blind-ui.js'
+      - 'tests/mixer-vocal-blind.cjs'
+      - 'tests/mixer-vocal-blind-ui.cjs'
       - 'tests/mixer-vocal-ab.cjs'
       - 'tests/mixer-vocal-ab-ui.cjs'
       - 'tests/mixer-vocal-audit.cjs'
@@ -274,6 +278,11 @@ jobs:
           node --check mixer-vocal-audit-ui.js
           node --check mixer-vocal-ab.js
           node --check mixer-vocal-ab-ui.js
+          node --check mixer-vocal-blind.js
+          node --check mixer-vocal-blind-ui.js
+          node --check tests/mixer-vocal-blind.cjs
+          node --check tests/mixer-vocal-blind-ui.cjs
+          node tests/mixer-vocal-blind.cjs
           node --check tests/mixer-vocal-ab.cjs
           node --check tests/mixer-vocal-ab-ui.cjs
           node tests/mixer-vocal-ab.cjs
@@ -345,6 +354,7 @@ jobs:
           node tests/mixer-pitch-timbre-ui.cjs
           node tests/mixer-vocal-audit-ui.cjs
           node tests/mixer-vocal-ab-ui.cjs
+          node tests/mixer-vocal-blind-ui.cjs
           node tests/mixer-sync.cjs
           node tests/mixer-stems.cjs
           node tests/mixer-stems24.cjs
@@ -380,7 +390,7 @@ jobs:
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
           cp docs/RELEASE-CHECKLIST.md mixer-preview/CHECKLIST-ANTES-DE-PUBLICAR.md
           cp docs/100-PERCENT-ACCEPTANCE.md mixer-preview/CRITERIOS-100-PORCIENTO.md
-          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-input-trim.js mixer-pan-automation.js mixer-pan-automation-ui.js mixer-pan-graph.js mixer-pan-graph-ui.js mixer-volume-automation.js mixer-volume-automation-ui.js mixer-volume-graph.js mixer-volume-graph-ui.js mixer-pitch.js pitch-quality.js pitch-blend.js pitch-level-match.js pitch-timbre-guard.js mixer-vocal-audit.js mixer-vocal-audit-ui.js mixer-vocal-ab.js mixer-vocal-ab-ui.js pitch-lab.html beat-engine.js beat-archive.js beat-bridge.js mixer-beat-bridge.js beat-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-input-trim.js mixer-pan-automation.js mixer-pan-automation-ui.js mixer-pan-graph.js mixer-pan-graph-ui.js mixer-volume-automation.js mixer-volume-automation-ui.js mixer-volume-graph.js mixer-volume-graph-ui.js mixer-pitch.js pitch-quality.js pitch-blend.js pitch-level-match.js pitch-timbre-guard.js mixer-vocal-audit.js mixer-vocal-audit-ui.js mixer-vocal-ab.js mixer-vocal-ab-ui.js mixer-vocal-blind.js mixer-vocal-blind-ui.js pitch-lab.html beat-engine.js beat-archive.js beat-bridge.js mixer-beat-bridge.js beat-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
