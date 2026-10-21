@@ -31,6 +31,9 @@ Estos requisitos **NO están completados** y no se deduce su cumplimiento de una
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
 
 El candidato `RC` debe:
+
+> **Protocolo final consolidado:** consultar `docs/FINAL-HARDWARE-ACCEPTANCE.md`. Está preparado en papel; no significa que se hayan probado el micrófono, los drivers o las conexiones físicas. La batería multimuestreo adicional `tests/mixer-ebu-multirate.cjs` contrastó 44.1/48/96 kHz contra FFmpeg bajo tolerancias **internas**, sin certificar EBU Mode.
+
 1. Aprobar sintaxis, browser-tests y copias de seguridad en GitHub; cero pruebas fallidas.
 2. Tener registro de versiones, limitaciones, procedimientos para respaldo y restauración de proyectos.
 3. Acordar con el usuario los proveedores de IA y presupuesto, solo cuando esa integración esté lista para decisión.
