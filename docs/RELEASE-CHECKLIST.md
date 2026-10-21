@@ -189,6 +189,12 @@ Las sesiones JSON guardan `trackLabel` por pista, incluidas pistas todavía vac�
 
 Regresión `tests/mixer-track-names.cjs`: ocho controles, vista temporal, texto seguro, roundtrip de sesión, retrocompatibilidad y rechazo de nombre corrupto sin modificar sesión. La regresión `tests/beat-stems-transfer-ui.cjs` confirma etiquetas correspondientes a instrumentos y persistencia dentro de respaldos. **No existe aún arrastrar/reordenar canales completos**; renombrar no equivale a cambiar su orden o ruteo interno.
 
+### Ganancia de entrada por canal antes de efectos (beta)
+
+Los ocho canales incluyen control de **ganancia de entrada de −24 a +12 dB, pasos de 0.5 dB**. `mixer-input-trim.js` valida rangos y convierte dB a multiplicador lineal. En reproducción en vivo, exportación master WAV y stems, la señal fluye así: audio/crossfade de clip → ganancia de entrada → fader de canal → ecualización → compresor → reverb/delay → panorama → suma master. El ajuste de entrada se guarda como `inputTrim` en cada canal dentro de la sesión JSON y recuperación local; las sesiones antiguas que carecen del ajuste utilizan **0 dB** sin cambiar el material original. La edición admite Deshacer/Rehacer.
+
+La batería `tests/mixer-input-trim.cjs` valida unidades, límites, valores no finitos y orden de nodos. `tests/mixer-input-trim-ui.cjs` mide WAV PCM16 real del master y del stem con 0/−6/+6 dB, recupera sesión, comprueba el archivo fuente sin cambios, el deshacer/rehacer y el rechazo de backups inválidos. **Advertencias**: entrada de +12 dB puede saturar el canal o la salida; subir ganancia antes del compresor cambia la respuesta dinámica. El medidor es aproximado, no calibrado. Esto es una ganancia fija por pista, **no automatización por clip, ni riding vocal, ni procesamiento automático de loudness**, y no sustituye el master certificado.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
