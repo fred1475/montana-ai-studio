@@ -15,6 +15,7 @@
   $("autoPreview"+i).textContent=v.enabled?
     "Activa · "+v.points.length+" punto(s) · valores interpolados en la línea de tiempo":
     "Desactivada: ganancia uniforme 100 % durante toda la canción";
+  window.refreshVolumeAutomationGraph?.(i);
   return v;
  }
  for(let i=0;i<8;i++){
