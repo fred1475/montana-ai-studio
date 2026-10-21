@@ -87,7 +87,7 @@ function strength(buf,hz,start,end){
   await page.locator("#sessionFile").setInputFiles(badPath);
   await page.waitForFunction(()=>document.querySelector("#status")?.textContent?.includes("No se restauró"));
   assert.equal(await page.locator("#crossfadeCurve1").inputValue(),"equal-power");
-  delete saved.tracks[1].crossfade;
+  delete saved.manifestSha256;delete saved.tracks[1].crossfade;
   const oldPath=path.join(process.cwd(),"crossfade-legacy.json");fs.writeFileSync(oldPath,JSON.stringify(saved));
   await page.locator("#sessionFile").setInputFiles(oldPath);
   await page.waitForFunction(()=>document.querySelector("#status")?.textContent?.includes("Sesión restaurada"));
