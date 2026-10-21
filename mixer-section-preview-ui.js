@@ -28,6 +28,7 @@
  }
  window.stopSectionPreview=()=>{if(playing)haltPreview();};
  function refresh(){
+  if(playing)haltPreview(); // Never keep auditioning a stale marker pair.
   const list=window.montanaMarkerState();
   const wasFrom=from.value,wasTo=to.value;
   from.replaceChildren();to.replaceChildren();
