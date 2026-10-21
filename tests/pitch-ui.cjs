@@ -56,8 +56,9 @@ function wav(frequency){
   await dryDownload.saveAs(dryFilename);
   const dryFile=fs.readFileSync(dryFilename);
   assert.equal(dryFile.length,44+rate*2);
+  const sourceWav=wav(224.5);
   for(let j=0;j<length;j+=277){
-   const expected=wav(224.5).readInt16LE(44+j*2);
+   const expected=sourceWav.readInt16LE(44+j*2);
    const actual=dryFile.readInt16LE(44+j*2);
    assert(Math.abs(expected-actual)<=2,'0% wet must preserve source PCM within export quantization');
   }
