@@ -49,11 +49,11 @@ function inspect(b,bits,frames){
  assert(nonzero>1000&&nonzero<13000,'TPDF must add a small bounded random noise floor');
  assert.deepEqual(dithered,Buffer.from(await codec.encode(zeros,zeros,rate,{bits:16,dither:true}).arrayBuffer()),'fixed reproducible seed');
  assert.notDeepEqual(dithered,quiet);
- await assert.rejects(codec.encode(zeros,zeros,rate,{bits:32}),/Profundidad/);
- await assert.rejects(codec.encode(zeros,zeros,rate,{bits:24,dither:true}),/solo/);
- await assert.rejects(codec.encode(zeros,new Float32Array(1),rate),/Canales/);
+ assert.throws(()=>codec.encode(zeros,zeros,rate,{bits:32}),/Profundidad/);
+ assert.throws(()=>codec.encode(zeros,zeros,rate,{bits:24,dither:true}),/solo/);
+ assert.throws(()=>codec.encode(zeros,new Float32Array(1),rate),/Canales/);
  const broken=zeros.slice();broken[8]=NaN;
- await assert.rejects(codec.encode(broken,zeros,rate),/valores/);
+ assert.throws(()=>codec.encode(broken,zeros,rate),/valores/);
  const clipLeft=Float32Array.from({length:rate},(_,i)=>i<rate/2?-1:1);
  const clipRight=Float32Array.from({length:rate},()=>0);
  const clip24=await codec.encode(clipLeft,clipRight,rate,{bits:24});
