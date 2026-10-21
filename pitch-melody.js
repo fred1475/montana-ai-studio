@@ -68,12 +68,14 @@
    // correction stays sample-coherent even with inverted or unequal L/R.
    const sharedPlan=channels.length===2&&Math.abs(cents)>=.3?
      pitch.pitchMarkPlan(mono.subarray(start,end),rate,inputHz):null;
-   for(let ch=0;ch<channels.length;ch++){
-    const source=channels[ch].subarray(start,end);
-    const corrected=Math.abs(cents)<.3?Float32Array.from(source):
-      pitch.correctChannel(source,rate,inputHz,adjusted,sharedPlan);
-    out[ch].set(corrected,start);
-   }
+   const originals=channels.map(ch=>ch.subarray(start,end));
+   const shifted=originals.map(source=>Math.abs(cents)<.3?Float32Array.from(source):
+      pitch.correctChannel(source,rate,inputHz,adjusted,sharedPlan));
+   // Retain unvoiced consonants inside each note, with a single gain envelope
+   // for related stereo channels. Existing transition guards still bridge notes.
+   const corrected=Math.abs(cents)<.3?shifted:
+      pitch.preserveUnvoiced(originals,shifted,mono.subarray(start,end),rate,inputHz);
+   for(let ch=0;ch<channels.length;ch++)out[ch].set(corrected[ch],start);
    segments.push({startSeconds:start/rate,endSeconds:end/rate,inputHz,targetHz:adjusted,targetNote:target.note,correctionCents:cents});
   }
   // Prevent the splice between separately PSOLA-corrected notes from making
