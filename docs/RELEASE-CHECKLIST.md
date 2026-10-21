@@ -173,6 +173,14 @@ El envío se limita a WAV estéreo PCM16 RIFF con frecuencia 44.1/48 kHz, máxim
 
 `tests/beat-bridge-ui.cjs` verifica navegación e importación en Chromium, fuente guardada en el JSON, origen sin cambios antes de confirmar, bloqueo al sobrescribir un canal ya usado, reemplazo solo mediante casilla explícita, validación de integridad y descarte. No se ha realizado prueba del navegador real con equipo de audio; permanece reservada para la última fase. Este traspaso transfiere **el master del ritmo**, no cinco stems separados; para ellos continúa disponible el ZIP.
 
+### Envío directo de cinco instrumentos separados (beta)
+
+Además del ritmo completo, Beat Lab puede ahora preparar **cinco stems independientes** (kick, snare, clap, hi-hat, bass) y enviarlos como un solo lote temporal por IndexedDB al mezclador, dentro del mismo origen de navegador. El BPM y el formato de audio se conservan. `beat-bridge.js` valida estrictamente orden y nombre de los cinco instrumentos, WAV PCM16 estéreo 44.1/48 kHz, CRC32 por archivo, misma duración en muestras, vigencia 24 h y límite combinado de 42 MiB. El formato anterior de envío de un solo ritmo mantiene compatibilidad.
+
+En el mezclador se elige uno de los conjuntos consecutivos de cinco canales (1–5, 2–6, 3–7, 4–8); **no se escribe ningún canal hasta pulsar Importar**. Si alguno de esos canales contiene audio, se bloquea por defecto y se exige marcar la autorización explícita de reemplazo. El mezclador primero decodifica los cinco WAV y comprueba de nuevo que los canales y el envío no hayan cambiado; solo entonces aplica los cinco canales. Los cambios en los canales que el usuario no seleccionó se preservan. Al confirmar, se adopta el BPM enviado y el usuario debe guardar sesión JSON para respaldo. Las pistas estándar siguen identificadas por sus nombres originales de plantilla (voz, coros, etc.); la elección de ubicaciones no las renombra automáticamente.
+
+Prueba automatizada `tests/beat-stems-transfer-ui.cjs`: envío y navegación reales en Chromium, canales 4–8, respaldo JSON, rechazo de sobrescritura, sustitución expresamente autorizada, decodificación fallida sin cambios parciales y detección de CRC alterado. `tests/beat-bridge.cjs` refuerza orden, tamaño, nombre, alineación y tiempo de vida. **Esto no ofrece todavía una composición multipista ilimitada ni garantiza atomicidad ante un fallo excepcional del navegador durante el commit síncrono**; la prevalidación de decodificación evita la clase común de fallo parcial. La escucha final y las pruebas físicas siguen pendientes.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
