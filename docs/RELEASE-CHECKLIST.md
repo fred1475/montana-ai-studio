@@ -293,6 +293,14 @@ Las sesiones JSON nuevas y las copias voluntarias de recuperación local incorpo
 
 Pruebas: `tests/mixer-session-integrity.cjs` compara la función con SHA-256 de Node para cadenas conocidas y distintas longitudes, valida detección de modificaciones de ajustes/pistas, errores y formatos antiguos. `tests/mixer-session-integrity-ui.cjs` guarda un proyecto en Chromium, confirma digest de fuente idéntico al SHA-256 de Node, modifica un fader y el nombre, altera WAV actualizando CRC32 para comprobar la protección independiente, rechaza archivos de respaldo corruptos sin cambiar el proyecto cargado, restaura formatos antiguos y recupera bytes de audio idénticos. La publicación sigue pendiente de las demás puertas del 100 %.
 
+### Marcadores de estructura musical en la línea temporal (beta)
+
+El mezclador ahora permite crear **hasta 24 marcadores de canción**, con etiquetas editables de 1–35 caracteres y posiciones de **0 a 300 segundos**, con resolución de 0.001 s (milisegundos). El usuario puede señalar intro, versos, coros, puentes y outro. `mixer-song-markers.js` es un validador puro que ordena cronológicamente los marcadores, rechaza posiciones duplicadas, valores no finitos o fuera de rango y etiquetas vacías/inadecuadas. `mixer-song-markers-ui.js` muestra el listado y una regla de marcas sobre las ocho pistas, sin duplicar los buffers WAV ni enviar datos a ningún servidor. La función no pretende detectar secciones automáticamente ni manipular el sonido.
+
+Para usar un marcador como guía, el usuario selecciona explícitamente una pista cargada y pulsa «Situar pista en marcador»: se modifica únicamente el control de **inicio de la pista**, se respeta el desplazamiento manual `alignMs` y se dispara el historial de edición existente (Deshacer/Rehacer). Los marcadores **no mueven el audio automáticamente**, no cortan originales y no convierten las regiones a clips editables ilimitados. Se guardan en la propiedad `songMarkers` del JSON de sesión, protegida junto a los demás ajustes por la huella SHA-256. En versiones antiguas donde la propiedad está ausente se carga una lista vacía; formatos inválidos y huellas alteradas se rechazan antes de sustituir la sesión abierta.
+
+Pruebas `tests/mixer-song-markers.cjs`: validación, orden, unicidad, resolución, límites, eliminación y pureza. `tests/mixer-song-markers-ui.cjs`: agregar, ordenar, rechazar duplicado, mostrar en regla, colocar pista de voz, Deshacer/Rehacer, guardar y recuperar JSON firmado, rechazar manipulación, compatibilidad antigua y bytes WAV originales. Requiere aceptación de proyectos reales y accesibilidad transversal antes de la publicación final.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
