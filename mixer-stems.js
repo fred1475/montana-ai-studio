@@ -27,10 +27,11 @@
   vol.gain.value=Number($("vol"+i).value)/100;
   panNode.pan.value=pan(i);
   addSpace(ctx,addCompressor(ctx,addEq(ctx,vol,i),i),i).connect(panNode).connect(ctx.destination);
-  for(const clip of plan.segments[i]){
+  const crossfadePlan=window.prepareCrossfadePlan(i,plan.segments[i]);
+  for(const [clipIndex,clip] of plan.segments[i].entries()){
    const src=ctx.createBufferSource();src.buffer=srcBuffer;
    if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
-   window.connectFades(ctx,src,vol,i,clip,clip.offset);
+   window.connectClipCrossfade(ctx,src,vol,i,clip,clip.offset,clipIndex,crossfadePlan);
    src.start(clip.offset,clip.start,clip.duration);
   }
   const rendered=await ctx.startRendering();
