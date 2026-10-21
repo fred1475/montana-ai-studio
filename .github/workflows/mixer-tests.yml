@@ -14,6 +14,7 @@ on:
       - 'mixer-master-audit.js'
       - 'mixer-split.js'
       - 'tests/mixer-split.cjs'
+      - 'tests/mixer-multiclip.cjs'
       - 'tests/mixer-master-audit.cjs'
       - 'tests/mixer-loudness.cjs'
       - 'tests/mixer-ebu-reference.cjs'
@@ -70,6 +71,7 @@ jobs:
           node --check mixer-master-audit.js
           node --check mixer-split.js
           node --check tests/mixer-split.cjs
+          node --check tests/mixer-multiclip.cjs
           node --check tests/mixer-master-audit.cjs
           node --check tests/mixer-loudness.cjs
           node --check tests/mixer-ebu-reference.cjs
@@ -123,6 +125,7 @@ jobs:
           node tests/mixer-loudness.cjs
           node tests/mixer-master-audit.cjs
           node tests/mixer-split.cjs
+          node tests/mixer-multiclip.cjs
           node tests/mixer-loops.cjs
           node tests/mixer-record.cjs
           node tests/mixer-vocal-clean.cjs
@@ -157,7 +160,7 @@ jobs:
             '21. Active medición EBU R128 orientativa: integrado, M, S, LRA y true-peak 4×. Comparada con FFmpeg; NO está oficialmente certificada.' \
             '22. Puede repetir 1–8 veces una región recortada en su pista, escuchándola y exportando WAV/stems.' \
             '23. Active Auditoría de master WAV si desea JSON EBU de preentrega con CRC32 del PCM16 exacto.' \
-            '24. Divida una región en dos fragmentos, mueva el segundo y exporte WAV y stems sin alterar la fuente.' \
+            '24. Use hasta cuatro clips independientes por pista, con cortes, posiciones, vista de timeline y undo/redo.' \
             '25. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
