@@ -4,6 +4,9 @@ on:
     paths:
       - 'mixer-8.html'
       - 'beat-lab.html'
+      - 'beat-bridge.js'
+      - 'mixer-beat-bridge.js'
+      - 'tests/beat-bridge-ui.cjs'
       - 'beat-engine.js'
       - 'beat-archive.js'
       - 'tests/beat-archive.cjs'
@@ -189,6 +192,9 @@ jobs:
           node --check tests/mixer-limiter.cjs
           node tests/mixer-limiter.cjs
           node --check beat-engine.js
+          node --check beat-bridge.js
+          node --check mixer-beat-bridge.js
+          node --check tests/beat-bridge-ui.cjs
           node --check beat-archive.js
           node --check tests/beat-archive.cjs
           node --check tests/beat-bundle-ui.cjs
@@ -243,6 +249,7 @@ jobs:
           node tests/mixer-smoke.cjs
           node tests/beat-ui.cjs
           node tests/beat-bundle-ui.cjs
+          node tests/beat-bridge-ui.cjs
           node tests/mixer-pitch.cjs
           node tests/mixer-pitch-quality-ui.cjs
           node tests/mixer-sync.cjs
@@ -280,7 +287,7 @@ jobs:
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
           cp docs/RELEASE-CHECKLIST.md mixer-preview/CHECKLIST-ANTES-DE-PUBLICAR.md
           cp docs/100-PERCENT-ACCEPTANCE.md mixer-preview/CRITERIOS-100-PORCIENTO.md
-          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-quality.js pitch-blend.js pitch-lab.html beat-engine.js beat-archive.js beat-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-quality.js pitch-blend.js pitch-lab.html beat-engine.js beat-archive.js beat-bridge.js mixer-beat-bridge.js beat-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -311,7 +318,7 @@ jobs:
             '26. El master puede exportarse en PCM16 o PCM24 a 44.1 o 48 kHz; el dither TPDF opcional solo se aplica a 16 bits. Los stems permiten PCM16/24 a 44.1/48 kHz con selección independiente.' \
             '27. Puede elegir WAV mono PCM24 sin compresión adicional mediante AudioWorklet o modo compatible WebM/MP4 mediante MediaRecorder. Ninguno garantiza captura bit-perfect ni latencia calibrada.' \
             '28. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' \
-            '29. Beat Lab: abra beat-lab.html, programe 16 pasos y exporte WAV PCM16 a 44.1/48 kHz, MIDI, JSON o un ZIP con ritmo, 5 stems alineados, MIDI y patrón; no es IA generativa.' \
+            '29. Beat Lab: cree un ritmo y pulse Enviar al mezclador para guardarlo temporalmente en IndexedDB y confirmar manualmente la importacion al canal 1 sin descargarlo; no es IA generativa.' \
             '30. La matriz CRITERIOS-100-PORCIENTO.md documenta puertas pendientes y evidencia necesaria antes de declarar una versión terminada.' > mixer-preview/README.txt
       - uses: actions/upload-artifact@v5
         with:
