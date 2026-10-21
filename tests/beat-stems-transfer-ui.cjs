@@ -32,6 +32,12 @@ const {chromium}=require('playwright');
   assert.equal(await page.evaluate(()=>tracks.slice(0,3).every(x=>!x)),true);
   assert.equal(await page.locator('#bpm').inputValue(),'180');
   for(let i=0;i<5;i++){
+   const expected=['Bombo','Caja','Palmas','Hi-hat','Bajo'][i];
+   assert.equal(await page.locator('#trackName'+(i+3)).inputValue(),expected);
+   assert.equal(await page.locator('#trackTitle'+(i+3)).textContent(),(i+4)+'. '+expected);
+  }
+  assert.equal(await page.locator('#trackName0').inputValue(),'Instrumental','Unused channel label preserved');
+  for(let i=0;i<5;i++){
    const label=await page.locator('#label'+(i+3)).textContent();
    assert(label.includes(sent.names[i]),'Correct mapped stem '+i);
    const info=await page.evaluate(i=>({size:originalFiles[i]?.size,
@@ -56,7 +62,11 @@ const {chromium}=require('playwright');
   await saved.saveAs(sessionPath);
   const session=JSON.parse(fs.readFileSync(sessionPath,'utf8'));
   assert.equal(session.bpm,180);
-  for(let i=0;i<5;i++){assert.equal(session.tracks[i+3].name,sent.names[i]);assert(session.tracks[i+3].data.length>300);}
+  for(let i=0;i<5;i++){
+   assert.equal(session.tracks[i+3].name,sent.names[i]);
+   assert.equal(session.tracks[i+3].trackLabel,['Bombo','Caja','Palmas','Hi-hat','Bajo'][i]);
+   assert(session.tracks[i+3].data.length>300);
+  }
   // Stage same stems again: existing channels cannot be overwritten by default.
   await page.evaluate(async()=>{
    const tracksData=await Promise.all([3,4,5,6,7].map(async(i,j)=>({
@@ -71,6 +81,7 @@ const {chromium}=require('playwright');
   await page.locator('#beatTransferImport').click();
   await page.waitForFunction(()=>document.querySelector('#beatTransferStatus')?.textContent?.includes('Importación cancelada'));
   assert.equal(await page.locator('#bpm').inputValue(),'180');
+  assert.equal(await page.locator('#trackName3').inputValue(),'Bombo','Blocked import cannot rename');
   assert.equal((await page.evaluate(()=>MontanaBeatBridge.read())).bpm,140);
   assert.equal(await page.evaluate(()=>tracks.filter(Boolean).length),5);
   // Independent decode preflight must reject bad second stem before applying first.
