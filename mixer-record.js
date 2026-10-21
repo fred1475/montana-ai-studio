@@ -9,6 +9,30 @@ function updateSourceDownload(){
  $("downloadSource").disabled=!originalFiles[i]||!!recording;
 }
 window.updateSourceDownload=updateSourceDownload;
+async function scanMicInputs(){
+ if(!navigator.mediaDevices?.enumerateDevices)throw Error("La lista de micrófonos requiere HTTPS/localhost y un navegador compatible");
+ const menu=$("micInput"),previous=menu.value,
+  devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
+ menu.replaceChildren(new Option("Predeterminada del sistema",""));
+ devices.forEach((d,i)=>menu.add(new Option(d.label||"Entrada "+(i+1),d.deviceId)));
+ if([...menu.options].some(o=>o.value===previous))menu.value=previous;
+ else if(previous)$("micInputStatus").textContent="La entrada seleccionada ya no está disponible. Se usará la predeterminada.";
+ return devices.length;
+}
+$("scanMicInputs").addEventListener("click",async()=>{
+ const btn=$("scanMicInputs");btn.disabled=true;
+ try{
+  const n=await scanMicInputs();
+  $("micInputStatus").textContent=n+" entrada(s) detectadas. Selecciona la de tu interfaz. Los nombres pueden requerir permiso.";
+ }catch(e){$("micInputStatus").textContent="No se pudieron enumerar entradas: "+e.message}
+ finally{btn.disabled=false}
+});
+$("micInput").addEventListener("change",()=>{
+ const menu=$("micInput");
+ $("micInputStatus").textContent="Entrada elegida: "+menu.selectedOptions[0].textContent+
+  ". La selección es local a esta sesión y puede cambiar al desconectar la interfaz.";
+});
+
 $("recordTrack").addEventListener("change",updateSourceDownload);
 $("downloadSource").addEventListener("click",()=>{
  const i=Number($("recordTrack").value),file=originalFiles[i];
@@ -33,7 +57,10 @@ $("recordStart").addEventListener("click",async()=>{
  }catch(err){report("Corrige las pistas de acompañamiento antes de grabar: "+err.message);return}
  let stream=null,recorder=null,started=false;
  try{
-  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+  const selected=$("micInput").value;
+  stream=await navigator.mediaDevices.getUserMedia({audio:{...(selected?{deviceId:{exact:selected}}:{}),channelCount:{ideal:1},echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+  const actual=stream.getAudioTracks()[0];
+  $("micInputStatus").textContent="Grabando desde: "+(actual?.label||"entrada sin nombre")+". Revisa el nivel de señal de la interfaz.";
   const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"].find(x=>MediaRecorder.isTypeSupported(x));
   recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
   const chunks=[],state={recorder,stream,index:i,failed:false};
