@@ -102,6 +102,18 @@ La transacción IndexedDB es atómica: un error de cuota o almacenamiento no ree
 
 Las pruebas incluyen picos PCM medidos del WAV exportado, conservación del balance estéreo, bypass por defecto, límite de amplificación, silencio, respaldo/restauración y rechazo de configuraciones incorrectas. **No son mediciones LUFS integradas, true-peak, EBU R128 ni masterización profesional.** Todavía faltan análisis y ajuste de loudness por estándar, intersample peaks, comparación auditiva y pruebas con músicas completas.
 
+## Nuevo hito: análisis LUFS estimado y true-peak 4× (octubre 2026)
+
+`mixer-loudness.js` implementa análisis opcional del WAV maestro después de aplicar normalización/limitador. Utiliza dos filtros en serie tipo K-weighting para los canales estéreo, ventanas de energía de 400 ms con saltos de 100 ms y un umbral absoluto de -70 LUFS más umbral relativo de -10 LU; el resultado es una **estimación integrada** de loudness con compuerta. Estima los picos entre muestras reconstruyendo fases intermedias 4× mediante filtros de sinc con ventana. Presenta LUFS, dBTP estimado y dBFS de pico de muestra. El medidor se ejecuta voluntariamente para evitar costos en el navegador; no cambia el sonido exportado, la mezcla original ni los stems. Si el análisis falla, aún es posible descargar el WAV.
+
+Las pruebas automatizadas verifican escalado de +6 dB, pico reconstruido entre muestras, rechazo de audio inválido y sin energía, interfaz de Chromium, generación de WAV y persistencia de ajustes. **NO está certificado contra un medidor EBU R128 o ITU BS.1770 de referencia**, y su estimación por sinc 4× no garantiza cumplir todos los márgenes de true-peak. Todavía se requiere calibración con señales de referencia, escucha real y pruebas con canciones completas.
+
+## Nuevo hito: loop no destructivo de una región por canal
+
+Cada canal admite **1–8 repeticiones** de la región establecida mediante recortes inicial y final. El navegador utiliza repetición del AudioBufferSourceNode sin sobrescribir ni copiar el archivo original. El cambio afecta a la reproducción, mezcla WAV, stems, guía de grabación, duración visual de la línea de tiempo y al guardado/restauración del proyecto. Participa en Deshacer/Rehacer. Las sesiones antiguas se cargan con una sola reproducción (valor por defecto 1). La exportación maestra limita el tamaño calculado ANTES de iniciar el renderizado para reducir el riesgo de quedar sin memoria con loops largos.
+
+Las pruebas incluyen voces sintéticas con secciones activas/silenciosas, tres repeticiones audibles, precisión temporal, stems, respaldo/restauración, validación de 1–8 y compatibilidad hacia atrás. **No es un editor multipista con regiones independientes, time-stretch, grid/snap, crossfades entre fragmentos ni MIDI.**
+
 ## Requisito obligatorio: corrección de afinación vocal
 
 **Prototipo restringido implementado; función profesional completa todavía NO implementada.** "Auto-Tune" es una marca comercial; usar "corrección de afinación" o "estilo Auto-Tune" hasta contar con derechos para usar el nombre del producto.
