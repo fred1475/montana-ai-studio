@@ -137,6 +137,11 @@ Estos requisitos **NO están completados** y no se deduce su cumplimiento de una
 
 **Alcance:** son umbrales internos heurísticos de prevención. Ni la correlación ni el balance garantizan timbre/formantes preservados, calidad percibida, ausencia de clics ni certificación EBU; las pruebas perceptivas con voces reales siguen aplazadas hasta validación final.
 
+### Diagnóstico de balance espectral durante la afinación
+El control `pitch-quality.js` añade una medida comparativa ligera de energía alta relativa mediante un filtro de un polo (frecuencia aproximada de 2.5 kHz). Compara la fracción de energía de altas frecuencias respecto a la energía total del original y el audio afinado, haciendo que un mero cambio de ganancia no altere el diagnóstico. Si la diferencia supera 6 dB en cualquier dirección, se muestra un **aviso de revisión auditiva**, nunca un ajuste automático. La comparación se omite ante silencio sin razón espectral definida. `tests/pitch-quality.cjs` contrasta bypass, cambios de ganancia, exceso/pérdida de altas y silencio a 44.1/48 kHz.
+
+**Limitaciones:** esta métrica de brillo es un indicador aproximado de energía alta, **no** un análisis de formantes, un modelo perceptual ni un certificado de preservación del timbre. Cambios intencionales de ecualización pueden producir avisos. Las alertas se muestran en el mezclador y laboratorio vocal; la escucha de voces reales y las pruebas de hardware siguen reservadas para la aceptación final.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
