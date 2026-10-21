@@ -30,6 +30,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#211707}but
 </div><small>Cada fila representa un compás de 16 semicorcheas que se repite durante la duración elegida. El swing retrasa los pasos impares; no estira la grabación.</small></section>
 <section class="panel"><h2>Cuadrícula de 16 pasos</h2><p>Toca los cuadros dorados para activar o apagar golpes. En la fila del bajo, elige la nota que sonará en cada paso.</p><div class="board"><div class="steps" id="steps" role="group" aria-label="Patrón musical editable"></div></div>
 <div class="actions"><button id="play" class="primary">▶ Escuchar patrón</button><button id="stop">■ Detener</button><label for="wavRate">Frecuencia WAV <select id="wavRate"><option value="44100">44.1 kHz</option><option value="48000">48 kHz (video)</option></select></label><button id="exportWav">⬇ WAV estéreo PCM16</button><button id="exportMidi">⬇ MIDI</button></div>
+<div class="actions"><label for="stemTrack">Pista individual <select id="stemTrack"><option value="kick">Bombo</option><option value="snare">Caja</option><option value="clap">Palmas</option><option value="hat">Hi-hat</option><option value="bass">Bajo</option></select></label><button id="exportStem">⬇ Exportar stem WAV</button></div>
 <p id="status" class="status" role="status" aria-live="polite">Patrón cargado. Edita, escucha o exporta.</p></section>
 <section class="panel"><h2>Guardar y recuperar</h2><div class="actions"><button id="saveJson">⬇ Guardar patrón JSON</button><label for="loadJson" style="display:inline-block">Importar patrón JSON <input id="loadJson" type="file" accept=".json,application/json"></label></div>
 <p class="helper">El proyecto se descarga al dispositivo. No se envían patrones ni audio a servidores. Para incluir el ritmo en una canción, exporta el WAV y luego impórtalo en la pista instrumental del mezclador. Mantén siempre copias de tus proyectos.</p></section>
@@ -113,6 +114,17 @@ $('exportWav').addEventListener('click',async()=>{
   status('WAV local exportado: '+data.rate+' Hz / PCM16 estéreo / '+data.duration.toFixed(2)+' s musicales.');
  }catch(e){status('No se pudo exportar WAV: '+e.message);}
  finally{busy=false;$('exportWav').disabled=false;$('exportWav').textContent='⬇ WAV estéreo PCM16';}
+});
+$('exportStem').addEventListener('click',async()=>{
+ if(busy)return;busy=true;
+ $('exportStem').disabled=true;
+ try{
+  const instrument=$('stemTrack').value,isolated=B.isolate(current(),instrument);
+  const data=await B.render(isolated,Number($('wavRate').value));
+  save(B.wav(data.channels,data.rate),'montana-stem-'+instrument+'-'+(data.rate/1000).toFixed(1)+'k.wav','audio/wav');
+  status('Stem '+instrument+' exportado y alineado desde 0:00: '+data.rate+' Hz, '+data.duration.toFixed(2)+' s musicales.');
+ }catch(e){status('No se pudo exportar stem: '+e.message);}
+ finally{busy=false;$('exportStem').disabled=false;}
 });
 $('saveJson').addEventListener('click',()=>{
  try{save(new TextEncoder().encode(JSON.stringify(current(),null,2)),'montana-beat-pattern.json','application/json');status('Patrón JSON descargado.');}
