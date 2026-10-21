@@ -27,6 +27,9 @@
     ". Clic en fondo para crear un punto. Arrastrar para mover. Flechas para ajustar; Supr para borrar.",
    width:"100%","preserveAspectRatio":"xMidYMid meet"
   });
+  svg.style.aspectRatio="440 / 178";
+  svg.style.width="100%";
+  svg.style.height="auto";
   svg.style.cssText="display:block;max-width:100%;background:#0b1423;border:1px solid #627386;border-radius:8px;touch-action:none;user-select:none;margin-top:8px";
   host.append(svg);
   const del=make("button","Borrar punto seleccionado",host);
