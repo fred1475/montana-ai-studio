@@ -15,7 +15,7 @@ async function createMixerSnapshot(){
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
-  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,tracks:items};
+  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,tracks:items};
 }
 window.createMixerSnapshot=createMixerSnapshot;
 $("saveSession").addEventListener("click",async()=>{
@@ -78,12 +78,14 @@ async function restoreMixerSnapshot(s){
   const preparedSplit=window.prepareSplitRestore(loaded,s.tracks);
   const preparedCrossfade=window.prepareCrossfadeRestore(s.tracks);
   const preparedCopies=window.prepareCopyRestore(loaded,s.tracks,preparedSplit);
+  const preparedGrid=window.validateGridRestore(s);
   window.validateRestoredCrossfades(loaded,preparedSplit,preparedCrossfade);
   window.validateCopyCrossfadeRestore(loaded,preparedSplit,preparedCopies,preparedCrossfade);
   stop();
   $("masterGain").value=masterGain;$("masterValue").textContent=masterGain+"%";
   $("recordTrack").value=String(recordTrack);
   $("bpm").value=bpm;$("metronomeOn").checked=metronomeOn;
+  window.restoreGrid(preparedGrid);
   $("limiterOn").checked=limiterOn;$("limiterCeiling").value=limiterCeiling;$("limiterCeilingVal").textContent=limiterCeiling+" dBFS";
   $("normalizeOn").checked=normalizeOn;$("normalizeTarget").value=normalizeTarget;$("normalizeVal").textContent=normalizeTarget+" dBFS";
   $("loudnessOn").checked=loudnessOn;$("loudnessResults").textContent="Análisis listo para ejecutar en la próxima exportación; no modifica el audio.";
