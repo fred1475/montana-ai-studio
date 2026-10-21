@@ -71,7 +71,7 @@ const defaultLabels=["Instrumental","Voz principal","Doble 1","Doble 2","Coro 1"
 const labels=defaultLabels.slice();
 function validateMixerTrackLabel(name){
  if(typeof name!=="string"||name!==name.trim()||name.length<1||name.length>40||
-    /[\\u0000-\\u001f\\u007f<>]/.test(name))
+    [...name].some(ch=>ch.charCodeAt(0)<32||ch.charCodeAt(0)===127||ch==="<"||ch===">"))
   throw Error("Nombre de canal inválido: usa 1 a 40 caracteres, sin saltos de línea ni etiquetas");
  return name;
 }
