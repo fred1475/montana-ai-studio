@@ -71,6 +71,8 @@ on:
       - 'tests/mixer-limiter.cjs'
       - 'mixer-pitch.js'
       - 'pitch-quality.js'
+      - 'pitch-blend.js'
+      - 'tests/pitch-blend.cjs'
       - 'tests/pitch-quality.cjs'
       - 'tests/mixer-pitch-quality-ui.cjs'
       - 'pitch-lab.html'
@@ -180,6 +182,9 @@ jobs:
           node tests/mixer-limiter.cjs
           node --check mixer-pitch.js
           node --check pitch-quality.js
+          node --check pitch-blend.js
+          node --check tests/pitch-blend.cjs
+          node tests/pitch-blend.cjs
           node --check tests/pitch-quality.cjs
           node --check tests/mixer-pitch-quality-ui.cjs
           node tests/pitch-quality.cjs
@@ -256,7 +261,7 @@ jobs:
           mkdir -p mixer-preview
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
           cp docs/RELEASE-CHECKLIST.md mixer-preview/CHECKLIST-ANTES-DE-PUBLICAR.md
-          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-quality.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
+          cp hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-pitch.js pitch-quality.js pitch-blend.js pitch-lab.html pitch-engine.js pitch-melody.js studio.html studio.js backup.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
             '1. Extraiga los archivos en la misma carpeta.' \
@@ -268,7 +273,7 @@ jobs:
             '7. La grabación con micrófono puede requerir HTTPS o localhost; no se garantiza desde file://.' \
             '8. Observe niveles por pista y mezcla final durante reproducción.' \
             '9. La afinación vocal experimental se aplica en los canales 2–8 a fragmentos breves; NO es Auto-Tune profesional.' \
-            '10. Pruebe pitch-lab.html en modo sostenido o frase experimental de dos notas: NO es Auto-Tune profesional.' \
+            '10. Pruebe pitch-lab.html y el control de mezcla seco/procesado de 0 a 100%; no es afinación profesional. El WAV incorpora esa mezcla y el original permanece intacto.' \
             '11. Use Deshacer/Rehacer para ajustar posición y recortes sin destruir audio.' \
             '12. Active el metrónomo y ajuste BPM; los clics no están en el WAV exportado.' \
             '13. Active el limitador maestro solo para exportar WAV y seleccione techo de muestra; no mide true-peak ni LUFS.' \
