@@ -96,6 +96,7 @@ function inspect(b,bits,frames){
   assert.equal(reportFile.file.bitsPerSample,24);
   assert.equal(reportFile.file.sizeBytes,output.length);
   assert.equal(reportFile.file.encoding,'PCM signed 24-bit little-endian');
+  assert.equal(reportFile.processing.ditherApplied,false);
   assert.equal(reportFile.metrics.pcmClippedSamples,0);
   const {crc32}=audit;assert.equal(reportFile.file.crc32,crc32(output).toString(16).padStart(8,'0'));
   const session=JSON.parse((await download('#saveSession','wav24-session.json')).toString('utf8'));
