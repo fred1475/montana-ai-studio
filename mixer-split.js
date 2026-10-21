@@ -34,14 +34,14 @@
   return [left,right];
  }
  function status(i){
-  const s=ui(i),button=$("splitMode"+i);
+  const s=ui(i);
   $("splitRemove"+i).disabled=!s.enabled;
   $("splitAt"+i).disabled=!s.enabled;
   $("splitOffset"+i).disabled=!s.enabled;
   $("splitStatus"+i).textContent=s.enabled?
    "Dos fragmentos independientes; el segundo empieza en "+s.rightOffset.toFixed(2)+" s. El original permanece intacto.":
    "Una región completa; sin división.";
-  button.textContent=s.enabled?"División activa":"Sin dividir";
+
  }
  window.getTrackSegments=splitRegions;
  window.trackSplitEnabled=i=>ui(i).enabled;
