@@ -19,6 +19,7 @@ on:
       - 'mixer-session-integrity.js'
       - 'tests/mixer-session-integrity.cjs'
       - 'tests/mixer-session-integrity-ui.cjs'
+      - 'tests/mixer-preview-assets.cjs'
       - 'pitch-level-match.js'
       - 'pitch-timbre-guard.js'
       - 'pitch-note-audit.js'
@@ -173,6 +174,7 @@ jobs:
           node --check mixer-session-integrity.js
           node --check tests/mixer-session-integrity.cjs
           node --check tests/mixer-session-integrity-ui.cjs
+          node --check tests/mixer-preview-assets.cjs
           node tests/mixer-session-integrity.cjs
           node --check mixer-record.js
           node --check mixer-pcm-record.js
@@ -447,6 +449,7 @@ jobs:
             '28. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' \
             '29. Beat Lab: cree un ritmo y pulse Enviar al mezclador para guardarlo temporalmente en IndexedDB y confirmar manualmente la importacion al canal 1 sin descargarlo; no es IA generativa.' \
             '30. La matriz CRITERIOS-100-PORCIENTO.md documenta puertas pendientes y evidencia necesaria antes de declarar una versión terminada.' > mixer-preview/README.txt
+          node tests/mixer-preview-assets.cjs mixer-preview
       - uses: actions/upload-artifact@v5
         with:
           name: montana-mixer-8-preview
