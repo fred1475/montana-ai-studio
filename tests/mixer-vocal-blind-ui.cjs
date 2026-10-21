@@ -1,0 +1,90 @@
+'use strict';
+/* Blind A/B preference must remain unrevealed until voluntary ratings and
+ * selection. No audio upload or changes to the original vocal source. */
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require('playwright');
+const sr=44100,frames=sr;
+function tone(hz){
+ const b=Buffer.alloc(44+frames*2);
+ b.write('RIFF',0);b.writeUInt32LE(b.length-8,4);b.write('WAVE',8);
+ b.write('fmt ',12);b.writeUInt32LE(16,16);
+ b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);
+ b.writeUInt32LE(sr,24);b.writeUInt32LE(sr*2,28);
+ b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);
+ b.write('data',36);b.writeUInt32LE(frames*2,40);
+ for(let i=0;i<frames;i++)b.writeInt16LE(Math.round(6000*Math.sin(2*Math.PI*hz*i/sr)),44+i*2);
+ return b;
+}
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+  const page=await browser.newPage({acceptDownloads:true}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://127.0.0.1:8765/mixer-8.html');
+  assert.equal(await page.locator('[id^="blindPanel"]').count(),7);
+  assert.equal(await page.locator('#blindStart1').isDisabled(),true);
+  const source=tone(224.5);
+  await page.locator('#file1').setInputFiles({name:'blind-voice.wav',mimeType:'audio/wav',buffer:source});
+  await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('blind-voice.wav'));
+  await page.locator('#pitchDetails1 summary').click();
+  await page.locator('#pitchApply1').click();
+  await page.waitForFunction(()=>document.querySelector('#pitchState1')?.textContent?.includes('Afinación activa'),null,{timeout:35000});
+  assert.equal(await page.locator('#blindStart1').isDisabled(),false);
+  await page.locator('#blindStart1').click();
+  assert((await page.locator('#blindStatus1').textContent()).includes('Orden sorteado'));
+  assert.equal(await page.locator('#blindReport1').isDisabled(),true);
+  await page.locator('#blindPlayA1').click();
+  assert((await page.locator('#blindStatus1').textContent()).includes('Escuchando A'));
+  await page.locator('#blindPlayB1').click();
+  assert((await page.locator('#blindStatus1').textContent()).includes('Escuchando B'));
+  await page.locator('#blindChooseA1').click();
+  assert((await page.locator('#blindStatus1').textContent()).includes('completa las tres'));
+  assert(!(await page.locator('#blindStatus1').textContent()).includes('A ='));
+  assert.equal(await page.locator('#blindReport1').isDisabled(),true);
+  await page.locator('#blindNatural1').selectOption('4');
+  await page.locator('#blindClear1').selectOption('5');
+  await page.locator('#blindColor1').selectOption('3');
+  await page.locator('#blindNotes1').fill('La opción A tiene mejor claridad para mi oído.');
+  await page.locator('#blindChooseA1').click();
+  const reveal=await page.locator('#blindStatus1').textContent();
+  assert(reveal.includes('A =')&&reveal.includes('B =')&&reveal.includes('Preferiste A'));
+  assert.equal(await page.locator('#blindPlayA1').isDisabled(),true);
+  assert.equal(await page.locator('#blindChooseA1').isDisabled(),true);
+  assert.equal(await page.locator('#blindReport1').isDisabled(),false);
+  const [dl]=await Promise.all([page.waitForEvent('download',{timeout:30000}),page.locator('#blindReport1').click()]);
+  assert.equal(dl.suggestedFilename(),'montana-evaluacion-ciega-canal-2.json');
+  const target=path.join(process.cwd(),'mixer-vocal-blind-subjective.json');
+  await dl.saveAs(target);
+  const raw=fs.readFileSync(target,'utf8'),report=JSON.parse(raw);
+  assert.equal(report.schema,'montana-vocal-blind');
+  assert.equal(report.choice,'A');
+  assert(report.chosenType==='original'||report.chosenType==='processed');
+  assert.deepEqual(new Set(Object.values(report.reveal)),new Set(['original','processed']));
+  assert.equal(report.subjectiveRatings.naturalidad,4);
+  assert.equal(report.subjectiveRatings.inteligibilidad,5);
+  assert.equal(report.subjectiveRatings.timbre,3);
+  assert.equal(report.notes,'La opción A tiene mejor claridad para mi oído.');
+  assert(Number.isFinite(report.loudness.gainDb));
+  assert(raw.length<3500&&!raw.includes('Float32Array'));
+  assert.deepEqual(Buffer.from(await page.evaluate(async()=>new Uint8Array(await originalFiles[1].arrayBuffer()))),source);
+  // Another independent trial must hide order again; no automatic reuse.
+  await page.locator('#blindStart1').click();
+  assert.equal(await page.locator('#blindReport1').isDisabled(),true);
+  assert(!(await page.locator('#blindStatus1').textContent()).includes('A ='));
+  const [save]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const project=path.join(process.cwd(),'blind-session.json');await save.saveAs(project);
+  await page.reload();
+  await page.locator('#sessionFile').setInputFiles(project);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'),null,{timeout:35000});
+  await page.locator('#pitchDetails1').evaluate(el=>el.open=true);
+  assert.equal(await page.locator('#blindStart1').isDisabled(),false);
+  assert.equal(await page.locator('#blindReport1').isDisabled(),true,'Subjective answers not persisted in mixer session');
+  await page.locator('#file1').setInputFiles({name:'new-vocal.wav',mimeType:'audio/wav',buffer:tone(230)});
+  await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('new-vocal.wav'));
+  assert.equal(await page.locator('#blindStart1').isDisabled(),true);
+  assert.equal(await page.locator('#blindPlayA1').isDisabled(),true);
+  assert.equal(await page.locator('#blindReport1').isDisabled(),true);
+  assert.deepEqual(errors,[]);
+  console.log('PASS blind A/B UI: secret randomized listening, required subjective ratings, reveal only after choice, local report without audio, session regeneration and stale invalidation.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1)});
