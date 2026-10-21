@@ -22,13 +22,13 @@ function wav(hz){
   page.on('pageerror',x=>errors.push(x.message));
   await page.goto('http://127.0.0.1:8765/mixer-8.html');
   assert.equal(await page.locator('[id^="pitchQa"]').count(),7);
-  assert((await page.locator('#pitchQa1').innerText()).includes('Sin diagnóstico'));
+  assert((await page.locator('#pitchQa1').textContent()).includes('Sin diagnóstico'));
   await page.locator('#file1').setInputFiles({name:'qa-voice-a.wav',mimeType:'audio/wav',buffer:wav(224.5)});
   await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('qa-voice-a'));
   await page.locator('#pitchDetails1').evaluate(el=>el.open=true);
   await page.locator('#pitchApply1').click();
   await page.waitForFunction(()=>document.querySelector('#pitchState1')?.textContent?.includes('Afinación activa'),null,{timeout:30000});
-  const report=await page.locator('#pitchQa1').innerText();
+  const report=await page.locator('#pitchQa1').textContent();
   assert(report.includes('QA vocal orientativo'));
   assert(report.includes('RMS original')&&report.includes('Pico corregido'));
   const first=await page.evaluate(()=>({
@@ -49,12 +49,12 @@ function wav(hz){
   await page.reload();
   await page.locator('#sessionFile').setInputFiles({name:'pitch-qa-restore.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(session))});
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'),null,{timeout:30000});
-  assert((await page.locator('#pitchQa1').innerText()).includes('QA vocal orientativo'));
+  assert((await page.locator('#pitchQa1').textContent()).includes('QA vocal orientativo'));
   const second=await page.evaluate(()=>pitchReports[1]);
   assert.deepEqual(second.metrics,first.report.metrics);
   await page.locator('#file1').setInputFiles({name:'qa-voice-b.wav',mimeType:'audio/wav',buffer:wav(230)});
   await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('qa-voice-b'));
-  assert((await page.locator('#pitchQa1').innerText()).includes('Sin diagnóstico'));
+  assert((await page.locator('#pitchQa1').textContent()).includes('Sin diagnóstico'));
   assert.equal(await page.evaluate(()=>pitchReports[1]),null);
   assert.equal(await page.evaluate(()=>pitchActive[1]),false);
   assert.deepEqual(errors,[]);
