@@ -94,8 +94,12 @@
    if(idx&&svg.contains(idx)){
     chosen=Number(idx.getAttribute("data-index"));draft=current();
     drag={id:e.pointerId,index:chosen};
-    try{svg.setPointerCapture(e.pointerId);}catch(_){}
-    draw(draft);reportState(pointLabel(draft.points[chosen],chosen));
+    // Keep the pressed SVG circle in the DOM until first movement.
+    // Capturing on the SVG while immediately replacing the pointer target can
+    // cancel gestures in Chromium and on some touch browsers.
+    target.setAttribute("r","8");
+    del.disabled=chosen===0;
+    reportState(pointLabel(draft.points[chosen],chosen));
    }else{
     const p=relative(e);if(!p)return;
     try{
@@ -105,7 +109,7 @@
     }catch(err){reportState(err.message);}
    }
   });
-  svg.addEventListener("pointermove",e=>{
+  document.addEventListener("pointermove",e=>{
    if(!drag||e.pointerId!==drag.id||!draft)return;
    const p=relative(e);if(!p)return;
    try{
@@ -116,12 +120,11 @@
   function completeDrag(e,abort){
    if(!drag||e.pointerId!==drag.id)return;
    const next=draft;drag=null;draft=null;
-   try{svg.releasePointerCapture(e.pointerId);}catch(_){}
    if(abort){draw();reportState("Movimiento cancelado; el patrón original sigue intacto.");return;}
    commit(next,"Punto desplazado: "+pointLabel(next.points[chosen],chosen));
   }
-  svg.addEventListener("pointerup",e=>completeDrag(e,false));
-  svg.addEventListener("pointercancel",e=>completeDrag(e,true));
+  document.addEventListener("pointerup",e=>completeDrag(e,false));
+  document.addEventListener("pointercancel",e=>completeDrag(e,true));
   svg.addEventListener("keydown",e=>{
    const target=e.target;if(!target.hasAttribute("data-index"))return;
    const index=Number(target.getAttribute("data-index"));
