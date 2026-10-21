@@ -152,6 +152,8 @@
    }catch(e){bg.title=e.message}}
    lane.append(title,bg);root.append(lane);
   });
+  const markerRuler=window.renderSongMarkerRuler?.(end);
+  if(markerRuler)root.prepend(markerRuler);
   const footer=document.createElement("small");
   footer.textContent="0 s — "+end.toFixed(1)+" s · Arrastra cualquier fragmento para moverlo. Flechas: 0.1 s; Shift + flecha: 1 s. Los archivos originales no cambian.";
   root.append(footer);
@@ -160,5 +162,6 @@
  observer.observe(document.getElementById("tracks"),{childList:true,subtree:true,characterData:true});
  for(let i=0;i<8;i++)["offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","file","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","copyCount","copySource0_","copyOffset0_","copySource1_","copyOffset1_","copySource2_","copyOffset2_","copySource3_","copyOffset3_",...(i>0?["alignMs"]:[])].forEach(k=>$(k+i).addEventListener("change",redraw));
  // Imported session labels are updated only after decoding; observed DOM changes redraw on completion.
+ window.montanaTimelineRedraw=redraw;
  redraw();
 })();
