@@ -1,7 +1,7 @@
 'use strict';
 /* Byte-level Beat Lab handoff preflight and malformed Inbox record rejection. */
 const assert=require('node:assert/strict');
-const {inspect,validate,LIMIT,AGE_MS}=require('../beat-bridge.js');
+const {inspect,validate,LIMIT,AGE_MS,STEM_LIMIT}=require('../beat-bridge.js');
 function wave(rate=44100,frames=320){
  const u=new Uint8Array(44+frames*4),v=new DataView(u.buffer);
  const tag=(at,x)=>{for(let i=0;i<x.length;i++)u[at+i]=x.charCodeAt(i);};
@@ -51,4 +51,36 @@ for(const [name,mutation] of [
 }
 assert.throws(()=>inspect(new Uint8Array(LIMIT+1)),/demasiado grande/);
 assert.deepEqual(bytes,backup);
+// Five-stem handoff: ordering, bounded memory, exact duration and CRC.
+const five=['kick','snare','clap','hat','bass'].map(kind=>({
+ kind,filename:'montana-stem-'+kind+'-44.1k.wav',
+ bytes:wave(44100,640)
+}));
+const stemRecord={id:'beat',format:'montana-beat-stems-transfer',
+ version:2,bpm:92,rate:44100,frames:640,created:now,
+ stems:five.map(x=>({...x,crc32:checksum(x.bytes)}))};
+const correct=require('../beat-bridge.js').validateStems(stemRecord,now);
+assert.equal(correct.version,2);assert.equal(correct.stems.length,5);
+assert.deepEqual(require('../beat-bridge.js').validate(stemRecord,now),correct);
+correct.stems[0].bytes[60]^=1;
+assert.deepEqual(stemRecord.stems[0].bytes,five[0].bytes,'Stem source immutability');
+for(const [description,modify] of [
+ ['wrong order',r=>{r.stems[0].kind='snare';}],
+ ['wrong name',r=>{r.stems[1].filename='../snare.wav';}],
+ ['wrong frame count',r=>{r.frames=639;}],
+ ['wrong sample rate',r=>{r.rate=48000;}],
+ ['wrong checksum',r=>{r.stems[2].crc32=0;}],
+ ['damaged PCM',r=>{r.stems[2].bytes[70]^=1;}],
+ ['missing instrument',r=>{r.stems.pop();}],
+ ['expiry',r=>{r.created=now-AGE_MS-1;}],
+ ['unsupported version',r=>{r.version=3;}]
+]){
+ const copy={...stemRecord,stems:stemRecord.stems.map(x=>({...x,bytes:x.bytes.slice()}))};
+ modify(copy);
+ assert.throws(()=>require('../beat-bridge.js').validate(copy,now),/inválid|caducado/,description);
+}
+assert.throws(()=>require('../beat-bridge.js').validateStems({
+ ...stemRecord,stems:stemRecord.stems.map(x=>({...x,bytes:wave(44100,3000000)})),
+ frames:3000000
+},now),/inválid|demasiado/, 'Oversized stems must reject');
 console.log('PASS Beat bridge preflight: RIFF stereo PCM16, 44.1/48 kHz, CRC32, expiry, metadata, invalid formats, memory and input immutability.');
