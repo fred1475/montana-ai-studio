@@ -110,7 +110,7 @@ function rms(buf,from,to){
   await page.locator("#sessionFile").setInputFiles(invalid);
   await page.waitForFunction(()=>document.querySelector("#status")?.textContent?.includes("No se restauró"));
   assert.equal(await page.locator("#copyCount1").inputValue(),"2","Invalid source reference cannot corrupt open project");
-  delete saved.tracks[1].clipCopies;
+  delete saved.manifestSha256;delete saved.tracks[1].clipCopies;
   const legacy=path.join(process.cwd(),"copied-clips-legacy.json");fs.writeFileSync(legacy,JSON.stringify(saved));
   await page.locator("#sessionFile").setInputFiles(legacy);
   await page.waitForFunction(()=>document.querySelector("#status")?.textContent?.includes("Sesión restaurada"));
