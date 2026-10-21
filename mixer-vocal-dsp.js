@@ -1,7 +1,8 @@
 /* Montana Music Production LLC — vocal noise gate and de-esser beta.
  * Offline, non-destructive, browser-local DSP; no third-party dependencies.
  * Gate: linked-channel RMS envelope and smooth gain. De-esser: dynamically
- * attenuate only high-frequency sibilance band using a simple 1-pole split.
+ * attenuate only high-frequency sibilance band using a simple 1-pole split,
+ * with one shared stereo detector/gain and sample-rate-aware smoothing.
  * This is NOT spectral restoration or a mastering-grade de-esser.
  */
 (function(root,factory){
@@ -45,19 +46,29 @@
    const threshold=Math.pow(10,s.deessThreshold/20),strength=s.deessStrength/100;
    const lowK=1-Math.exp(-2*Math.PI*4000/rate);
    const envA=Math.exp(-1/(rate*.008));
-   for(const samples of out){
-    let low=0,power=0,atten=1;
-    for(let i=0;i<n;i++){
-     const v=samples[i];if(!Number.isFinite(v))throw Error("Muestra vocal inválida");
-     low+=lowK*(v-low);
-     const high=v-low;
-     power=envA*power+(1-envA)*high*high;
-     const rms=Math.sqrt(power);
-     const target=rms>threshold?1-strength*(1-threshold/rms):1;
-     // Smooth the attenuation; avoid zipper noise during fast syllables.
-     atten+=(target-atten)*.055;
-     samples[i]=low+atten*high;
+   // ~0.4ms response at ANY supported sample rate, rather than a fixed
+   // per-sample coefficient that speeds up/slows down at other rates.
+   const attenK=1-Math.exp(-1/(rate*.0004));
+   const lows=new Float64Array(out.length),highs=new Float64Array(out.length);
+   let power=0,atten=1;
+   for(let i=0;i<n;i++){
+    let maxHigh=0;
+    // A common detector and common attenuation preserve polarity, channel
+    // gain ratio and stereo timing. Independent de-ess envelopes could
+    // change the stereo image, especially on asymmetric sibilants.
+    for(let ch=0;ch<out.length;ch++){
+     const v=out[ch][i];
+     if(!Number.isFinite(v))throw Error("Muestra vocal inválida");
+     lows[ch]+=lowK*(v-lows[ch]);
+     highs[ch]=v-lows[ch];
+     maxHigh=Math.max(maxHigh,Math.abs(highs[ch]));
     }
+    power=envA*power+(1-envA)*maxHigh*maxHigh;
+    const rms=Math.sqrt(power);
+    const target=rms>threshold?1-strength*(1-threshold/rms):1;
+    // One gain for both high-frequency bands; no per-channel pumping.
+    atten+=(target-atten)*attenK;
+    for(let ch=0;ch<out.length;ch++)out[ch][i]=lows[ch]+atten*highs[ch];
    }
   }
   return out;
