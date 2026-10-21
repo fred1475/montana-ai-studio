@@ -100,6 +100,7 @@ async function restoreMixerSnapshot(s){
   $("auditStatus").textContent="La auditoría requiere exportar de nuevo el WAV; ninguna cifra anterior se reutiliza.";
   loaded.forEach((t,i)=>{
    tracks[i]=t.decoded;originalFiles[i]=t.source;
+   window.resetVocalPreflight?.(i);
    // Reset file inputs so the restored bytes are authoritative on next save.
    $("file"+i).value="";
    $("vol"+i).value=t.volume;$("val"+i).textContent=t.volume+"%";
