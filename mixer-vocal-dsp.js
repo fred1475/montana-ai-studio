@@ -24,6 +24,14 @@
   if(!Number.isFinite(rate)||rate<8000||rate>192000)throw Error("Frecuencia de muestreo inválida");
   const n=channels[0].length;
   if(n<1||channels.some(c=>c.length!==n)||n>rate*300)throw Error("Canales incompatibles o duración excesiva");
+  // Always reject corrupted PCM, including full bypass and 0%-strength de-ess.
+  // Otherwise a NaN/Infinity could silently pass into live/export graphs.
+  // Validate source before cloning; never change source buffers on error.
+  for(const c of channels){
+   for(let i=0;i<n;i++){
+    if(!Number.isFinite(c[i]))throw Error("Muestra vocal inválida");
+   }
+  }
   const out=channels.map(c=>Float32Array.from(c));
   if(s.gateOn){
    const threshold=Math.pow(10,s.gateThreshold/20),floor=Math.pow(10,s.gateReduction/20);
