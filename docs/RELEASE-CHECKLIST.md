@@ -23,9 +23,15 @@ El archivo `mixer-wav-export.js` permite exportar el master como WAV PCM16 (pred
 
 ### Exportación de master a 48 kHz — compatibilidad con video
 
-El mezclador permite seleccionar **44.1 kHz** (predeterminado y compatible con sesiones anteriores) o **48 kHz** para el **master WAV**, conservando 16/24 bits y dither TPDF opcional solamente en 16 bits. El render offline de Web Audio remuestrea las fuentes al formato elegido; esto **no sustituye** una prueba de calidad del algoritmo de remuestreo con contenido musical ni garantiza audio profesional por seleccionar 48 kHz. Stems y ZIP permanecen a 44.1 kHz PCM16/24, con selector propio. El límite de WAV de 150 MiB y de auditoría de 56 MiB sigue vigente; las exportaciones de 48 kHz/24 bits largas pueden superar el límite de auditoría sin impedir descargar el master. Las preferencias quedan en JSON, las sesiones antiguas usan 44.1 kHz y una frecuencia fuera de la lista se rechaza sin modificar la sesión activa.
+El mezclador permite seleccionar **44.1 kHz** (predeterminado y compatible con sesiones anteriores) o **48 kHz** para el **master WAV**, conservando 16/24 bits y dither TPDF opcional solamente en 16 bits. El render offline de Web Audio remuestrea las fuentes al formato elegido; esto **no sustituye** una prueba de calidad del algoritmo de remuestreo con contenido musical ni garantiza audio profesional por seleccionar 48 kHz. Stems y ZIP admiten 44.1/48 kHz y PCM16/24 mediante selectores independientes del master; la compatibilidad predeterminada sigue en 44.1 kHz PCM16. El límite de WAV de 150 MiB y de auditoría de 56 MiB sigue vigente; las exportaciones de 48 kHz/24 bits largas pueden superar el límite de auditoría sin impedir descargar el master. Las preferencias quedan en JSON, las sesiones antiguas usan 44.1 kHz y una frecuencia fuera de la lista se rechaza sin modificar la sesión activa.
 
 Prueba: `tests/mixer-export-samplerate.cjs`, con una fuente de un segundo a 44.1 kHz; compara master PCM16 predeterminado y master PCM24 a 48 kHz, duración, frecuencia de un tono de 1 kHz, encabezados RIFF, CRC del informe exacto, restauración, compatibilidad de sesiones antiguas y rechazo de valores corruptos. **No hay evidencia todavía de calibración de hardware ni certificación de remuestreo.**
+
+### Stems a 48 kHz para audio de video
+
+Los stems WAV individuales y ZIP ahora pueden renderizarse en **44.1 o 48 kHz**, tanto PCM16 como PCM24, con opciones independientes del master. El render offline mantiene todos los stems alineados desde 0:00 y calcula límites de memoria según la frecuencia real y la profundidad de bytes. La frecuencia de stems queda guardada en la sesión JSON; los proyectos antiguos cargan 44.1 kHz por defecto y los valores inválidos se rechazan sin sustituir el proyecto actual. La guía dentro del ZIP indica la frecuencia de salida verdadera.
+
+La regresión `tests/mixer-stems-multirate.cjs` contrasta WAV individuales y ZIP PCM24 a 48 kHz, cabeceras RIFF, duración, tono sintético sin transposición, silencio previo en una voz desplazada, independencia del master y sesiones antiguas/corruptas. Los tests con tonos no validan por sí solos la calidad perceptual de la conversión ni equivalen a un control de calidad con DAW y escucha de música real.
 
 ### Afinación experimental: protección del análisis estéreo
 
