@@ -60,7 +60,7 @@ $("recordStart").addEventListener("click",async()=>{
     const file=new File([blob],"toma-canal-"+(i+1)+"."+ext,{type:blob.type});
     // Atomic replacement happens only after a full successful decode.
     tracks[i]=decoded;originalFiles[i]=file;
-    window.resetPitch?.(i);window.resetClean?.(i);window.resetSplit?.(i);window.resetCrossfade?.(i);
+    window.resetPitch?.(i);window.resetClean?.(i);window.resetSplit?.(i);window.resetCrossfade?.(i);window.resetCopies?.(i);
     $("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("fadeIn"+i).value=0;$("fadeOut"+i).value=0;$("repeat"+i).value=1;
     $("offset"+i).value=0;
     if(i>0){$("alignMs"+i).value=0;$("alignVal"+i).textContent="0 ms"}
