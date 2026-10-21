@@ -17,7 +17,7 @@ assert(result.events.some(e=>e.code==='dropout'&&e.timeSeconds>=.30&&e.timeSecon
 assert(result.events.some(e=>e.code==='peak'&&e.timeSeconds>=.60&&e.timeSeconds<=.70));
 assert(result.events.every(e=>e.timeSeconds>=0&&e.timeSeconds<1&&e.channel===1));
 assert.deepEqual(source,unaltered,'Original Float32 source must remain immutable');
-assert.equal(wet[Math.floor(.65*rate)],1.02);
+assert(Math.abs(wet[Math.floor(.65*rate)]-1.02)<1e-6);
 const silent=new Float32Array(n);
 const rest=A.analyze([silent],[silent],rate);
 assert.deepEqual(rest.counts,{dropout:0,step:0,peak:0});
