@@ -15,7 +15,7 @@
    const title=document.createElement("span");title.textContent=(i+1)+". "+labels[i];title.style.fontSize="12px";
    const bg=document.createElement("div");bg.style.cssText="height:32px;position:relative;border:1px solid #46516a;border-radius:5px;background:repeating-linear-gradient(90deg,#202c40 0px,#202c40 1px,#172132 1px,#172132 10%)";
    if(b){try{
-     if(window.trackSplitEnabled?.(i)){
+     if(window.trackHasMultipleClips?.(i)){
       const segments=window.getTrackSegments(i,b);
       segments.forEach((part,j)=>{
        const block=document.createElement("div");
@@ -24,7 +24,7 @@
        block.style.background=colors[i];block.style.opacity=j===0?"0.9":"0.7";
        block.style.width=(100*part.duration/end)+"%";
        let current=round(part.offset),drag=null,keysMoved=false;
-       const fieldId=j===0?"offset"+i:j===1?"splitOffset"+i:"splitOffset"+j+"_"+i;
+       const fieldId=part.editField||(j===0?"offset"+i:j===1?"splitOffset"+i:"splitOffset"+j+"_"+i);
        const description=()=>{
         const s="Pista "+(i+1)+", fragmento "+(j+1)+", inicio "+current.toFixed(2)+" s, duración "+part.duration.toFixed(2)+" s";
         block.title=s;block.setAttribute("aria-label",s);
@@ -158,7 +158,7 @@
  }
  const observer=new MutationObserver(redraw);
  observer.observe(document.getElementById("tracks"),{childList:true,subtree:true,characterData:true});
- for(let i=0;i<8;i++)["offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","file","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_",...(i>0?["alignMs"]:[])].forEach(k=>$(k+i).addEventListener("change",redraw));
+ for(let i=0;i<8;i++)["offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","file","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","copyCount","copySource0_","copyOffset0_","copySource1_","copyOffset1_","copySource2_","copyOffset2_","copySource3_","copyOffset3_",...(i>0?["alignMs"]:[])].forEach(k=>$(k+i).addEventListener("change",redraw));
  // Imported session labels are updated only after decoding; observed DOM changes redraw on completion.
  redraw();
 })();
