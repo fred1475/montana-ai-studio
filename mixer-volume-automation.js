@@ -20,7 +20,7 @@
   const points=value.points.map((p,i)=>{
    if(!p||typeof p!=="object"||Array.isArray(p)||
       typeof p.time!=="number"||!Number.isFinite(p.time)||p.time<0||p.time>MAX_SECONDS||
-      Math.round(p.time*100)!==p.time*100||
+      Math.abs(p.time*100-Math.round(p.time*100))>1e-7||
       typeof p.gain!=="number"||!Number.isFinite(p.gain)||p.gain<0||p.gain>MAX_GAIN||
       Math.round(p.gain)!==p.gain||p.time<=previous||(i===0&&p.time!==0))
     throw Error("Puntos inválidos: empezar en 0 s, tiempos crecientes (0–300) y nivel entero (0–150)");
