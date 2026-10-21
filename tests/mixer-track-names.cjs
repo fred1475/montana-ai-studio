@@ -47,6 +47,14 @@ function toneWav(rate=44100){
    return {errors,unchanged:labels[0]===old};
   });
   assert(invalid.errors.every(e=>e.includes('inválido')));assert(invalid.unchanged);
+  // Undo/redo is non-destructive and must include new user-defined labels.
+  assert.equal(await page.locator('#undoEdit').isDisabled(),false);
+  await page.locator('#undoEdit').click();
+  assert.equal(await page.locator('#trackName1').inputValue(),'Voz principal');
+  assert.equal(await page.locator('#trackTitle1').textContent(),'2. Voz principal');
+  await page.locator('#redoEdit').click();
+  assert.equal(await page.locator('#trackName1').inputValue(),'Voz · Montana');
+  assert.equal(await page.locator('#trackTitle1').textContent(),'2. Voz · Montana');
   assert.equal(await page.locator('#label0').textContent(),'beat-original.wav — 0.5 s');
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
   const savedAt=path.join(process.cwd(),'mixer-track-names-session.json');await download.saveAs(savedAt);
