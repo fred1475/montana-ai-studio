@@ -83,6 +83,7 @@
    checks,processing:{
     normalizationApplied:settings.normalizationApplied===true,
     limiterApplied:settings.limiterApplied===true,
+    ditherApplied:settings.ditherApplied===true,
     originalSourcesPreserved:true
    },
    qualification:"ESTIMACIONES PARA REVISIÓN DE AUDIO. No implica certificación EBU R128/ITU, conformidad true-peak, ausencia de distorsión ni garantía de calidad.",
