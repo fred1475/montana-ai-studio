@@ -55,6 +55,12 @@ El informe JSON de preentrega (si se activa voluntariamente) ahora mide también
 
 `tests/mixer-master-stereo-qa.cjs` verifica PCM16/24, inversión de fase, equilibrio, DC, silencio y clipping; `tests/mixer-master-stereo-browser.cjs` comprueba en Chromium el WAV PCM24 exportado y su JSON/CRC32. **Estas reglas no son criterios EBU R128 oficiales:** cambios de fase y de RMS no permiten concluir automáticamente que una canción suena mal o bien ni equivalen a una escucha profesional. La auditoría sigue sin certificación externa y no corrige la mezcla automáticamente.
 
+### Planificación de exportaciones extensas — protección previa de recursos
+
+Se incorpora el cálculo local **sin renderizar** para master WAV y stems WAV/ZIP (`mixer-export-preflight.js` y `mixer-export-preflight-ui.js`). El botón «Estimar tamaño y recursos» considera duración de fragmentos, desplazamientos, repeticiones, colas de efectos, frecuencias de salida, PCM16/24 y cantidad de pistas. Muestra los tamaños de los archivos y un **mínimo orientativo** de buffers simultáneos; avisa sobre proyectos con alto consumo y sobre el límite de auditoría de 56 MiB. No conoce la RAM realmente disponible ni estima buffers internos del navegador, efectos o archivos fuente. No garantiza estabilidad de sesiones extensas.
+
+El master y los stems ahora validan los límites de PCM/ZIP antes de procesar voces o crear un `OfflineAudioContext`; se evita desperdiciar memoria en renders que inequívocamente superarían límites ya existentes (150 MiB master, 145 MiB stem/ZIP). El botón no sube material ni modifica audio. Pruebas: `tests/mixer-export-preflight.cjs` (planes sintéticos de 60–600 s, PCM16/24, auditoría, ZIP, formatos inválidos) y `tests/mixer-export-preflight-ui.cjs` (navegador, botón, rechazo temprano antes de DSP, originales intactos). **No se ha comprobado todavía rendimiento real de 8 pistas durante minutos en todos los equipos y navegadores.**
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
