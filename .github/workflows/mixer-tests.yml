@@ -8,6 +8,7 @@ on:
       - 'tests/beat-bridge.cjs'
       - 'mixer-beat-bridge.js'
       - 'tests/beat-bridge-ui.cjs'
+      - 'tests/beat-stems-transfer-ui.cjs'
       - 'beat-engine.js'
       - 'beat-archive.js'
       - 'tests/beat-archive.cjs'
@@ -198,6 +199,7 @@ jobs:
           node tests/beat-bridge.cjs
           node --check mixer-beat-bridge.js
           node --check tests/beat-bridge-ui.cjs
+          node --check tests/beat-stems-transfer-ui.cjs
           node --check beat-archive.js
           node --check tests/beat-archive.cjs
           node --check tests/beat-bundle-ui.cjs
@@ -253,6 +255,7 @@ jobs:
           node tests/beat-ui.cjs
           node tests/beat-bundle-ui.cjs
           node tests/beat-bridge-ui.cjs
+          node tests/beat-stems-transfer-ui.cjs
           node tests/mixer-pitch.cjs
           node tests/mixer-pitch-quality-ui.cjs
           node tests/mixer-sync.cjs
