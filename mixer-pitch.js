@@ -13,6 +13,9 @@ function pitchQaText(report){
   " dBFS → corregido "+fmt(m.outputRmsDbfs)+" dBFS; variación "+
   fmt(m.rmsDeltaDb)+" dB. Pico corregido "+fmt(m.outputPeakDbfs)+
   " dBFS. Saltos nuevos: "+m.newLargeSteps+". "+
+  (report.stereo?"Estéreo: correlación "+fmt(report.stereo.source.correlation)+
+   " → "+fmt(report.stereo.output.correlation)+"; balance L/R "+
+   fmt(report.stereo.source.balanceDb)+" → "+fmt(report.stereo.output.balanceDb)+" dB. ":"")+
   (report.warnings.length?"AVISOS: "+report.warnings.map(w=>w.message).join(" "):
    "Sin alertas en estos criterios PCM; todavía requiere escucha de artefactos y formantes.");
 }
