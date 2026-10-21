@@ -30,6 +30,7 @@ function wav(frequency){
   assert((await page.locator('#pitchQuality').textContent()).includes('pico final'));
   assert((await page.locator('#pitchQuality').textContent()).includes('RMS original'));
   assert((await page.locator('#pitchQuality').textContent()).includes('Cambio relativo de altas'));
+  assert((await page.locator('#pitchQuality').textContent()).includes('Ventanas de posible microcorte'));
   assert.equal(await page.locator('#download').isDisabled(),false);
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#download').click()]);
   const filename=path.join(process.cwd(),'pitch-lab-output.wav');await download.saveAs(filename);
