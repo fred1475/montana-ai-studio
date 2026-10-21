@@ -134,12 +134,28 @@
   }
   function correctChannel(input,sampleRate,sourceFrequency,targetFrequency,sharedPlan){
     if(!(input instanceof Float32Array))throw Error('Canal vocal inválido');
+    if(!Number.isFinite(sampleRate)||sampleRate<8000||sampleRate>192000||
+       !Number.isFinite(sourceFrequency)||sourceFrequency<=0||sourceFrequency>sampleRate/2||
+       !Number.isFinite(targetFrequency)||targetFrequency<=0||targetFrequency>sampleRate/2)
+      throw Error('Frecuencias vocales inválidas');
     const n=input.length,ratio=targetFrequency/sourceFrequency;
     // Correct at most 250 cents per correction, to avoid severe artifacts.
     if(!Number.isFinite(ratio)||ratio<Math.pow(2,-250/1200)||ratio>Math.pow(2,250/1200))throw Error('Corrección fuera del rango seguro de 250 cents.');
     const plan=sharedPlan||pitchMarkPlan(input,sampleRate,sourceFrequency);
-    if(plan.frames!==n||!Number.isFinite(plan.first)||!Number.isFinite(plan.period)||!Number.isInteger(plan.span)||
-       !Array.isArray(plan.marks)||plan.marks.length<5)throw Error('Marcas de afinación incompatibles');
+    const expectedPeriod=sampleRate/sourceFrequency;
+    if(plan.frames!==n||!Number.isInteger(plan.first)||plan.first<0||plan.first>=n||
+       !Number.isFinite(plan.period)||plan.period<2||plan.period>n/4||
+       Math.abs(plan.period-expectedPeriod)>Math.abs(expectedPeriod)*1e-6||
+       !Number.isInteger(plan.span)||plan.span!==Math.ceil(plan.period)||
+       !Array.isArray(plan.marks)||plan.marks.length<5)
+      throw Error('Marcas de afinación incompatibles');
+    let previous=-1;
+    for(const mark of plan.marks){
+      if(!Number.isInteger(mark)||mark<=previous||mark<0||mark>=n)
+       throw Error('Marcas de afinación incompatibles');
+      previous=mark;
+    }
+    for(let i=0;i<n;i++)if(!Number.isFinite(input[i]))throw Error('Muestra vocal inválida');
     const {first,marks,period,span}=plan;
     const output=new Float32Array(n),weight=new Float32Array(n);
     const newPeriod=period/ratio;
