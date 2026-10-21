@@ -49,6 +49,12 @@ Ahora los siete canales vocales incluyen un botón **«Analizar fuente sin modif
 
 Los tests `tests/mixer-vocal-preflight.cjs` y `tests/mixer-vocal-preflight-ui.cjs` cubren señales sintéticas, seguridad de datos, navegador, reimportación y restauración de sesiones. **Interpretación:** una muestra cerca del máximo digital no demuestra saturación analógica, y ausencia de avisos no garantiza buena grabación, ruido aceptable ni calidad vocal. No requiere conectar equipo antes de la prueba final.
 
+### Master: diagnóstico de fase y compatibilidad mono sobre PCM exacto
+
+El informe JSON de preentrega (si se activa voluntariamente) ahora mide también correlación **L/R** con offset DC retirado para la correlación, RMS separado de cada lado, diferencia de niveles, componente continua, y cambio relativo de RMS al plegar la señal `(L+R)/2`. Evalúa alertas internas por correlación inferior o igual a −0.8, pérdida mono mayor de 6 dB, diferencia de niveles superior a 20 dB y offset DC absoluto ≥ 0.01. Una cancelación mono prácticamente completa tiene una marca propia para no confundir valores residuales de cuantización con audio audible. Todas las métricas se calculan sobre el **WAV exportado PCM16/24**, manteniendo su CRC32 de origen. La pantalla muestra correlación y pérdida mono junto a LUFS/TP aproximados; el botón permite descargar el informe exacto.
+
+`tests/mixer-master-stereo-qa.cjs` verifica PCM16/24, inversión de fase, equilibrio, DC, silencio y clipping; `tests/mixer-master-stereo-browser.cjs` comprueba en Chromium el WAV PCM24 exportado y su JSON/CRC32. **Estas reglas no son criterios EBU R128 oficiales:** cambios de fase y de RMS no permiten concluir automáticamente que una canción suena mal o bien ni equivalen a una escucha profesional. La auditoría sigue sin certificación externa y no corrige la mezcla automáticamente.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
