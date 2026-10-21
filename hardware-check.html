@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Montana AI Studio 2.0 — Diagnóstico de interfaz</title>
+<style>:root{color-scheme:dark;font:16px system-ui;background:#090e19;color:#f7f8fb}*{box-sizing:border-box}body{max-width:850px;margin:30px auto;padding:18px}h1,a{color:#efc36e}.panel{border:1px solid #44536d;background:#172132;border-radius:12px;padding:16px;margin:16px 0}p,small{color:#c0ccdc}label{display:block;margin:12px 0}button,select{font:inherit;border-radius:8px;padding:10px}button{border:1px solid #efc36e;background:#efc36e;color:#18120a;font-weight:700}button:disabled{opacity:.5}select{background:#26364b;color:#fff;max-width:100%}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0e1929;padding:12px;border-radius:8px}meter{width:100%}</style>
+</head><body>
+<a href="mixer-8.html">← Volver al mezclador</a>
+<h1>🎙️ Diagnóstico de interfaz de audio</h1>
+<p>Montana Music Production LLC · Herramienta local experimental. Preparada para ejecutar la prueba física al final del desarrollo; no se ejecuta automáticamente.</p>
+<div class="panel"><h2>Antes de realizar la prueba final</h2>
+<p>Conecta tu interfaz y micrófono, selecciona su entrada en el navegador y usa audífonos para evitar realimentación. Comienza con la ganancia de entrada moderada. La prueba normal dura <strong>8 segundos</strong>: mantén silencio los primeros 2 segundos y habla a tu volumen habitual durante los siguientes 6.</p>
+<p><strong>Sin monitoreo de micrófono ni carga a internet.</strong> El procesamiento se mantiene local en el navegador. Si hay saturación, baja la ganancia física de entrada, no solo el volumen de audífonos.</p>
+<label for="inputDevice">Entrada de audio</label>
+<select id="inputDevice"><option value="">Entrada predeterminada del sistema</option></select>
+<div><button id="scanDevices">Buscar entradas disponibles</button> <button id="startTest">● Grabar muestra local</button> <button id="stopTest" disabled>■ Finalizar prueba</button></div>
+<small>Chrome/Edge necesitan HTTPS o localhost y permiso de micrófono. Los nombres de dispositivos pueden aparecer solo después de concederlo.</small></div>
+<div class="panel"><h2>Mediciones</h2><p id="testStatus" role="status">Prueba aún no ejecutada.</p>
+<meter id="captureLevel" min="0" max="1" value="0" aria-label="Nivel digital de entrada"></meter>
+<pre id="testResults">Pendiente: primero hay que completar la prueba de hardware con tu interfaz real.</pre>
+<div><button id="downloadTestWav" disabled>⬇ Descargar WAV de diagnóstico</button> <button id="downloadTestJson" disabled>⬇ Descargar informe JSON</button></div>
+<small>Indicadores: picos dBFS, RMS, posible clipping digital y nivel del silencio inicial. No son mediciones de ruido calibradas en dBu/dB SPL ni prueba de latencia de entrada/salida. No sustituyen pruebas de escucha, calibración con loopback ni certificación EBU.</small></div>
+<script src="hardware-diagnostics.js"></script><script src="hardware-check.js"></script>
+</body></html>
