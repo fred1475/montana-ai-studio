@@ -71,7 +71,25 @@
    }
    segments.push({startSeconds:start/rate,endSeconds:end/rate,inputHz,targetHz:adjusted,targetNote:target.note,correctionCents:cents});
   }
-  return {channels:out,segments,duration:n/rate,mode:"melody-experimental"};
+  // Prevent the splice between separately PSOLA-corrected notes from making
+  // discontinuous waveform jumps. The original voice is the continuous bridge
+  // centered on each detected transition; equal-power-like raised sine edges
+  // reintroduce correction 12 ms away. Source PCM remains unchanged.
+  const guardMs=12,guardSamples=Math.max(1,Math.round(rate*guardMs/1000));
+  for(let index=1;index<boundaries.length-1;index++){
+   const boundary=boundaries[index],left=boundary-boundaries[index-1],right=boundaries[index+1]-boundary;
+   const radius=Math.min(guardSamples,Math.floor(Math.min(left,right)*.12));
+   if(radius<2)continue;
+   for(let j=Math.max(0,boundary-radius);j<Math.min(n,boundary+radius);j++){
+    const t=Math.min(1,Math.abs(j-boundary)/radius);
+    const correctedWeight=Math.sin(t*Math.PI/2)**2;
+    for(let ch=0;ch<channels.length;ch++){
+     const original=channels[ch][j];
+     out[ch][j]=original*(1-correctedWeight)+out[ch][j]*correctedWeight;
+    }
+   }
+  }
+  return {channels:out,segments,duration:n/rate,mode:"melody-experimental",transitionGuardMs:guardMs};
  }
  return {processMelody};
 });
