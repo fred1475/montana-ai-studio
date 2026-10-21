@@ -21,6 +21,12 @@ El archivo `mixer-wav-export.js` permite exportar **solo el master** como WAV PC
 
 `mixer-master-audit.js` reconoce WAV PCM16 y PCM24 y mide los **bytes exactos** exportados; su límite vigente de **56 MiB** puede impedir la auditoría de un master PCM24 extenso, sin impedir descargar el WAV. La regresión `tests/mixer-wav-export.cjs` compara cabeceras, muestras con signo, CRC32 y recuperación de preferencias en Chromium. La prueba automática no equivale a mezcla/master profesional ni certifica ITU/EBU.
 
+### Exportación de master a 48 kHz — compatibilidad con video
+
+El mezclador permite seleccionar **44.1 kHz** (predeterminado y compatible con sesiones anteriores) o **48 kHz** para el **master WAV**, conservando 16/24 bits y dither TPDF opcional solamente en 16 bits. El render offline de Web Audio remuestrea las fuentes al formato elegido; esto **no sustituye** una prueba de calidad del algoritmo de remuestreo con contenido musical ni garantiza audio profesional por seleccionar 48 kHz. Stems y ZIP permanecen a 44.1 kHz PCM16. El límite de WAV de 150 MiB y de auditoría de 56 MiB sigue vigente; las exportaciones de 48 kHz/24 bits largas pueden superar el límite de auditoría sin impedir descargar el master. Las preferencias quedan en JSON, las sesiones antiguas usan 44.1 kHz y una frecuencia fuera de la lista se rechaza sin modificar la sesión activa.
+
+Prueba: `tests/mixer-export-samplerate.cjs`, con una fuente de un segundo a 44.1 kHz; compara master PCM16 predeterminado y master PCM24 a 48 kHz, duración, frecuencia de un tono de 1 kHz, encabezados RIFF, CRC del informe exacto, restauración, compatibilidad de sesiones antiguas y rechazo de valores corruptos. **No hay evidencia todavía de calibración de hardware ni certificación de remuestreo.**
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
