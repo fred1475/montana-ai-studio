@@ -12,7 +12,7 @@ const left=new Float32Array(4000),right=new Float32Array(4000);
 for(let i=0;i<4000;i++){
  left[i]=0.000001*Math.sin(2*Math.PI*i/93);right[i]=-left[i];
 }
-function read24(b,p){return (b[p]|(b[p+1]<<8)|(b[p+2]<<16))}
+function read24(b,p){const u=b[p]|(b[p+1]<<8)|(b[p+2]<<16);return u&0x800000?u-0x1000000:u}
 function inspect(b,bits,frames){
  assert.equal(b.toString('ascii',0,4),'RIFF');
  assert.equal(b.toString('ascii',8,12),'WAVE');
