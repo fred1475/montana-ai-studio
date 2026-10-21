@@ -62,6 +62,11 @@ for(const testRate of [44100,48000]){
  const doubleStereo=analyze([source,source],[source,dropped],testRate);
  assert(doubleStereo.metrics.dropoutWindowCount>=4);
  assert(doubleStereo.warnings.some(w=>w.id==='local_dropouts'));
+ assert.equal(doubleStereo.metrics.firstDropoutChannel,2);
+ const quieterStereo=analyze([source,source],[source,Float32Array.from(source,x=>x*.02)],testRate);
+ assert.equal(quieterStereo.metrics.dropoutWindowCount,0,'Uniform gain per channel is not a dropout');
+ const cleanStereo=analyze([source,source],[source,source.slice()],testRate);
+ assert.equal(cleanStereo.metrics.firstDropoutChannel,null);
  assert.deepEqual(dropped.slice(0,Math.floor(testRate*.30)),source.slice(0,Math.floor(testRate*.30)));
  assert.deepEqual(source,sourceBackup);
  assert.deepEqual(treble,trebleBackup);
