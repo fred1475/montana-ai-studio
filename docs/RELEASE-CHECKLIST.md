@@ -221,6 +221,14 @@ El mismo programa de parámetros de Web Audio se usa para escuchar (tiempo globa
 
 `tests/mixer-pan-automation.cjs` verifica interpolación, valores límite, programación AudioParam y legado desactivado. `tests/mixer-pan-automation-ui.cjs` mide por separado RMS izquierdo/derecho de un WAV mono de referencia en los **masters y stems reales**, verifica paso de izquierda a derecha, respaldo, rechazo de curvas inválidas, archivo fuente intacto, Deshacer/Rehacer y recuperación de proyectos antiguos. No se ofrece todavía edición gráfica de panorama (solo puntos numéricos), curvas de movimiento con easing, pan surround ni espacialización Atmos. Se necesitarán escucha y pruebas físicas en la fase final.
 
+### Gráfico de panorama estéreo editable en los ocho canales (beta)
+
+Además de la curva numérica de posiciones `segundo:pan`, el mezclador presenta un **gráfico SVG de panorama estéreo por canal**. El eje vertical representa izquierda (−100) arriba, centro (0) en medio y derecha (+100) abajo. Se puede añadir un punto con clic, arrastrar el punto con ratón o gesto táctil, ajustar con flechas del teclado (izquierda/derecha ±0.1 s, Mayús ±1 s; arriba hacia la izquierda −1 posición y abajo hacia la derecha +1) y eliminar con Supr/Retroceso o el botón Borrar, salvo el ancla indispensable en 0 s. Zoom temporal 2/10/30/60/120/300 s. Los puntos están sujetos a las mismas reglas que el editor de texto: **máximo ocho, tiempo 0–300 s, separación mínima de centésima y posición de −100 a +100**; no pueden cruzarse ni colocarse fuera de rango.
+
+El gráfico comparte **el mismo estado validado** de `mixer-pan-automation.js` con el editor numérico. El arrastre actualiza la visualización sin crear docenas de entradas de historial; al soltar confirma una sola operación reversible. Los cambios mediante gráfico, texto, historial, sesión JSON y recuperación local se sincronizan. Los audios originales siguen sin mutarse. No se añaden nuevos efectos al motor de exportación: la validación previa de panorama estéreo PCM en master y stems sigue vigente.
+
+`tests/mixer-pan-graph.cjs` cubre proyección XY, interpolación geométrica, puntos, límites e inmutabilidad. `tests/mixer-pan-graph-ui.cjs` comprueba en Chromium los ocho gráficos, creación, arrastre, teclado, ancla protegida, Undo/Redo y guardado/restauración de la sesión. Pendiente la escucha con hardware al final, igual que la validación externa del master.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
