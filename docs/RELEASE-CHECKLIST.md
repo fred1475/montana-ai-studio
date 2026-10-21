@@ -181,6 +181,14 @@ En el mezclador se elige uno de los conjuntos consecutivos de cinco canales (1�
 
 Prueba automatizada `tests/beat-stems-transfer-ui.cjs`: envío y navegación reales en Chromium, canales 4–8, respaldo JSON, rechazo de sobrescritura, sustitución expresamente autorizada, decodificación fallida sin cambios parciales y detección de CRC alterado. `tests/beat-bridge.cjs` refuerza orden, tamaño, nombre, alineación y tiempo de vida. **Esto no ofrece todavía una composición multipista ilimitada ni garantiza atomicidad ante un fallo excepcional del navegador durante el commit síncrono**; la prevalidación de decodificación evita la clase común de fallo parcial. La escucha final y las pruebas físicas siguen pendientes.
 
+### Nombres de canales editables y persistentes (beta)
+
+El mezclador de ocho pistas tiene **Nombre del canal** editable (de 1 a 40 caracteres), separado del nombre del archivo WAV fuente. `labels[i]` es el nombre visible en el canal, la línea de tiempo y la etiqueta de los stems exportados; la edición actualiza la vista sin alterar las muestras, el audio original ni su nombre. Se rechazan nombres vacíos, caracteres de control y etiquetas con signos `<` o `>` antes de modificar el nombre activo; las etiquetas en pantalla se escriben con `textContent`, no HTML.
+
+Las sesiones JSON guardan `trackLabel` por pista, incluidas pistas todavía vacías. La restauración valida los ocho nombres **antes** de cambiar pistas y fuentes; las sesiones anteriores sin `trackLabel` recuperan los nombres de plantilla, conservando compatibilidad. La recuperación local utiliza el mismo formato de sesión. Un envío exitoso de cinco stems desde Beat Lab renombra únicamente los canales importados a Bombo, Caja, Palmas, Hi-hat y Bajo; un envío de ritmo completo al canal 1 lo identifica como Ritmo Beat Lab. Un intento de importación rechazado no cambia etiquetas. El renombrado no mueve audio ni lo elimina.
+
+Regresión `tests/mixer-track-names.cjs`: ocho controles, vista temporal, texto seguro, roundtrip de sesión, retrocompatibilidad y rechazo de nombre corrupto sin modificar sesión. La regresión `tests/beat-stems-transfer-ui.cjs` confirma etiquetas correspondientes a instrumentos y persistencia dentro de respaldos. **No existe aún arrastrar/reordenar canales completos**; renombrar no equivale a cambiar su orden o ruteo interno.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
