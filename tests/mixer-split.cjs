@@ -86,7 +86,7 @@ function frequency(wav,hz,start,end){
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
   assert.equal(await page.locator('#splitMode1').inputValue(),'1','Invalid split cannot corrupt open project');
   assert.equal(await page.locator('#splitOffset1').inputValue(),'1.5');
-  delete saved.tracks[1].split;
+  delete saved.manifestSha256;delete saved.tracks[1].split;
   const legacyPath=path.join(process.cwd(),'split-legacy.json');
   fs.writeFileSync(legacyPath,JSON.stringify(saved));
   await page.locator('#sessionFile').setInputFiles(legacyPath);
