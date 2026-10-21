@@ -26,7 +26,7 @@
  function estimate(captured,reference,rate,outputStartFrame,firstCapturedFrame,limitMs=750){
   if(!(captured instanceof Float32Array)||!(reference instanceof Float32Array)||
      !Number.isInteger(rate)||rate<16000||rate>192000||
-     !Number.isInteger(outputStartFrame)||!Number.isInteger(firstCapturedFrame)||
+     !Number.isInteger(outputStartFrame)||outputStartFrame<0||!Number.isInteger(firstCapturedFrame)||firstCapturedFrame<0||
      !Number.isFinite(limitMs)||limitMs<10||limitMs>2000)
    throw Error("Parámetros de calibración inválidos");
   const nominal=outputStartFrame-firstCapturedFrame,maxLag=Math.round(rate*limitMs/1000);
