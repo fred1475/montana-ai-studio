@@ -15,7 +15,7 @@ async function createMixerSnapshot(){
    }else items.push({...state,name:null,type:null,data:null});
   }
   if(!items.some(x=>x.data))throw Error("Carga una pista antes de guardar.");
-  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,wavSampleRate:Number($("wavSampleRate").value),wavBits:Number($("wavBits").value),ditherOn:$("ditherOn").checked,tracks:items};
+  return {format:"montana-mixer-session",version:1,masterGain:Number($("masterGain").value),recordTrack:Number($("recordTrack").value),bpm:window.validateMetronome(),metronomeOn:$("metronomeOn").checked,gridSnapOn:$("gridSnapOn").checked,gridDivision:Number($("gridDivision").value),limiterOn:$("limiterOn").checked,limiterCeiling:Number($("limiterCeiling").value),normalizeOn:$("normalizeOn").checked,normalizeTarget:Number($("normalizeTarget").value),loudnessOn:$("loudnessOn").checked,auditOn:$("auditOn").checked,wavSampleRate:Number($("wavSampleRate").value),wavBits:Number($("wavBits").value),stemBits:Number($("stemBits").value),ditherOn:$("ditherOn").checked,tracks:items};
 }
 window.createMixerSnapshot=createMixerSnapshot;
 $("saveSession").addEventListener("click",async()=>{
@@ -45,6 +45,8 @@ async function restoreMixerSnapshot(s){
   if(typeof auditOn!=="boolean")throw Error("Preferencia de auditoría WAV inválida.");
   const wavSampleRate=s.wavSampleRate===undefined?44100:s.wavSampleRate;
   if(wavSampleRate!==44100&&wavSampleRate!==48000)throw Error("Frecuencia de WAV inválida.");
+  const stemBits=s.stemBits===undefined?16:s.stemBits;
+  if(stemBits!==16&&stemBits!==24)throw Error("Profundidad de stems inválida.");
   const wavBits=s.wavBits===undefined?16:s.wavBits,ditherOn=s.ditherOn===undefined?false:s.ditherOn;
   if((wavBits!==16&&wavBits!==24)||typeof ditherOn!=="boolean")throw Error("Ajustes de WAV o dither inválidos.");
   const loaded=[];let bytes=0;
@@ -94,7 +96,7 @@ async function restoreMixerSnapshot(s){
   $("normalizeOn").checked=normalizeOn;$("normalizeTarget").value=normalizeTarget;$("normalizeVal").textContent=normalizeTarget+" dBFS";
   $("loudnessOn").checked=loudnessOn;$("loudnessResults").textContent="Análisis listo para ejecutar en la próxima exportación; no modifica el audio.";
   $("wavSampleRate").value=String(wavSampleRate);
-  $("wavBits").value=String(wavBits);$("ditherOn").checked=ditherOn;
+  $("wavBits").value=String(wavBits);$("stemBits").value=String(stemBits);$("ditherOn").checked=ditherOn;
   $("ditherOn").disabled=wavBits!==16;
   $("auditOn").checked=auditOn;window.montanaLastAudit=null;$("downloadAudit").disabled=true;
   $("auditStatus").textContent="La auditoría requiere exportar de nuevo el WAV; ninguna cifra anterior se reutiliza.";
