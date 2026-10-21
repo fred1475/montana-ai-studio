@@ -32,6 +32,7 @@ function wav(hz){
   assert(report.includes('QA vocal orientativo'));
   assert(report.includes('RMS original')&&report.includes('Pico corregido'));
   assert(report.includes('Cambio relativo de altas'));
+  assert(report.includes('Ventanas de posible microcorte'));
   assert(report.includes('aprox. 2.5 kHz'));
   const first=await page.evaluate(()=>({
    report:pitchReports[1],enabled:pitchActive[1],
@@ -43,6 +44,8 @@ function wav(hz){
   assert.equal(first.report.frames,frames);
   assert(first.report.metrics.outputPeakDbfs<0);
   assert(Number.isFinite(first.report.metrics.highBandDeltaDb));
+  assert.equal(first.report.metrics.dropoutWindowCount,0);
+  assert.equal(first.report.metrics.firstDropoutSeconds,null);
   // Reports are computed local-only and never added to the portable project.
   const [download]=await Promise.all([page.waitForEvent('download',{timeout:35000}),page.locator('#saveSession').click()]);
   const p=path.join(process.cwd(),'pitch-qa-project.json');await download.saveAs(p);
