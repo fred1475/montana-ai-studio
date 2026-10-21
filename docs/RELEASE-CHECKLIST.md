@@ -31,6 +31,12 @@ Prueba: `tests/mixer-export-samplerate.cjs`, con una fuente de un segundo a 44.1
 
 `pitch-engine.js` y `pitch-melody.js` usan una referencia de detección a partir de los canales originales: en contrafase pronunciada o con un lado casi silencioso, seleccionan el canal vocal con mayor energía para **evitar cancelación durante la detección**. Las muestras de origen no se sustituyen ni sobrescriben. `tests/pitch-stereo-reference.cjs` comprueba casos sintéticos de frase, tono sostenido, NaN, duración y originales intactos; `tests/mixer-pitch.cjs` también comprueba desde la UI hasta el WAV. No supone preservación garantizada de imagen estéreo, formantes ni corrección profesional de voces reales.
 
+### Afinación estéreo: marcas PSOLA compartidas entre canales
+
+La detección vocal estéreo ya era resistente a cancelaciones en contrafase; **la siguiente mejora aborda la corrección**: el motor ahora calcula una sola referencia de marcas de período PSOLA y reutiliza esas marcas en los canales izquierdo y derecho de una toma. En frases de varias notas, calcula una referencia por fragmento detectado. Esto evita que cada lado busque picos independientes, lo que podía alterar la relación de fase, el nivel relativo y el timing de estéreo. El algoritmo sigue siendo experimental, offline y limitado a voces monofónicas breves.
+
+`tests/pitch-stereo-coherence.cjs` comprueba conservación de polaridad invertida y diferencias de nivel entre canales a nivel de muestra PCM, tanto en una nota sostenida como en una frase de dos notas; `tests/mixer-pitch.cjs` contrasta además el archivo WAV exportado. Se conserva el bypass y la fuente original. Las pruebas sintéticas **no demuestran calidad perceptual, preservación de formantes ni validez de corrección en voces grabadas con equipo real**.
+
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
