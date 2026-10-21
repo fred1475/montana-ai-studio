@@ -6,6 +6,23 @@
  */
 const pitchBuffers=Array(8).fill(null),pitchActive=Array(8).fill(false);
 const pitchReports=Array(8).fill(null),pitchLevelReports=Array(8).fill(null);
+const pitchTimbreReports=Array(8).fill(null);
+function pitchTimbreText(info,enabled){
+ if(!enabled)return "Protección de carácter espectral desactivada.";
+ if(!info)return "Protección espectral sin análisis disponible.";
+ if(info.status==="insufficient_signal")return "Protección espectral: señal insuficiente para estimar cambios de balance.";
+ const before=info.originalMaxBandShiftDb===null?"N/D":info.originalMaxBandShiftDb.toFixed(1);
+ const after=info.outputMaxBandShiftDb===null?"N/D":info.outputMaxBandShiftDb.toFixed(1);
+ return "Protección espectral orientativa: diferencia máxima en bandas "+before+" → "+after+
+  " dB; corrección aplicada "+info.wetPercent+" %. "+
+  (info.status==="reduced_correction"?"Se redujo la intensidad de corrección para proteger el balance tonal. ":
+   "No se redujo la corrección. ")+
+  "No equivale a protección de formantes ni garantiza naturalidad.";
+}
+function updatePitchTimbre(i,info,enabled){
+ pitchTimbreReports[i]=info;
+ if(i>0)document.getElementById("pitchTimbreStatus"+i).textContent=pitchTimbreText(info,enabled);
+}
 function pitchMatchLabel(info,enabled){
  if(!enabled)return "Igualación de nivel desactivada (comparación sin ajustar RMS).";
  if(!info||info.status==="omitted_silent_signal")return "Igualación omitida: falta señal suficiente en alguna toma.";
@@ -40,12 +57,12 @@ function updatePitchQa(i,report){
  pitchReports[i]=report;
  if(i>0)$("pitchQa"+i).textContent=pitchQaText(report);
 }
-const pitchDefault=()=>({mode:"sustain",key:"C",scale:"chromatic",strength:100,wet:100,matchLevel:false,enabled:false});
+const pitchDefault=()=>({mode:"sustain",key:"C",scale:"chromatic",strength:100,wet:100,matchLevel:false,protectTimbre:false,enabled:false});
 function readPitch(i){
  if(i===0)return pitchDefault();
  return {mode:$("pitchMode"+i).value,key:$("pitchKey"+i).value,
   scale:$("pitchScale"+i).value,strength:Number($("pitchStrength"+i).value),
-  wet:Number($("pitchWet"+i).value),matchLevel:$("pitchMatch"+i).checked,enabled:pitchActive[i]};
+  wet:Number($("pitchWet"+i).value),matchLevel:$("pitchMatch"+i).checked,protectTimbre:$("pitchTimbre"+i).checked,enabled:pitchActive[i]};
 }
 function checkPitch(p,i){
  if(!p||typeof p!=="object"||!["sustain","melody"].includes(p.mode)||
@@ -57,11 +74,14 @@ function checkPitch(p,i){
  if(typeof wet!=="number"||!Number.isFinite(wet)||wet<0||wet>100)throw Error("Mezcla seca/procesada inválida en canal "+(i+1));
  const matchLevel=p.matchLevel===undefined?false:p.matchLevel;
  if(typeof matchLevel!=="boolean")throw Error("Igualación de nivel inválida en canal "+(i+1));
- return {...p,wet,matchLevel};
+ const protectTimbre=p.protectTimbre===undefined?false:p.protectTimbre;
+ if(typeof protectTimbre!=="boolean")throw Error("Protección de carácter inválida en canal "+(i+1));
+ return {...p,wet,matchLevel,protectTimbre};
 }
 function pitchInvalidate(i){
  pitchBuffers[i]=null;pitchActive[i]=false;updatePitchQa(i,null);
  updatePitchMatch(i,null,i>0&&$("pitchMatch"+i).checked);
+ updatePitchTimbre(i,null,i>0&&$("pitchTimbre"+i).checked);
  if(i>0){
   $("pitchState"+i).textContent="Original — sin corrección aplicada";
   $("pitchToggle"+i).disabled=true;
@@ -79,8 +99,11 @@ function processVocal(buffer,settings){
  const result=settings.mode==="melody"?
   MontanaMelody.processMelody(channels,buffer.sampleRate,options):
   MontanaPitch.process(channels,buffer.sampleRate,options);
- const matched=settings.matchLevel?MontanaPitchLevelMatch.match(channels,result.channels):null;
- const processedChannels=matched?matched.channels:result.channels;
+ const guarded=settings.protectTimbre?
+  MontanaPitchTimbreGuard.apply(channels,result.channels,buffer.sampleRate):null;
+ const tonalChannels=guarded?guarded.channels:result.channels;
+ const matched=settings.matchLevel?MontanaPitchLevelMatch.match(channels,tonalChannels):null;
+ const processedChannels=matched?matched.channels:tonalChannels;
  const mixedChannels=MontanaPitchBlend.blend(channels,processedChannels,settings.wet);
  const corrected=audio().createBuffer(channels.length,buffer.length,buffer.sampleRate);
  mixedChannels.forEach((channel,ch)=>{
@@ -90,7 +113,7 @@ function processVocal(buffer,settings){
  });
  const notes=settings.mode==="melody"?result.segments.map(s=>s.targetNote).join(" → "):result.target.note;
  const qa=MontanaPitchQA.analyze(channels,mixedChannels,buffer.sampleRate);
- return {buffer:corrected,notes,qa,match:matched?.report||null,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
+ return {buffer:corrected,notes,qa,match:matched?.report||null,timbre:guarded?.report||null,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
 }
 window.resetPitch=pitchInvalidate;
 window.pitchSessionState=i=>{
@@ -106,20 +129,22 @@ window.preparePitchRestore=(loaded,records)=>{
   if(p.enabled&&!loaded[i].decoded)throw Error("Afinación sin voz en canal "+(i+1));
   // Build all corrected buffers before changing the open session (atomic restore).
   const processed=p.enabled?processVocal(loaded[i].decoded,p):null;
-  restored.push({settings:{...p},buffer:processed?.buffer||null,qa:processed?.qa||null,match:processed?.match||null});
+  restored.push({settings:{...p},buffer:processed?.buffer||null,qa:processed?.qa||null,match:processed?.match||null,timbre:processed?.timbre||null});
  }
  return restored;
 };
 window.commitPitchRestore=restored=>{
- restored.forEach(({settings,buffer,qa,match},i)=>{
+ restored.forEach(({settings,buffer,qa,match,timbre},i)=>{
   pitchBuffers[i]=buffer;pitchActive[i]=settings.enabled;
-  if(i>0){updatePitchQa(i,qa);updatePitchMatch(i,match,settings.matchLevel);}
+  if(i>0){updatePitchQa(i,qa);updatePitchMatch(i,match,settings.matchLevel);
+   updatePitchTimbre(i,timbre,settings.protectTimbre);}
   if(i===0)return;
   $("pitchMode"+i).value=settings.mode;$("pitchKey"+i).value=settings.key;
   $("pitchScale"+i).value=settings.scale;$("pitchStrength"+i).value=settings.strength;
   $("pitchStrengthValue"+i).textContent=settings.strength+"%";
   $("pitchWet"+i).value=settings.wet;$("pitchWetValue"+i).textContent=settings.wet+"%";
   $("pitchMatch"+i).checked=settings.matchLevel;
+  $("pitchTimbre"+i).checked=settings.protectTimbre;
   $("pitchToggle"+i).disabled=!buffer;
   $("pitchToggle"+i).textContent=settings.enabled?"Oír original":"Oír corregido";
   $("pitchState"+i).textContent=buffer?"Afinación restaurada y activa":"Original — sin corrección aplicada";
@@ -135,13 +160,16 @@ for(let i=1;i<8;i++){
   '<label for="pitchWet'+i+'">Mezcla de voz procesada: <output id="pitchWetValue'+i+'">100%</output></label><input id="pitchWet'+i+'" type="range" min="0" max="100" step="10" value="100">'+
   '<label><input id="pitchMatch'+i+'" type="checkbox"> Igualar nivel RMS de la voz afinada al original (opcional)</label>'+ 
   '<small>Ganancia común estéreo; límite habitual ±6 dB y margen de pico. Comparar a nivel parecido NO garantiza preservar formantes, naturalidad ni fase. La fuente sigue intacta.</small>'+ 
-  '<p id="pitchMatchStatus'+i+'" role="status">Igualación de nivel desactivada (comparación sin ajustar RMS).</p>'+ 
+  '<p id="pitchMatchStatus'+i+'" role="status">Igualación de nivel desactivada (comparación sin ajustar RMS).</p>'+
+  '<label><input id="pitchTimbre'+i+'" type="checkbox"> Protección experimental del carácter espectral</label>'+
+  '<small>Si la afinación cambia mucho el balance entre bandas graves/medias/agudas, se reduce parte de la corrección. Puede dejar notas parcialmente desafinadas. NO identifica ni garantiza conservar formantes.</small>'+
+  '<p id="pitchTimbreStatus'+i+'" role="status">Protección de carácter espectral desactivada.</p>'+ 
   '<button id="pitchApply'+i+'" type="button">🎼 Procesar voz</button> <button id="pitchToggle'+i+'" type="button" disabled>Oír corregido</button>'+
   '<p id="pitchState'+i+'">Original — sin corrección aplicada</p>'+
   '<p id="pitchQa'+i+'" role="status">Sin diagnóstico: procesa una toma vocal para comparar original y afinado.</p>'+
   '<small>Las métricas QA son heurísticas PCM, no garantizan timbre, formantes ni calidad perceptual. La afinación sigue siendo offline, limitada a fragmentos breves; fuente sin alterar.</small>';
  document.querySelectorAll("article.track")[i].append(el);
- for(const key of ["pitchMode","pitchKey","pitchScale","pitchStrength","pitchWet","pitchMatch"]){
+ for(const key of ["pitchMode","pitchKey","pitchScale","pitchStrength","pitchWet","pitchMatch","pitchTimbre"]){
   $(key+i).addEventListener("change",()=>pitchInvalidate(i));
  }
  $("pitchStrength"+i).addEventListener("input",()=>{
@@ -164,6 +192,7 @@ for(let i=1;i<8;i++){
    const result=processVocal(tracks[i],state);
    pitchBuffers[i]=result.buffer;pitchActive[i]=true;updatePitchQa(i,result.qa);
    updatePitchMatch(i,result.match,state.matchLevel);
+   updatePitchTimbre(i,result.timbre,state.protectTimbre);
    $("pitchToggle"+i).disabled=false;$("pitchToggle"+i).textContent="Oír original";
    $("pitchState"+i).textContent="Afinación activa: "+result.notes+" · Mezcla procesada "+state.wet+"%"+(result.referenceMode==="phase-safe-channel"?" · Detector protegido contra cancelación de fase":result.referenceMode==="stronger-channel"?" · Detector usando canal más fuerte":"");
    report("Canal "+(i+1)+" afinado (beta). Alterna original/corregido y escucha antes de exportar.");
