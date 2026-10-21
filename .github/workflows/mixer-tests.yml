@@ -18,6 +18,7 @@ on:
       - 'mixer-master-audit.js'
       - 'mixer-wav-export.js'
       - 'tests/mixer-wav-export.cjs'
+      - 'tests/mixer-wav-chunks.cjs'
       - 'tests/mixer-export-samplerate.cjs'
       - 'mixer-split.js'
       - 'mixer-crossfade.js'
@@ -110,6 +111,8 @@ jobs:
           node --check mixer-master-audit.js
           node --check mixer-wav-export.js
           node --check tests/mixer-wav-export.cjs
+          node --check tests/mixer-wav-chunks.cjs
+          node tests/mixer-wav-chunks.cjs
           node --check tests/mixer-export-samplerate.cjs
           node --check mixer-split.js
           node --check mixer-crossfade.js
