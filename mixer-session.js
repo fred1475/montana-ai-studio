@@ -6,7 +6,7 @@ function from64(s){if(typeof s!=="string"||s.length>110000000)throw Error("Conte
 async function createMixerSnapshot(){
   const items=[];let total=0;
   for(let i=0;i<8;i++){
-   const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),compEnabled:$("compEnable"+i).checked,compThreshold:Number($("compThreshold"+i).value),compRatio:Number($("compRatio"+i).value),reverb:Number($("reverb"+i).value),delayWet:Number($("delayWet"+i).value),delayMs:Number($("delayMs"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value),repeat:Number($("repeat"+i).value),fadeIn:Number($("fadeIn"+i).value),fadeOut:Number($("fadeOut"+i).value),alignMs:i===0?0:Number($("alignMs"+i).value),pitch:window.pitchSessionState(i),clean:window.cleanSessionState(i),split:window.splitSessionState(i),crossfade:window.crossfadeSessionState(i),clipCopies:window.copySessionState(i)};
+   const f=originalFiles[i],state={trackLabel:window.validateMixerTrackLabel(labels[i]),volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),compEnabled:$("compEnable"+i).checked,compThreshold:Number($("compThreshold"+i).value),compRatio:Number($("compRatio"+i).value),reverb:Number($("reverb"+i).value),delayWet:Number($("delayWet"+i).value),delayMs:Number($("delayMs"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value),repeat:Number($("repeat"+i).value),fadeIn:Number($("fadeIn"+i).value),fadeOut:Number($("fadeOut"+i).value),alignMs:i===0?0:Number($("alignMs"+i).value),pitch:window.pitchSessionState(i),clean:window.cleanSessionState(i),split:window.splitSessionState(i),crossfade:window.crossfadeSessionState(i),clipCopies:window.copySessionState(i)};
    if(![state.volume,state.pan,state.lowEQ,state.highEQ,state.compThreshold,state.compRatio,state.reverb,state.delayWet,state.delayMs,state.offset,state.trimStart,state.trimEnd,state.repeat,state.fadeIn,state.fadeOut,state.alignMs].every(Number.isFinite)||state.volume<0||state.volume>150||Math.abs(state.pan)>100||Math.abs(state.lowEQ)>12||Math.abs(state.highEQ)>12||state.compThreshold< -36||state.compThreshold> -6||state.compRatio<2||state.compRatio>12||state.reverb<0||state.reverb>50||state.delayWet<0||state.delayWet>50||state.delayMs<100||state.delayMs>750||[state.offset,state.trimStart,state.trimEnd].some(v=>v<0||v>300)||Math.abs(state.alignMs)>250||state.fadeIn<0||state.fadeIn>5||state.fadeOut<0||state.fadeOut>5||!Number.isInteger(state.repeat)||state.repeat<1||state.repeat>8)throw Error("Ajustes inválidos en canal "+(i+1));
    if(tracks[i]){region(i,tracks[i]);window.prepareCrossfadePlan(i,window.getTrackSegments(i,tracks[i]))} // Never create a backup that the loader cannot restore.
    if(tracks[i]&&f){
@@ -60,6 +60,10 @@ async function restoreMixerSnapshot(s){
   const loaded=[];let bytes=0;
   for(let i=0;i<8;i++){
    const t=s.tracks[i];if(!t||typeof t!=="object")throw Error("Canal corrupto.");
+   // Validate track names BEFORE touching the active session or its audio.
+   // Old session files omit trackLabel; retain original template defaults.
+   const trackLabel=window.validateMixerTrackLabel(
+    t.trackLabel===undefined?window.montanaDefaultTrackLabels[i]:t.trackLabel);
    const v=Number(t.volume),p=Number(t.pan);
    if(!Number.isFinite(v)||v<0||v>150||!Number.isFinite(p)||p< -100||p>100||typeof t.mute!=="boolean"||typeof t.solo!=="boolean")throw Error("Ajustes inválidos.");
    const lowEQ=t.lowEQ===undefined?0:Number(t.lowEQ),highEQ=t.highEQ===undefined?0:Number(t.highEQ);
@@ -92,7 +96,7 @@ async function restoreMixerSnapshot(s){
    }
    if(t.data===null&&t.sourceCrc32!==undefined)throw Error("Integridad del respaldo inválida: huella sin audio.");
    if(decoded&&(trimStart>=decoded.duration||trimEnd>decoded.duration+.001||(trimEnd!==0&&trimEnd<=trimStart)))throw Error("Recorte de pista inválido.");
-   loaded.push({decoded,source,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd,repeat,fadeIn,fadeOut,alignMs,lowEQ,highEQ,compEnabled,compThreshold,compRatio,reverb,delayWet,delayMs});
+   loaded.push({decoded,source,trackLabel,volume:v,pan:p,mute:t.mute,solo:t.solo,offset,trimStart,trimEnd,repeat,fadeIn,fadeOut,alignMs,lowEQ,highEQ,compEnabled,compThreshold,compRatio,reverb,delayWet,delayMs});
   }
   const preparedPitch=window.preparePitchRestore(loaded,s.tracks);
   const preparedClean=window.prepareCleanRestore(s.tracks);
@@ -117,6 +121,7 @@ async function restoreMixerSnapshot(s){
   $("auditStatus").textContent="La auditoría requiere exportar de nuevo el WAV; ninguna cifra anterior se reutiliza.";
   loaded.forEach((t,i)=>{
    tracks[i]=t.decoded;originalFiles[i]=t.source;
+   window.setMixerTrackLabel(i,t.trackLabel);
    window.resetVocalPreflight?.(i);
    // Reset file inputs so the restored bytes are authoritative on next save.
    $("file"+i).value="";
