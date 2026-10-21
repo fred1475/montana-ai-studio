@@ -65,7 +65,7 @@
    svg.append(node("polyline",{points:sequence,fill:"none",stroke:value.enabled?"#efc36e":"#96a8c2","stroke-width":2.8}));
    // Extend final level to the right edge exactly like the audio DSP.
    const last=vertices[vertices.length-1];
-   svg.append(node("line",{x1:last.x,y1:last.y,x2:G.WIDTH-G.margin.right,y2:last.y,
+   svg.append(node("line",{"data-tail":1,x1:last.x,y1:last.y,x2:G.WIDTH-G.margin.right,y2:last.y,
     stroke:value.enabled?"#efc36e":"#96a8c2","stroke-width":2,"stroke-dasharray":"4 4"}));
    vertices.forEach((p,j)=>{
     const dot=node("circle",{cx:p.x,cy:p.y,r:j===chosen?8:7,
@@ -114,7 +114,18 @@
    const p=relative(e);if(!p)return;
    try{
     draft=G.move(draft,drag.index,p.time,p.gain);
-    draw(draft);reportState(pointLabel(draft.points[chosen],chosen));
+    // Update attributes in-place; removing a pressed SVG circle during a
+    // gesture can fire pointercancel before pointerup in Chromium.
+    const maxTime=G.horizon(draft,Number(select.value));
+    const coords=draft.points.map(pt=>G.xy(pt.time,pt.gain,maxTime));
+    svg.querySelector("polyline").setAttribute("points",coords.map(pt=>pt.x+","+pt.y).join(" "));
+    svg.querySelectorAll("circle[data-index]").forEach((dot,j)=>{
+     dot.setAttribute("cx",coords[j].x);dot.setAttribute("cy",coords[j].y);
+     dot.setAttribute("aria-label",pointLabel(draft.points[j],j));
+    });
+    const tail=svg.querySelector('line[data-tail="1"]'),last=coords[coords.length-1];
+    if(tail){tail.setAttribute("x1",last.x);tail.setAttribute("y1",last.y);}
+    reportState(pointLabel(draft.points[chosen],chosen));
    }catch(err){reportState(err.message);}
   });
   function completeDrag(e,abort){
