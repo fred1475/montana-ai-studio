@@ -48,6 +48,7 @@
   add.disabled=markers.length>=M.MAX;
   status.textContent=markers.length+" marcador(es) guardado(s) en la sesión local (máximo "+M.MAX+").";
   window.montanaTimelineRedraw?.();
+  window.refreshSectionPreview?.();
  };
  window.montanaMarkerState=()=>M.validate(markers);
  window.prepareMarkerRestore=raw=>M.validate(raw===undefined?[]:raw);
