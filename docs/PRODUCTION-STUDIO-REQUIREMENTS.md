@@ -102,6 +102,10 @@ La transacción IndexedDB es atómica: un error de cuota o almacenamiento no ree
 
 Las pruebas incluyen picos PCM medidos del WAV exportado, conservación del balance estéreo, bypass por defecto, límite de amplificación, silencio, respaldo/restauración y rechazo de configuraciones incorrectas. **No son mediciones LUFS integradas, true-peak, EBU R128 ni masterización profesional.** Todavía faltan análisis y ajuste de loudness por estándar, intersample peaks, comparación auditiva y pruebas con músicas completas.
 
+## Avance de medición EBU R128 — comparación independiente con FFmpeg
+
+**Ver método y tolerancias exactas en [VALIDACION-EBU-R128.md](./EBU-R128-VALIDATION.md).** El motor ya implementa integrado, momentáneo (400ms), corto plazo (3s), máximos, LRA provisional (<60s) y true-peak 4× con filtro sinc Blackman de 40 coeficientes. Se contrasta mediante GitHub Actions con **FFmpeg `ebur128`**, en cinco familias de señales sintéticas, incluido bajo, cambios de nivel, ruido y frecuencias altas. El resultado sigue siendo **NO CERTIFICADO**: el error de pico en tonos agudos y la validación restante de EBU Mode impiden afirmarlo.
+
 ## Nuevo hito: análisis LUFS estimado y true-peak 4× (octubre 2026)
 
 `mixer-loudness.js` implementa análisis opcional del WAV maestro después de aplicar normalización/limitador. Utiliza dos filtros en serie tipo K-weighting para los canales estéreo, ventanas de energía de 400 ms con saltos de 100 ms y un umbral absoluto de -70 LUFS más umbral relativo de -10 LU; el resultado es una **estimación integrada** de loudness con compuerta. Estima los picos entre muestras reconstruyendo fases intermedias 4× mediante filtros de sinc con ventana. Presenta LUFS, dBTP estimado y dBFS de pico de muestra. El medidor se ejecuta voluntariamente para evitar costos en el navegador; no cambia el sonido exportado, la mezcla original ni los stems. Si el análisis falla, aún es posible descargar el WAV.
