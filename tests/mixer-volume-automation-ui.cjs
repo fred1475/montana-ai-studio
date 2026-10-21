@@ -87,7 +87,7 @@ function rms(w,start,end){
   assert.equal(await page.locator('#autoEnable0').isChecked(),true);
   assert.equal(await page.locator('#autoPoints0').inputValue(),'0:100, 0.5:20, 1:20, 1.5:100');
   const legacy=JSON.parse(JSON.stringify(session));
-  legacy.tracks.forEach(t=>delete t.volumeAutomation);
+  delete legacy.manifestSha256;legacy.tracks.forEach(t=>delete t.volumeAutomation);
   await page.locator('#sessionFile').setInputFiles({
    name:'legacy-automation.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))
   });
