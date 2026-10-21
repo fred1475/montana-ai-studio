@@ -103,6 +103,7 @@ on:
       - 'mixer-history.js'
       - 'mixer-metronome.js'
       - 'tests/mixer-smoke.cjs'
+      - 'tests/mixer-track-names.cjs'
       - 'tests/mixer-pitch.cjs'
       - 'tests/mixer-sync.cjs'
       - 'tests/mixer-record.cjs'
@@ -217,6 +218,7 @@ jobs:
           node tests/pitch-quality.cjs
           node --check tests/mixer-pitch.cjs
           node --check tests/mixer-sync.cjs
+          node --check tests/mixer-track-names.cjs
           node --check tests/mixer-record.cjs
           node --check pitch-engine.js
           node --check pitch-melody.js
@@ -252,6 +254,7 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/studio-server.log 2>&1 &
           sleep 2
           node tests/mixer-smoke.cjs
+          node tests/mixer-track-names.cjs
           node tests/beat-ui.cjs
           node tests/beat-bundle-ui.cjs
           node tests/beat-bridge-ui.cjs
