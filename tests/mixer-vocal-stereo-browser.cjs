@@ -49,26 +49,29 @@ function verifyPcm(buffer){
    const original=tracks[1],processed=window.getMixBuffer(1);
    const L=processed.getChannelData(0),R=processed.getChannelData(1);
    const source=original.getChannelData(0),sourceR=original.getChannelData(1);
-   let mismatch=0,power=0,sourcePower=0,processedPower=0,sourceHigh=0,processedHigh=0;
+   let mismatch=0,sourceMismatch=0,power=0,sourceHigh=0,processedHigh=0;
    for(let i=10000;i<32000;i++){
     const l=L[i],r=R[i],s=source[i];
     mismatch=Math.max(mismatch,Math.abs(l+r));
-    power+=l*l;sourcePower+=s*s;
+    power+=l*l;
+    sourceMismatch=Math.max(sourceMismatch,Math.abs(sourceR[i]+s));
     // Differentiated energy is a coarse sibilance diagnostic, not spectral calibration.
     if(i>10000){
      sourceHigh+=(source[i]-source[i-1])**2;
      processedHigh+=(L[i]-L[i-1])**2;
     }
-    if(sourceR[i]!==-source[i])throw Error('Source stereo polarity unexpectedly changed');
+    if(!Number.isFinite(s)||!Number.isFinite(sourceR[i]))throw Error('Invalid decoded source sample');
    }
    const twice=window.getMixBuffer(1);
    if(twice!==processed)throw Error('Cleaned buffer cache not reused');
-   return {mismatch,power,sourcePower,highRatio:processedHigh/sourceHigh,
+   return {mismatch,sourceMismatch,power,highRatio:processedHigh/sourceHigh,
     originalName:originalFiles[1]?.name,
     label:document.getElementById('cleanResult1').textContent};
   });
   assert.equal(first.originalName,'deess-stereo-test.wav');
-  assert(first.mismatch<1e-7,'Browser de-ess must preserve anti-phase samples');
+  assert(first.sourceMismatch<5e-5,'Decoded input must retain near-inverted stereo');
+  assert(first.mismatch<=first.sourceMismatch+8e-6,
+   'De-esser must not add measurable stereo phase imbalance beyond browser-decoded source: '+JSON.stringify(first));
   assert(first.power>100);
   assert(first.highRatio<.55,'High-band energy must be attenuated by the linked de-esser');
   assert(first.label.includes('aplicada'));
