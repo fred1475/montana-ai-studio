@@ -9,6 +9,8 @@
 (function(){
  const maxArchive=145*1024*1024; // avoid exceeding browser RAM/file limits
  const rate=44100;
+ function formatBits(){const bits=Number($("stemBits").value);if(bits!==16&&bits!==24)throw Error("Profundidad de stems inválida");return bits}
+ function estimatedWavBytes(frames,bits){return 44+frames*2*(bits/8)}
  function regionPlan(){
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
   const segments=tracks.map((b,i)=>b?window.getTrackSegments(i,b):[]);
@@ -18,7 +20,7 @@
   return {segments,frames};
  }
  function fileName(i){return String(i+1).padStart(2,"0")+"-"+labels[i].normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"-")+".wav"}
- async function renderStem(i,plan){
+ async function renderStem(i,plan,bits){
   const buffer=tracks[i];
   if(!buffer)throw Error("El canal no tiene audio");
   const srcBuffer=window.getMixBuffer(i);
@@ -35,7 +37,7 @@
    src.start(clip.offset,clip.start,clip.duration);
   }
   const rendered=await ctx.startRendering();
-  return wav(rendered.getChannelData(0),rendered.getChannelData(1),rate);
+  return MontanaWavExport.encode(rendered.getChannelData(0),rendered.getChannelData(1),rate,{bits,dither:false});
  }
  function crc32(bytes){
   let crc=0xffffffff;
@@ -86,29 +88,29 @@
  $("exportStem").addEventListener("click",async()=>{
   const button=$("exportStem");button.disabled=true;
   try{
-   const i=Number($("stemTrack").value),plan=regionPlan();
+   const i=Number($("stemTrack").value),bits=formatBits(),plan=regionPlan();
    if(!tracks[i])throw Error("Selecciona un canal con audio");
-   if(44+plan.frames*4>145*1024*1024)throw Error("La pista excede el límite de exportación de 145 MB");
+   if(estimatedWavBytes(plan.frames,bits)>145*1024*1024)throw Error("La pista excede el límite de exportación de 145 MB");
    report("Renderizando "+labels[i]+" como WAV independiente...");
-   const blob=await renderStem(i,plan);download(blob,fileName(i));
-   report("Stem WAV descargado: "+labels[i]+". Conserva la posición y efectos del canal. No aplica el volumen/limitador maestro ni el mute/solo.");
+   const blob=await renderStem(i,plan,bits);download(blob,fileName(i));
+   report("Stem WAV PCM"+bits+" descargado: "+labels[i]+". Conserva la posición y efectos del canal. No aplica el volumen/limitador maestro ni el mute/solo.");
   }catch(e){report("No se pudo exportar stem: "+e.message)}
   finally{button.disabled=false}
  });
  $("exportStems").addEventListener("click",async()=>{
   const button=$("exportStems");button.disabled=true;
   try{
-   const plan=regionPlan(),indices=tracks.map((b,i)=>b?i:-1).filter(i=>i>=0);
-   const estimated=indices.length*(44+plan.frames*4)+10240;
+   const bits=formatBits(),plan=regionPlan(),indices=tracks.map((b,i)=>b?i:-1).filter(i=>i>=0);
+   const estimated=indices.length*estimatedWavBytes(plan.frames,bits)+10240;
    if(estimated>maxArchive)throw Error("El ZIP de stems superaría 145 MB. Exporta las pistas individualmente.");
    const files=[];
    for(const i of indices){
     report("Exportando stem "+files.length+"/"+indices.length+": "+labels[i]+"...");
-    const blob=await renderStem(i,plan);
+    const blob=await renderStem(i,plan,bits);
     files.push({name:fileName(i),bytes:new Uint8Array(await blob.arrayBuffer())});
    }
    const note=[
-    "Montana Music Production — stems individuales, WAV PCM16, 44.1 kHz, estéreo.",
+    "Montana Music Production — stems individuales, WAV PCM"+bits+", 44.1 kHz, estéreo.",
     "Todos los archivos están alineados desde 0:00 y tienen idéntica duración.",
     "Incluyen: volumen del canal, panorama, ecualización, compresor, reverb, delay y corrección/limpieza vocal activadas.",
     "No incluyen mute/solo, volumen maestro, limitador maestro ni metrónomo.",
@@ -119,7 +121,7 @@
    const zip=makeZip(files);
    if(zip.size>maxArchive)throw Error("El ZIP excede el límite de seguridad");
    download(zip,"montana-ai-studio-stems.zip");
-   report("ZIP de "+indices.length+" stems creado. Archivos alineados desde 0:00, sin master ni mute/solo.");
+   report("ZIP de "+indices.length+" stems PCM"+bits+" creado. Archivos alineados desde 0:00, sin master ni mute/solo.");
   }catch(e){report("No se pudieron exportar los stems: "+e.message)}
   finally{button.disabled=false}
  });
