@@ -79,6 +79,7 @@ function checkPitch(p,i){
  return {...p,wet,matchLevel,protectTimbre};
 }
 function pitchInvalidate(i){
+ window.montanaBlindReset?.(i);
  pitchBuffers[i]=null;pitchActive[i]=false;updatePitchQa(i,null);
  updatePitchMatch(i,null,i>0&&$("pitchMatch"+i).checked);
  updatePitchTimbre(i,null,i>0&&$("pitchTimbre"+i).checked);
@@ -149,6 +150,7 @@ window.commitPitchRestore=restored=>{
   $("pitchTimbre"+i).checked=settings.protectTimbre;
   $("pitchAudit"+i).disabled=!buffer;
   $("pitchAB"+i).disabled=!buffer;
+  window.montanaBlindReady?.(i);
   $("pitchToggle"+i).disabled=!buffer;
   $("pitchToggle"+i).textContent=settings.enabled?"Oír original":"Oír corregido";
   $("pitchState"+i).textContent=buffer?"Afinación restaurada y activa":"Original — sin corrección aplicada";
@@ -199,6 +201,7 @@ for(let i=1;i<8;i++){
    updatePitchTimbre(i,result.timbre,state.protectTimbre);
    $("pitchAudit"+i).disabled=false;
    $("pitchAB"+i).disabled=false;
+   window.montanaBlindReady?.(i);
    $("pitchToggle"+i).disabled=false;$("pitchToggle"+i).textContent="Oír original";
    $("pitchState"+i).textContent="Afinación activa: "+result.notes+" · Mezcla procesada "+state.wet+"%"+(result.referenceMode==="phase-safe-channel"?" · Detector protegido contra cancelación de fase":result.referenceMode==="stronger-channel"?" · Detector usando canal más fuerte":"");
    report("Canal "+(i+1)+" afinado (beta). Alterna original/corregido y escucha antes de exportar.");
