@@ -35,8 +35,8 @@
   const notes=raw.segments.map(p=>{
    if(!p||typeof p!=="object"||
      !finite(p.startSeconds,0,15)||!finite(p.endSeconds,p.startSeconds+.15,15.001)||
-     !/^[A-G]#?-?\\d$/.test(p.originalNote)||
-     !/^[A-G]#?-?\\d$/.test(p.targetNote)||
+     !/^[A-G]#?-?\d$/.test(p.originalNote)||
+     !/^[A-G]#?-?\d$/.test(p.targetNote)||
      !finite(p.originalHz,60,800)||!finite(p.targetNoteHz,60,800)||
      !finite(p.plannedHz,60,800)||!finite(p.plannedCorrectionCents,-250,250)||
      !maybe(p.measuredOutputHz,60,800)||
