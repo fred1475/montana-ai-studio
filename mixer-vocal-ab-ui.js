@@ -17,6 +17,7 @@
     const audit=MontanaVocalAudit.create({
      track:i+1,sourceName:file.name,pitch:{...settings,enabled:true},
      qa:pitchReports[i],level:pitchLevelReports[i],timbre:pitchTimbreReports[i],
+     noteAnalysis:pitchNoteReports[i],
      createdAt:new Date().toISOString()
     });
     report("Preparando comparativa A/B del canal "+(i+1)+" sin alterar la fuente...");
