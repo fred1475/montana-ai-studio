@@ -61,11 +61,25 @@ const fs=require('node:fs'),path=require('node:path');
   assert.equal(video.readUInt16LE(22),2);
   assert.equal(video.readUInt32LE(40),video.length-44);
   assert(Math.abs((video.length-44)/(48000*4)-4.35)<.02);
+  await page.locator('#stemTrack').selectOption('hat');
+  const [stemDownload]=await Promise.all([page.waitForEvent('download',{timeout:60000}),page.locator('#exportStem').click()]);
+  const stemPath=path.join(process.cwd(),'beat-lab-hat.wav');await stemDownload.saveAs(stemPath);
+  const stem=fs.readFileSync(stemPath);
+  assert.equal(stem.readUInt32LE(24),48000);
+  assert.equal(stem.readUInt16LE(22),2);
+  assert.equal(stem.length,video.length,'Stems stay aligned with full beat from 0:00');
+  let stemPeak=0,stemDifference=0;
+  for(let i=44;i<stem.length;i+=640){
+   stemPeak=Math.max(stemPeak,Math.abs(stem.readInt16LE(i)));
+   stemDifference+=Math.abs(stem.readInt16LE(i)-video.readInt16LE(i));
+  }
+  assert(stemPeak>20,'Hat stem must contain nonzero audio');
+  assert(stemDifference>100,'Hat stem must differ from complete beat');
   await page.locator('#play').click();
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Reproduciendo'),null,{timeout:15000});
   await page.locator('#stop').click();
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('detenida'));
   assert.deepEqual(errors,[]);
-  console.log('PASS Beat Lab browser: accessible grid, edits, validated JSON, MIDI, audible WAV PCM16, preview and stop.');
+  console.log('PASS Beat Lab browser: accessible grid, edits, validated JSON, MIDI, audible WAV PCM16, aligned instrument stem at 48 kHz, preview and stop.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
