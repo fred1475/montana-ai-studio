@@ -5,6 +5,7 @@
  * Mute/solo, master gain, and master limiter deliberately do NOT print into
  * stems; they are isolated sources for later mixing.
  * Local ZIP uses STORE (no compression) and CRC32, portable to any OS.
+ * Streaming CRC32 avoids full-size typed-array copies of each WAV stem.
  */
 (function(){
  const maxArchive=145*1024*1024; // avoid exceeding browser RAM/file limits
@@ -38,38 +39,53 @@
   const rendered=await ctx.startRendering();
   return MontanaWavExport.encode(rendered.getChannelData(0),rendered.getChannelData(1),plan.rate,{bits,dither:false});
  }
- function crc32(bytes){
+ // Process WAV Blob chunks without copying a complete WAV into JS memory.
+ async function crc32Data(source){
   let crc=0xffffffff;
-  for(let i=0;i<bytes.length;i++){
-   crc^=bytes[i];
-   for(let k=0;k<8;k++)crc=crc&1?(crc>>>1)^0xedb88320:crc>>>1;
-  }
+  const step=bytes=>{
+   for(let i=0;i<bytes.length;i++){
+    crc^=bytes[i];
+    for(let k=0;k<8;k++)crc=crc&1?(crc>>>1)^0xedb88320:crc>>>1;
+   }
+  };
+  if(source instanceof Blob){
+   const reader=source.stream().getReader();
+   try{
+    while(true){
+     const {done,value}=await reader.read();
+     if(done)break;
+     step(value);
+    }
+   }finally{reader.releaseLock()}
+  }else if(source instanceof Uint8Array)step(source);
+  else throw Error("Datos ZIP inválidos");
   return (crc^0xffffffff)>>>0;
  }
  const enc=new TextEncoder();
- function makeZip(files){
+ async function makeZip(files){
   const parts=[],central=[];let offset=0;
   const write=(view,pos,val)=>view.setUint32(pos,val>>>0,true);
   const write16=(view,pos,val)=>view.setUint16(pos,val,true);
   for(const file of files){
    const filename=enc.encode(file.name),bytes=file.bytes;
-   if(filename.length>255||bytes.length>0xffffffff)throw Error("Nombre o archivo inválido");
-   const crc=crc32(bytes);
+   const byteLength=bytes instanceof Blob?bytes.size:bytes?.length;
+   if(filename.length>255||!Number.isSafeInteger(byteLength)||byteLength>0xffffffff)throw Error("Nombre o archivo inválido");
+   const crc=await crc32Data(bytes);
    const local=new Uint8Array(30+filename.length),l=new DataView(local.buffer);
    write(l,0,0x04034b50);write16(l,4,20);write16(l,6,0x0800);
    write16(l,8,0);write16(l,10,0);write16(l,12,0);
-   write(l,14,crc);write(l,18,bytes.length);write(l,22,bytes.length);
+   write(l,14,crc);write(l,18,byteLength);write(l,22,byteLength);
    write16(l,26,filename.length);write16(l,28,0);local.set(filename,30);
    parts.push(local,bytes);
    const dir=new Uint8Array(46+filename.length),d=new DataView(dir.buffer);
    write(d,0,0x02014b50);write16(d,4,20);write16(d,6,20);
    write16(d,8,0x0800);write16(d,10,0);write16(d,12,0);
-   write16(d,14,0);write(d,16,crc);write(d,20,bytes.length);
-   write(d,24,bytes.length);write16(d,28,filename.length);
+   write16(d,14,0);write(d,16,crc);write(d,20,byteLength);
+   write(d,24,byteLength);write16(d,28,filename.length);
    write16(d,30,0);write16(d,32,0);write16(d,34,0);
    write16(d,36,0);write(d,38,0);write(d,42,offset);
    dir.set(filename,46);central.push(dir);
-   offset+=local.length+bytes.length;
+   offset+=local.length+byteLength;
   }
   const centralLength=central.reduce((v,a)=>v+a.length,0);
   const end=new Uint8Array(22),e=new DataView(end.buffer);
@@ -107,7 +123,7 @@
    for(const i of indices){
     report("Exportando stem "+files.length+"/"+indices.length+": "+labels[i]+"...");
     const blob=await renderStem(i,plan,bits);
-    files.push({name:fileName(i),bytes:new Uint8Array(await blob.arrayBuffer())});
+    files.push({name:fileName(i),bytes:blob});
    }
    const note=[
     "Montana Music Production — stems individuales, WAV PCM"+bits+", "+(plan.rate/1000).toFixed(1)+" kHz, estéreo.",
@@ -118,7 +134,7 @@
     "No son masters terminados. Revise clipping y realice mezcla/masterización de forma independiente."
    ].join("\n")+"\n";
    files.push({name:"LEEME-STEMS.txt",bytes:enc.encode(note)});
-   const zip=makeZip(files);
+   const zip=await makeZip(files);
    if(zip.size>maxArchive)throw Error("El ZIP excede el límite de seguridad");
    download(zip,"montana-ai-studio-stems.zip");
    report("ZIP de "+indices.length+" stems PCM"+bits+" a "+(plan.rate/1000).toFixed(1)+" kHz creado. Archivos alineados desde 0:00, sin master ni mute/solo.");
