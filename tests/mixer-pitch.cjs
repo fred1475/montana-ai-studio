@@ -87,7 +87,7 @@ for(let j=0;j<frames;j++)wave.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*2
   assert(restorationError<=6,'Restored 50% PCM must reproduce the saved blend: '+restorationError);
   // Pitch sessions created before the wet/dry control must default to full wet.
   const previousVersion=JSON.parse(JSON.stringify(session));
-  for(const t of previousVersion.tracks)if(t.pitch)delete t.pitch.wet;
+  delete previousVersion.manifestSha256;for(const t of previousVersion.tracks)if(t.pitch)delete t.pitch.wet;
   const oldPitchPath=path.join(process.cwd(),'mixer-pitch-previous-wet.json');
   fs.writeFileSync(oldPitchPath,JSON.stringify(previousVersion));
   await page.locator('#sessionFile').setInputFiles(oldPitchPath);
@@ -107,7 +107,7 @@ for(let j=0;j<frames;j++)wave.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*2
   assert((await page.locator('#label1').innerText()).includes('voz-desafinada'));
 
   // Existing projects from before experimental pitch need to load unchanged.
-  for(const t of session.tracks)delete t.pitch;
+  delete session.manifestSha256;for(const t of session.tracks)delete t.pitch;
   const legacyPath=path.join(process.cwd(),'mixer-pitch-legacy.json');
   fs.writeFileSync(legacyPath,JSON.stringify(session));
   await page.locator('#sessionFile').setInputFiles(legacyPath);
