@@ -81,7 +81,7 @@ function inspect(blob,bits){
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
   assert.equal(await page.locator('#stemBits').inputValue(),'24');
   assert((await page.locator('#label1').innerText()).includes('voz.wav'));
-  const legacy={...restored};delete legacy.stemBits;
+  const legacy={...restored};delete legacy.manifestSha256;delete legacy.stemBits;
   await page.reload();
   await page.locator('#sessionFile').setInputFiles({name:'stems24-legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
