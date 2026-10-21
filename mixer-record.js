@@ -3,7 +3,7 @@
 // synchronization claim. Each completed recording remains downloadable raw.
 // Unexpected capture errors leave an existing channel's original intact.
 let recording=null;
-function recordingSupported(){return !!(navigator.mediaDevices?.getUserMedia&&window.MediaRecorder)}
+function recordingSupported(){return !!(navigator.mediaDevices?.getUserMedia&&(window.MediaRecorder||window.MontanaPcmRecord?.supported()))}
 function updateSourceDownload(){
  const i=Number($("recordTrack").value);
  $("downloadSource").disabled=!originalFiles[i]||!!recording;
@@ -61,8 +61,15 @@ $("recordStart").addEventListener("click",async()=>{
   stream=await navigator.mediaDevices.getUserMedia({audio:{...(selected?{deviceId:{exact:selected}}:{}),channelCount:{ideal:1},echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
   const actual=stream.getAudioTracks()[0];
   $("micInputStatus").textContent="Grabando desde: "+(actual?.label||"entrada sin nombre")+". Revisa el nivel de señal de la interfaz.";
-  const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"].find(x=>MediaRecorder.isTypeSupported(x));
-  recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
+  const format=$("recordFormat").value;
+  if(format==="wav"){
+   if(!window.MontanaPcmRecord?.supported())throw Error("WAV PCM24 requiere AudioWorklet en HTTPS/localhost");
+   recorder=await window.MontanaPcmRecord.create(stream);
+  }else{
+   if(!window.MediaRecorder)throw Error("Grabación WebM no disponible");
+   const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"].find(x=>MediaRecorder.isTypeSupported(x));
+   recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
+  }
   const chunks=[],state={recorder,stream,index:i,failed:false};
   recording=state;updateSourceDownload();
   recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
@@ -83,7 +90,7 @@ $("recordStart").addEventListener("click",async()=>{
     if(blob.size>50e6)throw Error("La toma supera 50 MB");
     const bytes=await blob.arrayBuffer(),decoded=await audio().decodeAudioData(bytes.slice(0));
     if(decoded.duration>300)throw Error("La toma supera cinco minutos");
-    const ext=blob.type.includes("mp4")?"m4a":"webm";
+    const ext=blob.type.includes("wav")?"wav":blob.type.includes("mp4")?"m4a":"webm";
     const file=new File([blob],"toma-canal-"+(i+1)+"."+ext,{type:blob.type});
     // Atomic replacement happens only after a full successful decode.
     tracks[i]=decoded;originalFiles[i]=file;
@@ -124,7 +131,7 @@ $("recordStart").addEventListener("click",async()=>{
   }else if($("metronomeOn").checked){
    await audio().resume();window.startMetronome(audio(),audio().currentTime+.08);
   }
-  report("Grabando canal "+(i+1)+". Usa audífonos. Si hay retraso, alinea manualmente la voz en ms al terminar.");
+  report("Grabando canal "+(i+1)+" en "+($("recordFormat").value==="wav"?"WAV PCM24 (sin compresión adicional)":"modo compatible")+". Usa audífonos. Si hay retraso, alinea manualmente la voz en ms al terminar.");
  }catch(err){
   if(recording&&recorder===recording.recorder){
    recording.failed=true;
