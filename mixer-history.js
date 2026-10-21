@@ -1,8 +1,8 @@
 "use strict";
-// Non-destructive 8-track names, offsets and trims undo/redo.
+// Non-destructive eight-track names, input gain, offsets and trims undo/redo.
 // A history entry records the BEFORE snapshot of an edit, not the audio data.
 (function(){
- const ids=Array.from({length:8},(_,i)=>(i===0?["trackName","offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","crossfadeOn","crossfadeCurve","copyCount","copySource0_","copyOffset0_","copySource1_","copyOffset1_","copySource2_","copyOffset2_","copySource3_","copyOffset3_"]:["trackName","offset","trimStart","trimEnd","alignMs","repeat","fadeIn","fadeOut","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","crossfadeOn","crossfadeCurve","copyCount","copySource0_","copyOffset0_","copySource1_","copyOffset1_","copySource2_","copyOffset2_","copySource3_","copyOffset3_"]).map(k=>k+i)).flat();
+ const ids=Array.from({length:8},(_,i)=>(i===0?["trackName","inputTrim","offset","trimStart","trimEnd","repeat","fadeIn","fadeOut","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","crossfadeOn","crossfadeCurve","copyCount","copySource0_","copyOffset0_","copySource1_","copyOffset1_","copySource2_","copyOffset2_","copySource3_","copyOffset3_"]:["trackName","inputTrim","offset","trimStart","trimEnd","alignMs","repeat","fadeIn","fadeOut","splitMode","splitCount","splitAt","splitOffset","splitAt2_","splitOffset2_","splitAt3_","splitOffset3_","crossfadeOn","crossfadeCurve","copyCount","copySource0_","copyOffset0_","copySource1_","copyOffset1_","copySource2_","copyOffset2_","copySource3_","copyOffset3_"]).map(k=>k+i)).flat();
  const get=()=>ids.map(id=>{const el=$(id);return el.type==="checkbox"?(el.checked?"1":"0"):el.value});
  const same=(a,b)=>a.every((v,i)=>v===b[i]);
  let previous=get(),undo=[],redo=[],applying=false;
