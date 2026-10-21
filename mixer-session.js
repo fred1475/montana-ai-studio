@@ -6,7 +6,7 @@ function from64(s){if(typeof s!=="string"||s.length>110000000)throw Error("Conte
 async function createMixerSnapshot(){
   const items=[];let total=0;
   for(let i=0;i<8;i++){
-   const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),compEnabled:$("compEnable"+i).checked,compThreshold:Number($("compThreshold"+i).value),compRatio:Number($("compRatio"+i).value),reverb:Number($("reverb"+i).value),delayWet:Number($("delayWet"+i).value),delayMs:Number($("delayMs"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value),repeat:Number($("repeat"+i).value),fadeIn:Number($("fadeIn"+i).value),fadeOut:Number($("fadeOut"+i).value),alignMs:i===0?0:Number($("alignMs"+i).value),pitch:window.pitchSessionState(i),clean:window.cleanSessionState(i),split:window.splitSessionState(i),crossfade:window.crossfadeSessionState(i)};
+   const f=originalFiles[i],state={volume:+$("vol"+i).value,pan:+$("pan"+i).value,lowEQ:Number($("lowEQ"+i).value),highEQ:Number($("highEQ"+i).value),compEnabled:$("compEnable"+i).checked,compThreshold:Number($("compThreshold"+i).value),compRatio:Number($("compRatio"+i).value),reverb:Number($("reverb"+i).value),delayWet:Number($("delayWet"+i).value),delayMs:Number($("delayMs"+i).value),mute:$("mute"+i).checked,solo:$("solo"+i).checked,offset:Number($("offset"+i).value),trimStart:Number($("trimStart"+i).value),trimEnd:Number($("trimEnd"+i).value),repeat:Number($("repeat"+i).value),fadeIn:Number($("fadeIn"+i).value),fadeOut:Number($("fadeOut"+i).value),alignMs:i===0?0:Number($("alignMs"+i).value),pitch:window.pitchSessionState(i),clean:window.cleanSessionState(i),split:window.splitSessionState(i),crossfade:window.crossfadeSessionState(i),clipCopies:window.copySessionState(i)};
    if(![state.volume,state.pan,state.lowEQ,state.highEQ,state.compThreshold,state.compRatio,state.reverb,state.delayWet,state.delayMs,state.offset,state.trimStart,state.trimEnd,state.repeat,state.fadeIn,state.fadeOut,state.alignMs].every(Number.isFinite)||state.volume<0||state.volume>150||Math.abs(state.pan)>100||Math.abs(state.lowEQ)>12||Math.abs(state.highEQ)>12||state.compThreshold< -36||state.compThreshold> -6||state.compRatio<2||state.compRatio>12||state.reverb<0||state.reverb>50||state.delayWet<0||state.delayWet>50||state.delayMs<100||state.delayMs>750||[state.offset,state.trimStart,state.trimEnd].some(v=>v<0||v>300)||Math.abs(state.alignMs)>250||state.fadeIn<0||state.fadeIn>5||state.fadeOut<0||state.fadeOut>5||!Number.isInteger(state.repeat)||state.repeat<1||state.repeat>8)throw Error("Ajustes inválidos en canal "+(i+1));
    if(tracks[i]){region(i,tracks[i]);window.prepareCrossfadePlan(i,window.getTrackSegments(i,tracks[i]))} // Never create a backup that the loader cannot restore.
    if(tracks[i]&&f){
@@ -77,7 +77,9 @@ async function restoreMixerSnapshot(s){
   const preparedClean=window.prepareCleanRestore(s.tracks);
   const preparedSplit=window.prepareSplitRestore(loaded,s.tracks);
   const preparedCrossfade=window.prepareCrossfadeRestore(s.tracks);
+  const preparedCopies=window.prepareCopyRestore(loaded,s.tracks,preparedSplit);
   window.validateRestoredCrossfades(loaded,preparedSplit,preparedCrossfade);
+  window.validateCopyCrossfadeRestore(loaded,preparedSplit,preparedCopies,preparedCrossfade);
   stop();
   $("masterGain").value=masterGain;$("masterValue").textContent=masterGain+"%";
   $("recordTrack").value=String(recordTrack);
@@ -108,6 +110,7 @@ async function restoreMixerSnapshot(s){
   window.commitCleanRestore(preparedClean);
   window.commitSplitRestore(preparedSplit);
   window.commitCrossfadeRestore(preparedCrossfade);
+  window.commitCopyRestore(preparedCopies);
   window.resetEditHistory?.();
   window.updateSourceDownload?.();
   report("Sesión restaurada con "+loaded.filter(t=>t.decoded).length+" pista(s) de audio.");
