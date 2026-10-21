@@ -81,7 +81,7 @@ function rms(w){
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
   assert.equal(await page.locator('#inputTrim0').inputValue(),'6','Bad backup cannot replace session');
   assert.equal(await page.evaluate(()=>originalFiles[0]?.name),'dry-vocal.wav');
-  const legacy=JSON.parse(JSON.stringify(saved));legacy.tracks.forEach(t=>delete t.inputTrim);
+  const legacy=JSON.parse(JSON.stringify(saved));delete legacy.manifestSha256;legacy.tracks.forEach(t=>delete t.inputTrim);
   await page.locator('#sessionFile').setInputFiles({name:'legacy-gain.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
   await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'),null,{timeout:30000});
   assert.equal(await page.locator('#inputTrim0').inputValue(),'0','Legacy unity gain');
