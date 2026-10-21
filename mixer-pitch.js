@@ -5,6 +5,21 @@
  * Pitch buffers are separate; session restore re-renders from original audio.
  */
 const pitchBuffers=Array(8).fill(null),pitchActive=Array(8).fill(false);
+const pitchReports=Array(8).fill(null);
+function pitchQaText(report){
+ if(!report)return "Sin diagnóstico: procesa una toma vocal para comparar original y afinado.";
+ const m=report.metrics,fmt=v=>v===null?"N/D":v.toFixed(1);
+ return "QA vocal orientativo (no certificación): RMS original "+fmt(m.sourceRmsDbfs)+
+  " dBFS → corregido "+fmt(m.outputRmsDbfs)+" dBFS; variación "+
+  fmt(m.rmsDeltaDb)+" dB. Pico corregido "+fmt(m.outputPeakDbfs)+
+  " dBFS. Saltos nuevos: "+m.newLargeSteps+". "+
+  (report.warnings.length?"AVISOS: "+report.warnings.map(w=>w.message).join(" "):
+   "Sin alertas en estos criterios PCM; todavía requiere escucha de artefactos y formantes.");
+}
+function updatePitchQa(i,report){
+ pitchReports[i]=report;
+ if(i>0)$("pitchQa"+i).textContent=pitchQaText(report);
+}
 const pitchDefault=()=>({mode:"sustain",key:"C",scale:"chromatic",strength:100,enabled:false});
 function readPitch(i){
  if(i===0)return pitchDefault();
@@ -21,7 +36,7 @@ function checkPitch(p,i){
  return p;
 }
 function pitchInvalidate(i){
- pitchBuffers[i]=null;pitchActive[i]=false;
+ pitchBuffers[i]=null;pitchActive[i]=false;updatePitchQa(i,null);
  if(i>0){
   $("pitchState"+i).textContent="Original — sin corrección aplicada";
   $("pitchToggle"+i).disabled=true;
@@ -46,7 +61,8 @@ function processVocal(buffer,settings){
   corrected.copyToChannel(channel,ch);
  });
  const notes=settings.mode==="melody"?result.segments.map(s=>s.targetNote).join(" → "):result.target.note;
- return {buffer:corrected,notes,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
+ const qa=MontanaPitchQA.analyze(channels,result.channels,buffer.sampleRate);
+ return {buffer:corrected,notes,qa,referenceMode:result.analysis?.referenceMode||result.referenceMode||"mono"};
 }
 window.resetPitch=pitchInvalidate;
 window.pitchSessionState=i=>{
@@ -61,13 +77,15 @@ window.preparePitchRestore=(loaded,records)=>{
   const p=checkPitch(records[i].pitch===undefined?pitchDefault():records[i].pitch,i);
   if(p.enabled&&!loaded[i].decoded)throw Error("Afinación sin voz en canal "+(i+1));
   // Build all corrected buffers before changing the open session (atomic restore).
-  restored.push({settings:{...p},buffer:p.enabled?processVocal(loaded[i].decoded,p).buffer:null});
+  const processed=p.enabled?processVocal(loaded[i].decoded,p):null;
+  restored.push({settings:{...p},buffer:processed?.buffer||null,qa:processed?.qa||null});
  }
  return restored;
 };
 window.commitPitchRestore=restored=>{
- restored.forEach(({settings,buffer},i)=>{
+ restored.forEach(({settings,buffer,qa},i)=>{
   pitchBuffers[i]=buffer;pitchActive[i]=settings.enabled;
+  if(i>0)updatePitchQa(i,qa);
   if(i===0)return;
   $("pitchMode"+i).value=settings.mode;$("pitchKey"+i).value=settings.key;
   $("pitchScale"+i).value=settings.scale;$("pitchStrength"+i).value=settings.strength;
@@ -86,7 +104,8 @@ for(let i=1;i<8;i++){
   '<label for="pitchStrength'+i+'">Intensidad <output id="pitchStrengthValue'+i+'">100%</output></label><input id="pitchStrength'+i+'" type="range" min="0" max="100" step="10" value="100">'+
   '<button id="pitchApply'+i+'" type="button">🎼 Procesar voz</button> <button id="pitchToggle'+i+'" type="button" disabled>Oír corregido</button>'+
   '<p id="pitchState'+i+'">Original — sin corrección aplicada</p>'+
-  '<small>La afinación se calcula offline solo sobre fragmentos breves. Se conserva la fuente sin alterar. No corrige canciones completas ni graba en tiempo real.</small>';
+  '<p id="pitchQa'+i+'" role="status">Sin diagnóstico: procesa una toma vocal para comparar original y afinado.</p>'+
+  '<small>Las métricas QA son heurísticas PCM, no garantizan timbre, formantes ni calidad perceptual. La afinación sigue siendo offline, limitada a fragmentos breves; fuente sin alterar.</small>';
  document.querySelectorAll("article.track")[i].append(el);
  for(const key of ["pitchMode","pitchKey","pitchScale","pitchStrength"]){
   $(key+i).addEventListener("change",()=>pitchInvalidate(i));
@@ -105,7 +124,7 @@ for(let i=1;i<8;i++){
    // Yield a frame for the feedback to become visible before synchronous DSP.
    await new Promise(resolve=>setTimeout(resolve,0));
    const result=processVocal(tracks[i],state);
-   pitchBuffers[i]=result.buffer;pitchActive[i]=true;
+   pitchBuffers[i]=result.buffer;pitchActive[i]=true;updatePitchQa(i,result.qa);
    $("pitchToggle"+i).disabled=false;$("pitchToggle"+i).textContent="Oír original";
    $("pitchState"+i).textContent="Afinación activa: "+result.notes+(result.referenceMode==="phase-safe-channel"?" · Detector protegido contra cancelación de fase":result.referenceMode==="stronger-channel"?" · Detector usando canal más fuerte":"");
    report("Canal "+(i+1)+" afinado (beta). Alterna original/corregido y escucha antes de exportar.");
