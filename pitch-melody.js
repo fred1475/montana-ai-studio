@@ -64,9 +64,14 @@
    const adjusted=inputHz*Math.pow(target.frequency/inputHz,strength/100);
    const cents=1200*Math.log2(adjusted/inputHz);
    if(Math.abs(cents)>250)throw Error("Corrección fuera de rango seguro");
+   // Use one pitch-mark timeline per note for both stereo channels. The
+   // correction stays sample-coherent even with inverted or unequal L/R.
+   const sharedPlan=channels.length===2&&Math.abs(cents)>=.3?
+     pitch.pitchMarkPlan(mono.subarray(start,end),rate,inputHz):null;
    for(let ch=0;ch<channels.length;ch++){
     const source=channels[ch].subarray(start,end);
-    const corrected=Math.abs(cents)<.3?Float32Array.from(source):pitch.correctChannel(source,rate,inputHz,adjusted);
+    const corrected=Math.abs(cents)<.3?Float32Array.from(source):
+      pitch.correctChannel(source,rate,inputHz,adjusted,sharedPlan);
     out[ch].set(corrected,start);
    }
    segments.push({startSeconds:start/rate,endSeconds:end/rate,inputHz,targetHz:adjusted,targetNote:target.note,correctionCents:cents});
