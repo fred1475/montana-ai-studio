@@ -14,6 +14,7 @@
      pitch:window.pitchSessionState(i),qa:pitchReports[i],
      level:pitchLevelReports[i],timbre:pitchTimbreReports[i],
      noteAnalysis:pitchNoteReports[i],
+     artifactTimeline:pitchArtifactReports[i],
      createdAt:new Date().toISOString()
     });
     const blob=new Blob([JSON.stringify(audit,null,2)+"\n"],{type:"application/json"});
