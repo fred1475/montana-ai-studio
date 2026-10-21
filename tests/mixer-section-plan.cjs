@@ -15,7 +15,7 @@ assert.equal(plan.tracks[1][0].duration,1.5);
 assert.deepEqual(plan.tracks[2],[]);
 assert.equal(S.plan(0,1,Array.from({length:8},()=>[])).regions,0);
 const touching=S.plan(1,2,tracks);
-assert.equal(touching.tracks[1][0].when,.2);
+assert(Math.abs(touching.tracks[1][0].when-.2)<1e-8,'Native floating-point timing has sub-sample rounding');
 const last=S.plan(2.5,3.5,tracks);
 assert.equal(last.tracks[0][0].duration,.5);
 assert.equal(last.tracks[0][0].sourceOffset,.8);
