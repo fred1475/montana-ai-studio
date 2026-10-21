@@ -5,6 +5,7 @@ on:
       - 'mixer-8.html'
       - 'beat-lab.html'
       - 'beat-bridge.js'
+      - 'tests/beat-bridge.cjs'
       - 'mixer-beat-bridge.js'
       - 'tests/beat-bridge-ui.cjs'
       - 'beat-engine.js'
@@ -193,6 +194,8 @@ jobs:
           node tests/mixer-limiter.cjs
           node --check beat-engine.js
           node --check beat-bridge.js
+          node --check tests/beat-bridge.cjs
+          node tests/beat-bridge.cjs
           node --check mixer-beat-bridge.js
           node --check tests/beat-bridge-ui.cjs
           node --check beat-archive.js
