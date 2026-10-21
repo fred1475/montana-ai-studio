@@ -73,7 +73,7 @@ for(let j=0;j<frames;j++)wave.writeInt16LE(Math.round(10000*Math.sin(2*Math.PI*2
   const [sessionDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
   const sessionPath=path.join(process.cwd(),'mixer-pitch-session.json');await sessionDownload.saveAs(sessionPath);
   const session=JSON.parse(fs.readFileSync(sessionPath,'utf8'));
-  assert.deepEqual(session.tracks[1].pitch,{mode:'sustain',key:'C',scale:'chromatic',strength:100,wet:50,matchLevel:false,enabled:true});
+  assert.deepEqual(session.tracks[1].pitch,{mode:'sustain',key:'C',scale:'chromatic',strength:100,wet:50,matchLevel:false,protectTimbre:false,enabled:true});
   assert.equal(session.tracks[1].name,'voz-desafinada.wav');
   await page.reload();
   await page.locator('#sessionFile').setInputFiles(sessionPath);
