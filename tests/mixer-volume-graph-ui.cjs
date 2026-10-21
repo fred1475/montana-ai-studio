@@ -40,6 +40,7 @@ function tone(rate=44100){
   assert.equal(await page.locator('#autoPoints0').inputValue(),'0:100, 0.5:1, 1:0, 1.5:100');
   // Real pointer drag from second point changes its time and level.
   const point=page.locator('#autoSvg0 circle[data-index="1"]');
+  await point.scrollIntoViewIfNeeded(); // undo/redo buttons at page top scroll graph below viewport
   const first=await point.boundingBox();
   const svg=await page.locator('#autoSvg0').boundingBox();
   const toX=svg.x+(36+388*(.7/2))*svg.width/440;
