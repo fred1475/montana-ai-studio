@@ -81,7 +81,7 @@ for(let i=0;i<N;i++){
    if(file.size>50e6)throw Error("Archivo mayor de 50 MB");
    const decoded=await audio().decodeAudioData(await file.arrayBuffer());
    if(decoded.duration>300)throw Error("Duración mayor de cinco minutos");
-   stop();tracks[i]=decoded;originalFiles[i]=file;window.resetPitch?.(i);window.resetClean?.(i);window.resetSplit?.(i);$("fadeIn"+i).value=0;$("fadeOut"+i).value=0;$("repeat"+i).value=1;window.resetEditHistory?.();if(i>0){$("alignMs"+i).value=0;$("alignVal"+i).textContent="0 ms"}$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
+   stop();tracks[i]=decoded;originalFiles[i]=file;window.resetPitch?.(i);window.resetClean?.(i);window.resetSplit?.(i);window.resetCrossfade?.(i);$("fadeIn"+i).value=0;$("fadeOut"+i).value=0;$("repeat"+i).value=1;window.resetEditHistory?.();if(i>0){$("alignMs"+i).value=0;$("alignVal"+i).textContent="0 ms"}$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
    window.updateSourceDownload?.();report("Pista "+(i+1)+" importada");
   }catch(err){e.target.value="";report("No se pudo importar: "+err.message+". La pista anterior sigue intacta.")}
  });
@@ -91,15 +91,15 @@ $("play").onclick=async()=>{
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
   window.validateMetronome();
-  const clips=tracks.map((b,i)=>b?(window.validateFades(i),window.getTrackSegments(i,b)):[]);const mixBuffers=tracks.map((b,i)=>b?window.getMixBuffer(i):null);stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(ac,master).connect(ac.destination);activeOutputs.push(master);
+  const clips=tracks.map((b,i)=>b?(window.validateFades(i),window.getTrackSegments(i,b)):[]);const crossfadePlans=clips.map((seg,i)=>window.prepareCrossfadePlan(i,seg));const mixBuffers=tracks.map((b,i)=>b?window.getMixBuffer(i):null);stop();const ac=audio();await ac.resume();const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(ac,master).connect(ac.destination);activeOutputs.push(master);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const vol=ac.createGain(),stereo=ac.createStereoPanner();
    vol.gain.value=gain(i);stereo.pan.value=pan(i);
    window.attachTrackMeter(ac,addSpace(ac,addCompressor(ac,addEq(ac,vol,i),i),i),i).connect(stereo).connect(master);
-   for(const clip of clips[i]){
+   for(const [clipIndex,clip] of clips[i].entries()){
     const src=ac.createBufferSource();src.buffer=mixBuffers[i];
     if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
-    window.connectFades(ac,src,vol,i,clip,at+clip.offset);
+    window.connectClipCrossfade(ac,src,vol,i,clip,at+clip.offset,clipIndex,crossfadePlans[i]);
     src.start(at+clip.offset,clip.start,clip.duration);players.push(src);
     src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1);src.disconnect()};
    }
@@ -126,17 +126,17 @@ $("export").onclick=async()=>{
  const btn=$("export");btn.disabled=true;window.montanaLastAudit=null;$("downloadAudit").disabled=true;$("auditStatus").textContent="Informe pendiente de nueva exportación.";
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
-  report("Creando mezcla WAV...");const mixBuffers=tracks.map((b,i)=>b?window.getMixBuffer(i):null);const rate=44100,clipSets=tracks.map((b,i)=>b?window.getTrackSegments(i,b):[]),frames=Math.ceil(Math.max(0,...clipSets.flatMap((items,i)=>items.map(t=>t.offset+t.duration+effectTail(i))))*rate);
+  report("Creando mezcla WAV...");const mixBuffers=tracks.map((b,i)=>b?window.getMixBuffer(i):null);const rate=44100,clipSets=tracks.map((b,i)=>b?window.getTrackSegments(i,b):[]),crossfadePlans=clipSets.map((seg,i)=>window.prepareCrossfadePlan(i,seg)),frames=Math.ceil(Math.max(0,...clipSets.flatMap((items,i)=>items.map(t=>t.offset+t.duration+effectTail(i))))*rate);
   if(!frames||44+frames*4>150*1024*1024)throw Error("La duración supera el tamaño máximo de WAV. Reduce las repeticiones o exporta stems breves.");
   const offline=new OfflineAudioContext(2,frames,rate);const master=offline.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(offline.destination);
   tracks.forEach((buf,i)=>{
    if(!buf)return;const vol=offline.createGain(),stereo=offline.createStereoPanner();
    vol.gain.value=gain(i);stereo.pan.value=pan(i);
    addSpace(offline,addCompressor(offline,addEq(offline,vol,i),i),i).connect(stereo).connect(master);
-   for(const clip of clipSets[i]){
+   for(const [clipIndex,clip] of clipSets[i].entries()){
     const src=offline.createBufferSource();src.buffer=mixBuffers[i];
     if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
-    window.connectFades(offline,src,vol,i,clip,clip.offset);
+    window.connectClipCrossfade(offline,src,vol,i,clip,clip.offset,clipIndex,crossfadePlans[i]);
     src.start(clip.offset,clip.start,clip.duration);
    }
   });
@@ -191,4 +191,4 @@ $("export").onclick=async()=>{
   report((analysisError?"Advertencia: medidor EBU no disponible ("+analysisError+"). ":"")+"Archivo WAV creado. Pico: "+measured.peakDb.toFixed(1)+" dBFS; RMS estéreo: "+measured.rmsDb.toFixed(1)+" dBFS; factor de cresta: "+measured.crestDb.toFixed(1)+" dB. "+(normalization?"Normalización aplicada ("+normalization.appliedGainDb.toFixed(1)+" dB). ":"")+(limiter?"Limitador aplicado. Reducción máxima: "+limiter.maximumReductionDb.toFixed(1)+" dB. Solo se garantiza techo de picos de muestra.":peak>1?"ADVERTENCIA: hay clipping; baja el volumen maestro y exporta otra vez.":"Sin clipping detectado en la mezcla renderizada.")+" Reproduce el archivo para comprobarlo.");
  }catch(err){report("Error al exportar: "+err.message)}finally{btn.disabled=false}
 };
-</script><script src="mixer-master-audit.js"></script><script src="mixer-loudness.js"></script><script src="mixer-export-levels.js"></script><script src="mixer-limiter.js"></script><script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script src="mixer-pitch.js"></script><script src="mixer-vocal-dsp.js"></script><script src="mixer-vocal-clean.js"></script><script src="mixer-meter.js"></script><script src="mixer-session.js"></script><script src="mixer-record.js"></script><script src="mixer-split.js"></script><script src="mixer-timeline.js"></script><script src="mixer-history.js"></script><script src="mixer-metronome.js"></script><script src="mixer-fades.js"></script><script src="mixer-stems.js"></script><script src="mixer-recovery.js"></script><script>document.getElementById("downloadAudit").addEventListener("click",()=>{const audit=window.montanaLastAudit;if(!audit)return;const blob=new Blob([JSON.stringify(audit,null,2)+"\n"],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-mezcla-auditoria-r128.json";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)});</script></body></html>
+</script><script src="mixer-master-audit.js"></script><script src="mixer-loudness.js"></script><script src="mixer-export-levels.js"></script><script src="mixer-limiter.js"></script><script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script src="mixer-pitch.js"></script><script src="mixer-vocal-dsp.js"></script><script src="mixer-vocal-clean.js"></script><script src="mixer-meter.js"></script><script src="mixer-session.js"></script><script src="mixer-record.js"></script><script src="mixer-split.js"></script><script src="mixer-crossfade.js"></script><script src="mixer-timeline.js"></script><script src="mixer-history.js"></script><script src="mixer-metronome.js"></script><script src="mixer-fades.js"></script><script src="mixer-stems.js"></script><script src="mixer-recovery.js"></script><script>document.getElementById("downloadAudit").addEventListener("click",()=>{const audit=window.montanaLastAudit;if(!audit)return;const blob=new Blob([JSON.stringify(audit,null,2)+"\n"],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-mezcla-auditoria-r128.json";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)});</script></body></html>
