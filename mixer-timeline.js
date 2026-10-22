@@ -31,7 +31,12 @@
  const applyStart=document.createElement("button");applyStart.type="button";applyStart.id="timelineApplyStart";applyStart.textContent="Aplicar inicio";
  const duplicate=document.createElement("button");duplicate.type="button";duplicate.id="timelineDuplicate";duplicate.textContent="Duplicar clip";
  const remove=document.createElement("button");remove.type="button";remove.id="timelineRemoveCopy";remove.textContent="Quitar copia";
- clipControls.append(selectedStatus,selectedLabel,applyStart,duplicate,remove);root.before(clipControls);
+ const rippleLabel=document.createElement("label");rippleLabel.textContent="Mover desde clip (s) ";
+ const rippleAmount=document.createElement("input");rippleAmount.id="timelineRippleAmount";
+ rippleAmount.type="number";rippleAmount.step="0.0001";rippleAmount.min="-300";rippleAmount.max="300";
+ rippleAmount.value="1";rippleAmount.style.width="95px";rippleLabel.append(rippleAmount);
+ const ripple=document.createElement("button");ripple.type="button";ripple.id="timelineRippleMove";ripple.textContent="Mover grupo";
+ clipControls.append(selectedStatus,selectedLabel,applyStart,duplicate,remove,rippleLabel,ripple);root.before(clipControls);
  let selected=null;
  function selectedClip(){
   if(!selected||!tracks[selected.track])return null;
@@ -54,6 +59,7 @@
   selectedStart.disabled=applyStart.disabled=!clip;
   duplicate.disabled=!clip||Number($("copyCount"+selected.track).value)>=4;
   remove.disabled=!clip||!clip.copied;
+  rippleAmount.disabled=ripple.disabled=!clip;
   highlight();
  }
  function selectClip(i,field){selected={track:i,field};refreshSelection()}
@@ -110,6 +116,39 @@
  }
  duplicate.addEventListener("click",duplicateCurrent);
  remove.addEventListener("click",removeCurrent);
+ // Ripple changes existing non-destructive offsets only. Validate the whole
+ // prospective arrangement before any history capture or UI event: either all
+ // selected-and-later clips move together, or none of them move.
+ ripple.addEventListener("click",()=>{
+  if(!selectedClip())return;
+  const delta=Number(rippleAmount.value);
+  if(!rippleAmount.value.trim()||!Number.isFinite(delta)||delta<-300||delta>300){
+   report("Desplazamiento inválido: usa entre −300 y 300 segundos");return;
+  }
+  if(delta===0)return;
+  const {track,field}=selected,segments=window.getTrackSegments(track,tracks[track]);
+  const selectedIndex=segments.findIndex(s=>s.editField===field);
+  if(selectedIndex<0)return;
+  const affected=segments.slice(selectedIndex),previous=[];
+  try{
+   for(const clip of affected){
+    const id=clip.editField,input=$(id);
+    const shift=id==="offset"+track&&track>0?Number($("alignMs"+track).value)/1000:0;
+    const next=round(clip.offset+delta-shift);
+    if(!Number.isFinite(next)||next<0||next>300)throw Error("Un clip saldría del límite de 0–300 s");
+    previous.push({input,value:input.value,next});
+   }
+   previous.forEach(item=>{item.input.value=String(item.next)});
+   const nextSegments=window.getTrackSegments(track,tracks[track]);
+   window.prepareCrossfadePlan(track,nextSegments);
+  }catch(e){
+   previous.forEach(item=>{item.input.value=item.value});
+   report("No se movió ningún clip: "+e.message);
+   return;
+  }
+  window.captureTimelineHistory?.();
+  redraw();report("Pista "+(track+1)+": "+affected.length+" fragmentos movidos "+delta+" s. Deshacer revierte el grupo.");
+ });
  function setZoom(index){
   zoomIndex=clamp(index,0,zoomLevels.length-1);
   minus.disabled=zoomIndex===0;plus.disabled=zoomIndex===zoomLevels.length-1;

@@ -99,8 +99,24 @@ function wav(){
   await page.locator('#timelineApplyStart').click();
   assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.1234','Exact editor keeps 0.1 ms precision with musical grid enabled');
   assert.equal(await page.locator('#timelineSelectedStart').inputValue(),'0.1234','Exact editor presents source precision without rounding it away');
+  await page.locator('#timeline [data-edit-field="copyOffset1_1"]').click();
+  await page.locator('#timelineRippleAmount').fill('0.35');
+  await page.locator('#timelineRippleMove').click();
+  assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.1234','Ripple keeps earlier copies untouched');
+  assert.equal(await page.locator('#copyOffset1_1').inputValue(),'1.55','Ripple shifts the selected copy');
+  assert.equal(await page.locator('#offset1').inputValue(),'1.45','Ripple preserves original alignment despite sorted copies');
+  assert.equal(await page.locator('#copyOffset2_1').inputValue(),'2.65','Ripple shifts later copies');
+  await page.locator('#undoEdit').click();
+  assert.equal(await page.locator('#copyOffset1_1').inputValue(),'1.2','One Undo restores the selected copy');
+  assert.equal(await page.locator('#offset1').inputValue(),'1.1','One Undo restores the aligned original');
+  assert.equal(await page.locator('#copyOffset2_1').inputValue(),'2.3','One Undo restores later copies');
+  await page.locator('#timelineRippleAmount').fill('300');
+  await page.locator('#timelineRippleMove').click();
+  assert.equal(await page.locator('#copyOffset1_1').inputValue(),'1.2','Out-of-range ripple is rejected atomically');
+  assert.equal(await page.locator('#offset1').inputValue(),'1.1','Rejected ripple preserves the original');
+  assert.equal(await page.locator('#copyOffset2_1').inputValue(),'2.3','Rejected ripple preserves later copies');
   assert.deepEqual(Buffer.from(await page.evaluate(async()=>new Uint8Array(await originalFiles[1].arrayBuffer()))),original);
   assert.deepEqual(errors,[]);
-  console.log('PASS timeline zoom and clip editing: selection, duplicate, shortcuts, sorted clip move, sub-ms exact start, delete, undo and byte-exact source preservation.');
+  console.log('PASS timeline zoom and clip editing: selection, duplicate, shortcuts, sorted move, ripple atomicity, precision, undo and exact source preservation.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
