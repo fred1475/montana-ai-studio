@@ -1,11 +1,12 @@
 'use strict';
-/* Synthetic all-eight-track 30-second stress regression. Offline browser only.
- * Verifies duration/PCM headers, ZIP stem alignment, JSON backup restore and
- * absence of browser script exceptions. Not a real hardware RAM benchmark.
+/* Synthetic all-eight-track 45-second stress regression. Offline browser only.
+ * Verifies duration/PCM headers, ZIP stem alignment, byte-exact sources,
+ * JSON backup restoration and rejection of a damaged final track without
+ * changing the active project. Not a real hardware RAM benchmark.
  */
-const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {chromium}=require('playwright');
-const sourceRate=44100,seconds=30,frames=sourceRate*seconds,twopi=Math.PI*2;
+const sourceRate=44100,seconds=45,frames=sourceRate*seconds,twopi=Math.PI*2;
 function wav(index){
  const bytes=Buffer.alloc(44+frames*2);
  bytes.write('RIFF',0);bytes.writeUInt32LE(bytes.length-8,4);bytes.write('WAVE',8);
@@ -37,10 +38,12 @@ function zipEntries(bytes){
   const page=await browser.newPage({acceptDownloads:true}),errors=[];
   page.on('pageerror',err=>errors.push(err.message));
   await page.goto('http://127.0.0.1:8765/mixer-8.html');
-  const names=[];
+  const names=[],hashes=[];
   for(let i=0;i<8;i++){
    const name='stress-'+i+'.wav';names.push(name);
-   await page.locator('#file'+i).setInputFiles({name,mimeType:'audio/wav',buffer:wav(i)});
+   const original=wav(i);
+   hashes.push(crypto.createHash('sha256').update(original).digest('hex'));
+   await page.locator('#file'+i).setInputFiles({name,mimeType:'audio/wav',buffer:original});
    await page.waitForFunction((i)=>document.querySelector('#label'+i)?.textContent?.includes('stress-'+i+'.wav'),i,{timeout:30000});
   }
   const loaded=await page.evaluate(()=>({
@@ -57,7 +60,7 @@ function zipEntries(bytes){
   await page.locator('#wavBits').selectOption('24');
   await page.locator('#estimateExport').click();
   const summary=await page.locator('#exportEstimateStatus').innerText();
-  assert(summary.includes('Duración prevista: 30.00 s'));
+  assert(summary.includes('Duración prevista: 45.00 s'));
   assert(summary.includes('ZIP de 8 stems'));
   assert(summary.includes('Master WAV PCM24'));
   async function download(selector,filename,timeout=120000){
@@ -87,6 +90,7 @@ function zipEntries(bytes){
   const snapshot=JSON.parse((await download('#saveSession','long-8-track-project.json')).toString('utf8'));
   assert.equal(snapshot.tracks.length,8);
   assert.deepEqual(snapshot.tracks.map(x=>x.name),names);
+  assert.deepEqual(snapshot.tracks.map(x=>x.sourceSha256),hashes,'Every backed-up source has the exact SHA-256 of the imported WAV');
   assert.equal(snapshot.wavSampleRate,48000);
   assert.equal(snapshot.wavBits,24);
   await page.reload();
@@ -97,14 +101,40 @@ function zipEntries(bytes){
   const restored=await page.evaluate(()=>({
    labels:tracks.map((x,i)=>originalFiles[i]?.name),
    durations:tracks.map(x=>x?.duration),
-   rates:tracks.map(x=>x?.sampleRate)
+   rates:tracks.map(x=>x?.sampleRate),
+   lengths:tracks.map(x=>x?.length)
   }));
   assert.deepEqual(restored.labels,names,'Original sources are restored under expected names');
   assert(restored.durations.every(v=>Math.abs(v-seconds)<.001));
   assert(restored.rates.every(v=>Number.isInteger(v)&&v>=8000&&v<=192000));
+  const restoredHashes=await page.evaluate(async()=>{
+   const results=[];
+   for(const file of originalFiles)results.push(MontanaSessionIntegrity.hash(new Uint8Array(await file.arrayBuffer())));
+   return results;
+  });
+  assert.deepEqual(restoredHashes,hashes,'All eight restored source WAVs must be byte-identical');
   assert.equal(await page.locator('#wavBits').inputValue(),'24');
   assert.equal(await page.locator('#wavSampleRate').inputValue(),'48000');
+
+  // The LAST source is damaged: seven valid decodes must not partially replace
+  // an already opened project when the final SHA-256 verification fails.
+  const damaged=structuredClone(snapshot);
+  const encoded=damaged.tracks[7].data,index=120;
+  damaged.tracks[7].data=encoded.slice(0,index)+(encoded[index]==='A'?'B':'A')+encoded.slice(index+1);
+  await page.locator('#sessionFile').setInputFiles({
+   name:'eight-track-corrupt.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(damaged))
+  });
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró la sesión'),null,{timeout:120000});
+  const surviving=await page.evaluate(()=>({
+   labels:tracks.map((x,i)=>originalFiles[i]?.name),
+   durations:tracks.map(x=>x?.duration),
+   rates:tracks.map(x=>x?.sampleRate),
+   lengths:tracks.map(x=>x?.length)
+  }));
+  assert.deepEqual(surviving,restored,'Invalid last source must leave all eight active tracks unchanged');
+  assert.equal(await page.locator('#wavSampleRate').inputValue(),'48000');
+  assert.equal(await page.locator('#wavBits').inputValue(),'24');
   assert.deepEqual(errors,[]);
-  console.log('PASS eight-track 30s synthetic session: 48k PCM24 master, 8 aligned ZIP stems and full source/session recovery.');
+  console.log('PASS eight-track 45s stress: 48k PCM24 master, 8 stems, all source hashes restored, corrupt final track isolated.');
  }finally{await browser.close();}
 })().catch(err=>{console.error(err);process.exit(1)});
