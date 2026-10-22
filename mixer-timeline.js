@@ -22,6 +22,10 @@
  // undo/redo, preview, WAV export and stems without changing the schema.
  const clipControls=document.createElement("div");
  clipControls.style.cssText="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0";
+ const pickerLabel=document.createElement("label");pickerLabel.textContent="Elegir clip ";
+ const clipPicker=document.createElement("select");clipPicker.id="timelineClipPicker";
+ clipPicker.setAttribute("aria-label","Seleccionar cualquier clip, incluso si está solapado");
+ clipPicker.style.maxWidth="280px";pickerLabel.append(clipPicker);
  const selectedStatus=document.createElement("output");selectedStatus.id="timelineSelectedStatus";
  selectedStatus.setAttribute("aria-live","polite");
  const selectedLabel=document.createElement("label");selectedLabel.textContent="Inicio exacto (s) ";
@@ -36,8 +40,27 @@
  rippleAmount.type="number";rippleAmount.step="0.0001";rippleAmount.min="-300";rippleAmount.max="300";
  rippleAmount.value="1";rippleAmount.style.width="95px";rippleLabel.append(rippleAmount);
  const ripple=document.createElement("button");ripple.type="button";ripple.id="timelineRippleMove";ripple.textContent="Mover grupo";
- clipControls.append(selectedStatus,selectedLabel,applyStart,duplicate,remove,rippleLabel,ripple);root.before(clipControls);
+ clipControls.append(pickerLabel,selectedStatus,selectedLabel,applyStart,duplicate,remove,rippleLabel,ripple);root.before(clipControls);
  let selected=null;
+ const pickerValue=(track,field)=>track+"|"+field;
+ function refreshPicker(){
+  const empty=document.createElement("option");empty.value="";empty.textContent="Selecciona un fragmento";
+  const options=[empty];
+  tracks.forEach((buffer,i)=>{
+   if(!buffer)return;
+   try{
+    window.getTrackSegments(i,buffer).forEach(clip=>{
+     const option=document.createElement("option");
+     option.value=pickerValue(i,clip.editField);
+     option.textContent="Pista "+(i+1)+" · "+(clip.copied?"Copia":"Original")+
+      " · "+round(clip.offset)+" s · "+round(clip.duration)+" s";
+     options.push(option);
+    });
+   }catch(e){}
+  });
+  clipPicker.replaceChildren(...options);
+  clipPicker.disabled=options.length===1;
+ }
  function selectedClip(){
   if(!selected||!tracks[selected.track])return null;
   try{return window.getTrackSegments(selected.track,tracks[selected.track]).find(p=>p.editField===selected.field)||null}
@@ -56,6 +79,13 @@
    " · "+clip.duration.toFixed(2)+" s":"Selecciona un fragmento en la línea de tiempo";
   if(clip&&document.activeElement!==selectedStart)selectedStart.value=String(round(clip.offset));
   if(!clip)selectedStart.value="";
+  const value=clip?pickerValue(selected.track,selected.field):"";
+  clipPicker.value=value;
+  if(clip){
+   const option=Array.from(clipPicker.options).find(x=>x.value===value);
+   if(option)option.textContent="Pista "+(selected.track+1)+" · "+(clip.copied?"Copia":"Original")+
+    " · "+round(clip.offset)+" s · "+round(clip.duration)+" s";
+  }
   selectedStart.disabled=applyStart.disabled=!clip;
   duplicate.disabled=!clip||Number($("copyCount"+selected.track).value)>=4;
   remove.disabled=!clip||!clip.copied;
@@ -63,6 +93,13 @@
   highlight();
  }
  function selectClip(i,field){selected={track:i,field};refreshSelection()}
+ clipPicker.addEventListener("change",()=>{
+  const value=clipPicker.value,bar=value.indexOf("|");
+  if(bar<1){selected=null;refreshSelection();return}
+  const track=Number(value.slice(0,bar)),field=value.slice(bar+1);
+  if(!Number.isInteger(track)||track<0||track>=8){selected=null;refreshSelection();return}
+  selectClip(track,field);
+ });
  function registerClip(node,i,field){
   node.dataset.editField=field;
   node.addEventListener("pointerdown",()=>selectClip(i,field));
@@ -316,6 +353,7 @@
   const footer=document.createElement("small");
   footer.textContent="0 s — "+end.toFixed(1)+" s · Zoom visual ×"+zoomLevels[zoomIndex]+". Arrastra o usa flechas para mover; Ctrl/Cmd + D duplica; Supr quita una copia; Deshacer recupera. Los originales no cambian.";
   root.append(footer);
+  refreshPicker();
   refreshSelection();
  }
  const observer=new MutationObserver(redraw);

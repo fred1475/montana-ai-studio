@@ -104,6 +104,11 @@ function wav(){
   await page.locator('#timeline [data-edit-field="copyOffset1_1"]').focus();
   assert.match(await page.locator('#timelineSelectedStatus').textContent(),/Pista 2 · copia/);
   assert.equal(await page.locator('#timelineSelectedStart').inputValue(),'1.2');
+  assert.equal(await page.locator('#timelineClipPicker option[value^="1|"]').count(),4,'Picker lists source and each of three copies');
+  await page.locator('#timelineClipPicker').selectOption('1|copyOffset0_1');
+  assert.equal(await page.locator('#timelineSelectedStart').inputValue(),'0.1234','Picker can select a different copy');
+  await page.locator('#timelineClipPicker').selectOption('1|copyOffset1_1');
+  assert.equal(await page.locator('#timelineSelectedStart').inputValue(),'1.2','Picker can select overlapped copies without hit-testing');
   await page.locator('#timelineRippleAmount').fill('0.35');
   await page.locator('#timelineRippleMove').click();
   assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.1234','Ripple keeps earlier copies untouched');
