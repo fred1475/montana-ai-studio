@@ -33,6 +33,12 @@
  selectedStart.type="number";selectedStart.min="0";selectedStart.max="300";selectedStart.step="0.0001";
  selectedStart.style.width="95px";selectedLabel.append(selectedStart);
  const applyStart=document.createElement("button");applyStart.type="button";applyStart.id="timelineApplyStart";applyStart.textContent="Aplicar inicio";
+ const durationLabel=document.createElement("label");durationLabel.textContent="Duración exacta de copia (s) ";
+ const selectedDuration=document.createElement("input");selectedDuration.id="timelineSelectedDuration";
+ selectedDuration.type="number";selectedDuration.min="0.05";selectedDuration.max="2400";selectedDuration.step="0.0001";
+ selectedDuration.style.width="95px";durationLabel.append(selectedDuration);
+ const applyDuration=document.createElement("button");applyDuration.type="button";
+ applyDuration.id="timelineApplyDuration";applyDuration.textContent="Aplicar duración";
  const duplicate=document.createElement("button");duplicate.type="button";duplicate.id="timelineDuplicate";duplicate.textContent="Duplicar clip";
  const remove=document.createElement("button");remove.type="button";remove.id="timelineRemoveCopy";remove.textContent="Quitar copia";
  const rippleLabel=document.createElement("label");rippleLabel.textContent="Mover desde clip (s) ";
@@ -40,7 +46,19 @@
  rippleAmount.type="number";rippleAmount.step="0.0001";rippleAmount.min="-300";rippleAmount.max="300";
  rippleAmount.value="1";rippleAmount.style.width="95px";rippleLabel.append(rippleAmount);
  const ripple=document.createElement("button");ripple.type="button";ripple.id="timelineRippleMove";ripple.textContent="Mover grupo";
- clipControls.append(pickerLabel,selectedStatus,selectedLabel,applyStart,duplicate,remove,rippleLabel,ripple);root.before(clipControls);
+ const bpmFromLabel=document.createElement("label");bpmFromLabel.textContent="Separación desde BPM ";
+ const bpmFrom=document.createElement("input");bpmFrom.id="timelineTempoFrom";
+ bpmFrom.type="number";bpmFrom.min="40";bpmFrom.max="240";bpmFrom.step="1";bpmFrom.value="100";
+ bpmFrom.style.width="72px";bpmFromLabel.append(bpmFrom);
+ const bpmToLabel=document.createElement("label");bpmToLabel.textContent="hacia BPM ";
+ const bpmTo=document.createElement("input");bpmTo.id="timelineTempoTo";
+ bpmTo.type="number";bpmTo.min="40";bpmTo.max="240";bpmTo.step="1";bpmTo.value="120";
+ bpmTo.style.width="72px";bpmToLabel.append(bpmTo);
+ const retempo=document.createElement("button");retempo.type="button";
+ retempo.id="timelineTempoReflow";retempo.textContent="Recolocar inicios";
+ const tempoInfo=document.createElement("small");tempoInfo.textContent="Solo reordena posiciones desde el clip seleccionado: no cambia la duración del audio, su afinación ni el BPM global.";
+ clipControls.append(pickerLabel,selectedStatus,selectedLabel,applyStart,durationLabel,applyDuration,
+  duplicate,remove,rippleLabel,ripple,bpmFromLabel,bpmToLabel,retempo,tempoInfo);root.before(clipControls);
  let selected=null;
  const pickerValue=(track,field)=>track+"|"+field;
  function refreshPicker(){
@@ -79,6 +97,10 @@
    " · "+clip.duration.toFixed(2)+" s":"Selecciona un fragmento en la línea de tiempo";
   if(clip&&document.activeElement!==selectedStart)selectedStart.value=String(round(clip.offset));
   if(!clip)selectedStart.value="";
+  if(clip?.copied&&document.activeElement!==selectedDuration)
+   selectedDuration.value=String(Math.round(clip.duration*10000)/10000);
+  if(!clip)selectedDuration.value="";
+  if(clip&&!clip.copied)selectedDuration.value="";
   const value=clip?pickerValue(selected.track,selected.field):"";
   clipPicker.value=value;
   if(clip){
@@ -87,9 +109,11 @@
     " · "+round(clip.offset)+" s · "+round(clip.duration)+" s";
   }
   selectedStart.disabled=applyStart.disabled=!clip;
+  selectedDuration.disabled=applyDuration.disabled=!clip||!clip.copied;
   duplicate.disabled=!clip||Number($("copyCount"+selected.track).value)>=4;
   remove.disabled=!clip||!clip.copied;
   rippleAmount.disabled=ripple.disabled=!clip;
+  bpmFrom.disabled=bpmTo.disabled=retempo.disabled=!clip;
   highlight();
  }
  function selectClip(i,field){selected={track:i,field};refreshSelection()}
@@ -134,6 +158,32 @@
  });
  selectedStart.addEventListener("keydown",event=>{
   if(event.key==="Enter"){event.preventDefault();applyStart.click()}
+ });
+ applyDuration.addEventListener("click",()=>{
+  const clip=selectedClip();
+  if(!clip?.copied)return;
+  const desired=Number(selectedDuration.value);
+  if(!selectedDuration.value.trim()||!Number.isFinite(desired)||desired<.05){
+   report("Duración inválida: mínimo 0.05 segundos");return;
+  }
+  const {track,field}=selected,slot=field.match(/^copyOffset([0-3])_/);
+  if(!slot)return;
+  const j=Number(slot[1]),orig=window.getOriginalTrackSegments(track,tracks[track]);
+  const index=Number($("copySource"+j+"_"+track).value),max=orig[index]?.duration;
+  if(!Number.isFinite(max)||desired>max+.00001){
+   report("La duración no puede superar la fuente del clip ("+max+" s)");return;
+  }
+  const el=$("copyDuration"+j+"_"+track),before=el.value;
+  el.value=String(desired>=max-.00001?0:Math.round(desired*10000)/10000);
+  try{
+   const after=window.getTrackSegments(track,tracks[track]);
+   window.prepareCrossfadePlan(track,after);
+  }catch(e){el.value=before;report("No se recortó la copia: "+e.message);return}
+  if(before!==el.value)el.dispatchEvent(new Event("change",{bubbles:true}));
+  refreshSelection();
+ });
+ selectedDuration.addEventListener("keydown",event=>{
+  if(event.key==="Enter"){event.preventDefault();applyDuration.click()}
  });
  function duplicateCurrent(){
   if(!selectedClip())return;
@@ -185,6 +235,43 @@
   }
   window.captureTimelineHistory?.();
   redraw();report("Pista "+(track+1)+": "+affected.length+" fragmentos movidos "+delta+" s. Deshacer revierte el grupo.");
+ });
+ // Scale only the distances between start points, preserving each clip's
+ // original waveform, length, pitch, and its offset field identity.
+ // Validate all target positions/crossfades as one atomic edit.
+ retempo.addEventListener("click",()=>{
+  const clip=selectedClip();
+  if(!clip)return;
+  const from=Number(bpmFrom.value),to=Number(bpmTo.value);
+  if(!bpmFrom.value.trim()||!bpmTo.value.trim()||![from,to].every(Number.isInteger)||
+     from<40||from>240||to<40||to>240){
+   report("Tempo inválido: BPM enteros de 40 a 240");return;
+  }
+  if(from===to)return;
+  const {track,field}=selected,segments=window.getTrackSegments(track,tracks[track]);
+  const start=segments.findIndex(s=>s.editField===field);
+  if(start<0)return;
+  const anchor=segments[start].offset,moves=[];
+  try{
+   for(const p of segments.slice(start+1)){
+    const input=$(p.editField);
+    const shift=p.editField==="offset"+track&&track>0?
+     Number($("alignMs"+track).value)/1000:0;
+    const next=Math.round((anchor+(p.offset-anchor)*from/to-shift)*10000)/10000;
+    if(!Number.isFinite(next)||next<0||next>300)
+     throw Error("El nuevo tempo deja un clip fuera de 0–300 s");
+    moves.push({input,before:input.value,next});
+   }
+   if(!moves.length)throw Error("No hay clips posteriores para recolocar");
+   moves.forEach(m=>{m.input.value=String(m.next)});
+   window.prepareCrossfadePlan(track,window.getTrackSegments(track,tracks[track]));
+  }catch(e){
+   moves.forEach(m=>{m.input.value=m.before});
+   report("Tempo sin cambios: "+e.message);return;
+  }
+  window.captureTimelineHistory?.();
+  redraw();
+  report("Pista "+(track+1)+": "+moves.length+" inicios recalculados "+from+"→"+to+" BPM. El audio conserva su duración y tono.");
  });
  function setZoom(index){
   zoomIndex=clamp(index,0,zoomLevels.length-1);

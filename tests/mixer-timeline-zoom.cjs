@@ -124,7 +124,46 @@ function wav(){
   assert.equal(await page.locator('#copyOffset1_1').inputValue(),'1.2','Out-of-range ripple is rejected atomically');
   assert.equal(await page.locator('#offset1').inputValue(),'1.1','Rejected ripple preserves the original');
   assert.equal(await page.locator('#copyOffset2_1').inputValue(),'2.3','Rejected ripple preserves later copies');
-  assert.deepEqual(Buffer.from(await page.evaluate(async()=>new Uint8Array(await originalFiles[1].arrayBuffer()))),original);
+  // Copy length is an independent non-destructive edit, undoable in one step.
+  await page.locator('#timelineClipPicker').selectOption('1|copyOffset0_1');
+  assert.equal(await page.locator('#timelineSelectedDuration').isEnabled(),true);
+  await page.locator('#timelineSelectedDuration').fill('0.35');
+  await page.locator('#timelineApplyDuration').click();
+  assert.equal(await page.locator('#copyDuration0_1').inputValue(),'0.35');
+  assert.equal(await page.evaluate(()=>window.getTrackSegments(1,tracks[1])
+   .find(x=>x.editField==='copyOffset0_1').duration),.35);
+  await page.locator('#undoEdit').click();
+  assert.equal(await page.locator('#copyDuration0_1').inputValue(),'0','Undo restores full source length');
+  await page.locator('#redoEdit').click();
+  assert.equal(await page.locator('#copyDuration0_1').inputValue(),'0.35','Redo restores independent trim');
+  await page.locator('#timelineSelectedDuration').fill('5');
+  await page.locator('#timelineApplyDuration').click();
+  assert.equal(await page.locator('#copyDuration0_1').inputValue(),'0.35','Out-of-bounds length rejected');
+  const beforeTempo=await page.evaluate(()=>window.getTrackSegments(1,tracks[1])
+   .map(x=>({field:x.editField,start:x.offset,duration:x.duration})));
+  await page.locator('#timelineTempoFrom').fill('100');
+  await page.locator('#timelineTempoTo').fill('200');
+  await page.locator('#timelineTempoReflow').click();
+  const afterTempo=await page.evaluate(()=>window.getTrackSegments(1,tracks[1])
+   .map(x=>({field:x.editField,start:x.offset,duration:x.duration})));
+  const anchor=beforeTempo[0].start;
+  assert.equal(afterTempo[0].start,anchor,'Tempo keeps selected start');
+  for(const item of beforeTempo.slice(1)){
+   const now=afterTempo.find(x=>x.field===item.field);
+   assert(Math.abs(now.start-(anchor+(item.start-anchor)/2))<.00011,'Tempo scales starts '+item.field);
+   assert.equal(now.duration,item.duration,'Tempo does not stretch audio');
+  }
+  await page.locator('#undoEdit').click();
+  for(const item of beforeTempo){
+   const restored=await page.evaluate(field=>window.getTrackSegments(1,tracks[1])
+    .find(x=>x.editField===field),item.field);
+   assert(Math.abs(restored.offset-item.start)<.00011,'Tempo undo restores '+item.field);
+  }
+  await page.locator('#timelineTempoFrom').fill('39');
+  await page.locator('#timelineTempoTo').fill('240');
+  await page.locator('#timelineTempoReflow').click();
+  assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.1234','Invalid BPM is rejected atomically');
+    assert.deepEqual(Buffer.from(await page.evaluate(async()=>new Uint8Array(await originalFiles[1].arrayBuffer()))),original);
   assert.deepEqual(errors,[]);
   console.log('PASS timeline zoom and clip editing: selection, duplicate, shortcuts, sorted move, ripple atomicity, precision, undo and exact source preservation.');
  }finally{await browser.close()}

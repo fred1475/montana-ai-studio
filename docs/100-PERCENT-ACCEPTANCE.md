@@ -1,5 +1,5 @@
 # Montana AI Studio 2.0 — definición verificable del 100 %
-Fecha de revisión: 21 de octubre de 2026. Documento de **criterios**, no de certificación.
+Fecha de revisión: 22 de octubre de 2026. Documento de **criterios**, no de certificación.
 Propietario: Montana Music Production LLC. Implementación aislada en PR #2 (Draft);
 sin autorización del propietario no fusionar la rama con `main`.
 
@@ -17,7 +17,7 @@ Estados: `APROBADA` (evidencia requerida completa), `BETA AUTOMÁTICA`
 | Puerta obligatoria | Estado a fecha de revisión | Evidencia actual / falta |
 |---|---|---|
 | 1. Mezclador de 8 pistas | BETA AUTOMÁTICA | Importación, fader, paneo, EQ, compresión, efectos, mute/solo y exportación en Chromium; falta sesión musical real y prueba de producción larga |
-| 2. Editor temporal | PARCIAL | Recorte, dividir, copias limitadas, fundidos, snap, deshacer; faltan edición libre de clips, automatización continua y time-stretch/warp |
+| 2. Editor temporal | PARCIAL | Recorte, división, copias con duración audible independiente, edición de inicios por BPM sin cambiar el sonido, fundidos, snap y deshacer; faltan edición libre completa, automatización continua y time-stretch/warp con preservación de tono |
 | 3. Grabación y latencia | PARCIAL | MediaRecorder/PCM24 y pruebas de navegador simulado; calibración de interfaz/overdubs y latencia real pendientes |
 | 4. Voz: afinación y formantes | PARCIAL | PSOLA offline limitado y QA local PCM, fase, brillo y microcortes; sin preservación validada de formantes ni retune completo |
 | 5. Mezcla/master de entrega | PARCIAL | WAV16/24, 44.1/48k, stems, limitador de pico de muestra, R128 orientativo y contraste con FFmpeg; sin certificación externa ni prueba auditiva |

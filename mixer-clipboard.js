@@ -10,10 +10,14 @@
  function ui(i){
   const count=Number($("copyCount"+i).value);
   if(!Number.isInteger(count)||count<0||count>maxCopies)throw Error("Número de copias inválido en canal "+(i+1));
-  return {copies:Array.from({length:count},(_,j)=>({
-   sourceIndex:Number($("copySource"+j+"_"+i).value),
-   offset:Number($("copyOffset"+j+"_"+i).value)
-  }))};
+  return {copies:Array.from({length:count},(_,j)=>{
+   const raw=$("copyDuration"+j+"_"+i).value;
+   return {
+    sourceIndex:Number($("copySource"+j+"_"+i).value),
+    offset:Number($("copyOffset"+j+"_"+i).value),
+    ...(raw==="0"?{}:{duration:Number(raw)})
+   };
+  })};
  }
  function validate(setting,i,base,hasSource){
   if(!setting||typeof setting!=="object"||Array.isArray(setting)||!Array.isArray(setting.copies)||
@@ -24,7 +28,11 @@
      !Number.isInteger(copy.sourceIndex)||copy.sourceIndex<0||copy.sourceIndex>=base.length||
      typeof copy.offset!=="number"||!Number.isFinite(copy.offset)||copy.offset<0||copy.offset>300)
     throw Error("Origen o posición de copia inválido en canal "+(i+1));
-   return {sourceIndex:copy.sourceIndex,offset:copy.offset};
+   if(copy.duration!==undefined&&(typeof copy.duration!=="number"||!Number.isFinite(copy.duration)||
+      copy.duration<.05||copy.duration>base[copy.sourceIndex].duration+.001))
+    throw Error("Duración de copia inválida en canal "+(i+1));
+   return {sourceIndex:copy.sourceIndex,offset:copy.offset,
+    ...(copy.duration===undefined?{}:{duration:copy.duration})};
   })};
  }
  function get(i,buffer){
@@ -35,7 +43,8 @@
   }));
   for(let j=0;j<s.copies.length;j++){
    const copy=s.copies[j],src=originals[copy.sourceIndex];
-   all.push({...src,offset:copy.offset,editField:"copyOffset"+j+"_"+i,copied:true});
+   all.push({...src,offset:copy.offset,duration:copy.duration??src.duration,
+    editField:"copyOffset"+j+"_"+i,copied:true});
   }
   return all.map((clip,index)=>({...clip,order:index})).sort((a,b)=>a.offset-b.offset||a.order-b.order);
  }
@@ -48,14 +57,19 @@
    count+" clip(s) pegado(s), independientes en tiempo y enlazados al audio original.":
    "Sin copias. Puedes copiar cualquier fragmento existente del archivo fuente.";
  }
- function paste(i,index,offset){
+ function paste(i,index,offset,duration){
   if(!tracks[i])throw Error("Importa audio primero");
   const base=baseSegments(i,tracks[i]),count=Number($("copyCount"+i).value);
   if(count>=maxCopies)throw Error("Máximo de 4 copias por pista");
   const snapped=window.gridSnapTime(offset);
-  validate({copies:[{sourceIndex:index,offset:snapped}]},i,base,true);
+  const source=base[index];
+  const full=source&&duration!==undefined&&Math.abs(duration-source.duration)<.0001;
+  const request={sourceIndex:index,offset:snapped,
+   ...(duration===undefined||full?{}:{duration})};
+  const clip=validate({copies:[request]},i,base,true).copies[0];
   $("copySource"+count+"_"+i).value=String(index);
   $("copyOffset"+count+"_"+i).value=String(snapped);
+  $("copyDuration"+count+"_"+i).value=String(clip.duration??0);
   $("copyCount"+i).value=String(count+1);
   $("copyCount"+i).dispatchEvent(new Event("change",{bubbles:true}));
   return "copyOffset"+count+"_"+i;
@@ -71,7 +85,7 @@
   if(index<0)throw Error("Origen del clip no disponible");
   const next=round(segment.offset+segment.duration);
   if(next>300)throw Error("La copia supera el límite de 300 s");
-  return paste(i,index,next);
+  return paste(i,index,next,segment.duration);
  }
  function removeTimelineCopy(i,field){
   const match=field.match(new RegExp("^copyOffset([0-3])_"+i+"$"));
@@ -81,9 +95,11 @@
   for(let j=index;j<count-1;j++){
    $("copySource"+j+"_"+i).value=$("copySource"+(j+1)+"_"+i).value;
    $("copyOffset"+j+"_"+i).value=$("copyOffset"+(j+1)+"_"+i).value;
+   $("copyDuration"+j+"_"+i).value=$("copyDuration"+(j+1)+"_"+i).value;
   }
   $("copySource"+(count-1)+"_"+i).value="0";
   $("copyOffset"+(count-1)+"_"+i).value="0";
+  $("copyDuration"+(count-1)+"_"+i).value="0";
   $("copyCount"+i).value=String(count-1);
   $("copyCount"+i).dispatchEvent(new Event("change",{bubbles:true}));
  }
@@ -113,7 +129,8 @@
   loaded.forEach((item,i)=>{
    if(!item.decoded||!crossfades[i].enabled)return;
    const base=sourceSegmentsForRestore(item,splits[i],i);
-   const all=[...base,...copies[i].copies.map(c=>({...base[c.sourceIndex],offset:c.offset}))];
+   const all=[...base,...copies[i].copies.map(c=>({...base[c.sourceIndex],offset:c.offset,
+    duration:c.duration??base[c.sourceIndex].duration}))];
    all.sort((a,b)=>a.offset-b.offset);
    window.validateCrossfadeSegments(crossfades[i],i,all);
   });
@@ -124,6 +141,7 @@
    const clip=s.copies[j]||{sourceIndex:0,offset:0};
    $("copySource"+j+"_"+i).value=String(clip.sourceIndex);
    $("copyOffset"+j+"_"+i).value=String(clip.offset);
+   $("copyDuration"+j+"_"+i).value=String(clip.duration??0);
   }
   update(i);
  });
@@ -131,6 +149,7 @@
   $("copyCount"+i).value="0";
   for(let j=0;j<maxCopies;j++){
    $("copySource"+j+"_"+i).value="0";$("copyOffset"+j+"_"+i).value="0";
+   $("copyDuration"+j+"_"+i).value="0";
   }
   update(i);
  };
@@ -150,12 +169,15 @@
     '<label>Copia '+(j+1)+' — segmento original <select id="copySource'+j+'_'+i+'">'+
     [0,1,2,3].map(k=>'<option value="'+k+'">'+(k+1)+'</option>').join("")+'</select></label>'+
     '<label for="copyOffset'+j+'_'+i+'">Inicio de copia '+(j+1)+' (segundos)</label>'+
-    '<input type="number" id="copyOffset'+j+'_'+i+'" min="0" max="300" step="0.01" value="0"></div>').join("")+
+    '<input type="number" id="copyOffset'+j+'_'+i+'" min="0" max="300" step="0.01" value="0">'+
+    '<label for="copyDuration'+j+'_'+i+'">Duración audible de copia '+(j+1)+' (s; 0 = completa)</label>'+
+    '<input type="number" id="copyDuration'+j+'_'+i+'" min="0" max="2400" step="0.0001" value="0"></div>').join("")+
    '<p id="copyStatus'+i+'">Sin copias.</p>'+
    '<small>Hasta 4 copias extra por pista; cada una reutiliza la fuente y sus efectos. Arrastra o usa flechas para moverlas en la línea de tiempo. Deshacer/Rehacer y sesiones guardan las posiciones. No se copian clips entre canales.</small>';
   document.querySelectorAll("article.track")[i].append(details);
   for(const id of ["copyCount"+i,...Array.from({length:maxCopies},(_,j)=>"copySource"+j+"_"+i),
-   ...Array.from({length:maxCopies},(_,j)=>"copyOffset"+j+"_"+i)]){
+   ...Array.from({length:maxCopies},(_,j)=>"copyOffset"+j+"_"+i),
+   ...Array.from({length:maxCopies},(_,j)=>"copyDuration"+j+"_"+i)]){
    $(id).addEventListener("change",()=>update(i));
   }
   $("copyPaste"+i).addEventListener("click",()=>{

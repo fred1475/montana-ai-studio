@@ -105,6 +105,29 @@ function rms(buf,from,to){
   const restored=await exportIt("#export","copy-paste-restored.wav");
   assert.equal(restored.length,mix.length);
   assert(frequency(restored,660,2.34,2.56)>.1);
+  // A pasted copy can now have its own audible length, while retaining
+  // the exact source bytes, through export, undo, portable snapshots, restore.
+  await page.locator("#copyDuration1_1").fill("0.15");
+  await page.locator("#copyDuration1_1").dispatchEvent("change");
+  assert.equal(await page.evaluate(()=>getTrackSegments(1,tracks[1])
+   .find(x=>x.editField==="copyOffset1_1").duration),.15);
+  await page.locator("#undoEdit").click();
+  assert.equal(await page.locator("#copyDuration1_1").inputValue(),"0");
+  await page.locator("#redoEdit").click();
+  assert.equal(await page.locator("#copyDuration1_1").inputValue(),"0.15");
+  const trimmed=await exportIt("#export","copy-paste-trimmed.wav");
+  assert(Math.abs((trimmed.length-44)/4/rate-2.4)<1/rate,
+   "Independent copy trim controls the exact exported song endpoint");
+  assert(frequency(trimmed,660,2.29,2.35)>.1,"Trimmed copy retains the original 660 Hz audio");
+  const snapshot=await page.evaluate(()=>createMixerSnapshot());
+  assert.equal(snapshot.tracks[1].clipCopies.copies[1].duration,.15);
+  await page.evaluate(s=>restoreMixerSnapshot(s),snapshot);
+  assert.equal(await page.locator("#copyDuration1_1").inputValue(),"0.15");
+  const restoredTrim=await exportIt("#export","copy-paste-restored-trim.wav");
+  assert.deepEqual(restoredTrim,trimmed,"Saved and restored copy trim renders byte-identically");
+  assert.deepEqual(Buffer.from(await page.evaluate(async()=>
+   new Uint8Array(await originalFiles[1].arrayBuffer()))),wave,"Trim never rewrites source");
+
   saved.tracks[1].clipCopies.copies[1].sourceIndex=15;
   const invalid=path.join(process.cwd(),"copied-clips-invalid.json");fs.writeFileSync(invalid,JSON.stringify(saved));
   await page.locator("#sessionFile").setInputFiles(invalid);
