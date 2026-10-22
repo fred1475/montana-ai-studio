@@ -90,6 +90,7 @@ on:
       - 'mixer-loudness.js'
       - 'tests/mixer-loudness-silence-cancel.cjs'
       - 'tests/mixer-meter-cancel-ui.cjs'
+      - 'tests/mixer-master-audit-cancel.cjs'
       - 'mixer-master-audit.js'
       - 'mixer-wav-export.js'
       - 'tests/mixer-wav-export.cjs'
@@ -225,6 +226,7 @@ jobs:
           node --check tests/mixer-meter-cancel-ui.cjs
           node tests/mixer-loudness-silence-cancel.cjs
           node --check mixer-master-audit.js
+          node tests/mixer-master-audit-cancel.cjs
           node --check mixer-wav-export.js
           node --check tests/mixer-wav-export.cjs
           node --check tests/mixer-wav-chunks.cjs

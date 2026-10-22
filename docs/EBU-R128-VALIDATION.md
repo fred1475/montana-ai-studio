@@ -47,6 +47,11 @@ opciones juntas, la descarga del WAV y la preservación de la fuente. Son
 **pruebas internas de
 rendimiento**, no una medición de tiempo garantizado en todos los equipos.
 
+La auditoría del PCM exportado también verifica la cancelación antes de leer el
+WAV, durante el recorrido de las muestras por bloques con cesión periódica al
+navegador y después de ejecutar el medidor. En cualquiera de esos casos no
+publica un JSON parcial. Regresión: `tests/mixer-master-audit-cancel.cjs`.
+
 ## Prueba independiente y criterios de aceptación
 
 El workflow de GitHub Actions ejecuta `tests/mixer-ebu-reference.cjs`, usando **FFmpeg `ebur128`** como implementación independiente. Los audios de prueba se generan matemáticamente dentro del test sin copiar ni incluir secuencias protegidas de terceros. Casos:

@@ -23,12 +23,15 @@
  async function analyzeWav(blob,measure,settings={}){
   if(!blob||typeof blob.arrayBuffer!=="function")throw Error("Se requiere un WAV exportado");
   if(typeof measure!=="function")throw Error("No hay motor de análisis");
+  const checkCancelled=()=>{if(settings.signal?.aborted)throw Error("Medición cancelada")};
+  checkCancelled();
   const maxAuditBytes=56*1024*1024;
   // Refuse oversized exports BEFORE reading the Blob into a contiguous buffer.
   // An oversized WAV may still be downloaded: only the optional audit is skipped.
   if(typeof blob.size==="number"&&(!Number.isSafeInteger(blob.size)||blob.size>maxAuditBytes))
    throw Error("La auditoría admite WAV de hasta 56 MiB; el archivo original aún puede descargarse");
   const buffer=await blob.arrayBuffer();
+  checkCancelled();
   if(buffer.byteLength<44||buffer.byteLength>maxAuditBytes)
    throw Error("La auditoría admite WAV de hasta 56 MiB; el archivo original aún puede descargarse");
   const bytes=new Uint8Array(buffer),view=new DataView(buffer);
@@ -54,6 +57,12 @@
   let peak=0,clippedSamples=0,energy=0;
   let sumLeft=0,sumRight=0,powerLeft=0,powerRight=0,cross=0,monoEnergy=0;
   for(let i=0;i<frames;i++){
+   // Permit UI cancellation during long PCM16/24 audits, before LUFS starts.
+   if((i&65535)===0){
+    checkCancelled();
+    if(settings.yieldToBrowser)await new Promise(resolve=>setTimeout(resolve,0));
+    checkCancelled();
+   }
    const v0=readSample(44+i*stride),v1=readSample(44+i*stride+bytesPerSample);
    left[i]=v0/divisor;right[i]=v1/divisor;
    peak=Math.max(peak,Math.abs(left[i]),Math.abs(right[i]));
@@ -90,6 +99,7 @@
   const loud=await measure(left,right,sampleRate,{
    yieldToBrowser:settings.yieldToBrowser===true,signal:settings.signal
   });
+  checkCancelled();
   const i=Number.isFinite(loud.integratedLufs)?loud.integratedLufs:null;
   const tp=Number.isFinite(loud.truePeakDbtp)?loud.truePeakDbtp:null;
   const delta=i===null?null:i+23;
