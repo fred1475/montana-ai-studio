@@ -37,8 +37,17 @@ const master = new Blob([bytes], { type: 'audio/wav' });
   }, { signal: afterward.signal }), /Medición cancelada/);
   assert.equal(forwarded, true, 'The audit must refuse a report cancelled during measurement');
 
-  const okay = await analyzeWav(master, dummyMeter, { yieldToBrowser: true });
+  const auditFractions = [];
+  const okay = await analyzeWav(master, async (...args) => {
+    const opts = args[3];
+    opts.onProgress(0); opts.onProgress(.5); opts.onProgress(1);
+    return dummyMeter();
+  }, { yieldToBrowser: true, onProgress: f => auditFractions.push(f) });
   assert.equal(okay.file.frames, frames);
   assert.equal(calls, 1);
-  console.log('PASS audit cancellation before PCM, during decode, after meter, and normal report.');
+  assert.equal(auditFractions[0], 0);
+  assert.equal(auditFractions.at(-1), 1);
+  assert(auditFractions.some(f => f >= .5 && f < 1), 'Nested LUFS progress is forwarded');
+  for (let i = 1; i < auditFractions.length; i++) assert(auditFractions[i] > auditFractions[i - 1]);
+  console.log('PASS audit cancellation and monotonic PCM/LUFS progress, normal report.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -265,7 +265,10 @@ $("export").onclick=async()=>{
   if($("loudnessOn").checked){
    $("loudnessResults").textContent="Analizando loudness y picos entre muestras...";
    try{
-    loudness=await runOptionalMeasurement(signal=>MontanaLoudness.measure(left,right,rate,{yieldToBrowser:true,signal}));
+    loudness=await runOptionalMeasurement(signal=>MontanaLoudness.measure(left,right,rate,{
+     yieldToBrowser:true,signal,
+     onProgress:fraction=>{$("loudnessResults").textContent="Analizando LUFS y picos entre muestras: "+Math.round(fraction*100)+" % · Puedes cancelar esta medición."}
+    }));
     const format=v=>Number.isFinite(v)?v.toFixed(1):"−∞";
     const lra=Number.isFinite(loudness.loudnessRangeLu)?format(loudness.loudnessRangeLu)+(loudness.lraStable?" LU":" LU, provisional"):"N/D";
     const delta=Number.isFinite(loudness.integratedLufs)?(loudness.integratedLufs+23).toFixed(1)+" LU":"N/D";
@@ -283,7 +286,8 @@ $("export").onclick=async()=>{
    $("auditStatus").textContent="Midiendo PCM exacto del master exportado...";
    try{
     const audit=await runOptionalMeasurement(signal=>MontanaMasterAudit.analyzeWav(blob,MontanaLoudness.measure,{
-      normalizationApplied:!!normalization,limiterApplied:!!limiter,ditherApplied:exportDither,yieldToBrowser:true,signal
+      normalizationApplied:!!normalization,limiterApplied:!!limiter,ditherApplied:exportDither,yieldToBrowser:true,signal,
+      onProgress:fraction=>{$("auditStatus").textContent="Auditando PCM exacto del WAV: "+Math.round(fraction*100)+" % · Puedes cancelar esta medición."}
     }));
     window.montanaLastAudit=audit;
     $("downloadAudit").disabled=false;

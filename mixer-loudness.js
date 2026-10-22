@@ -80,6 +80,16 @@
   if(n<win)throw Error("Se requieren por lo menos 400 ms para medir LUFS integrado");
   if(n>rate*300)throw Error("El análisis está limitado a cinco minutos");
   if(opts.signal?.aborted)throw Error("Medición cancelada");
+  let lastProgress=-1;
+  const progress=fraction=>{
+   if(fraction<=lastProgress)return;
+   lastProgress=fraction;
+   if(typeof opts.onProgress==="function"){
+    // Display callbacks are optional; UI errors must not corrupt DSP results.
+    try{opts.onProgress(fraction)}catch(_error){}
+   }
+  };
+  progress(0);
   const [shelf,hp]=coeff(rate);
   const leftShelf=biquad(shelf),rightShelf=biquad(shelf),leftHP=biquad(hp),rightHP=biquad(hp);
   const shortWin=Math.round(rate*3),shortRing=new Float64Array(shortWin),shortBlocks=[];
@@ -106,6 +116,7 @@
    if((i+1)%chunk===0){
     if(opts.signal?.aborted)throw Error("Medición cancelada");
     oversampled=intersamplePeak(left,right,i+1-chunk,i+1,oversampled);
+    progress((i+1)/n);
     if(opts.yieldToBrowser)await new Promise(resolve=>setTimeout(resolve,0));
     if(opts.signal?.aborted)throw Error("Medición cancelada");
    }
@@ -113,6 +124,7 @@
   const remainder=n%chunk;
   if(opts.signal?.aborted)throw Error("Medición cancelada");
   if(remainder)oversampled=intersamplePeak(left,right,n-remainder,n,oversampled);
+  progress(1);
   const abs=blocks.filter(e=>loud(e)>=-70);
   const shortAbs=shortBlocks.filter(e=>loud(e)>=-70);
   let loudnessRangeLu=null;

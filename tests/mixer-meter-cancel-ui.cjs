@@ -29,6 +29,7 @@ for (let i = 0; i < rate; i++) wav.writeInt16LE(Math.round(9000 * Math.sin(2 * M
       MontanaLoudness.measure = (_left, _right, _rate, options) => new Promise((_resolve, reject) => {
         if (!options?.signal) return reject(Error('Falta señal de cancelación'));
         window.__meterSignals++;
+        options.onProgress?.(.5);
         if (options.signal.aborted) return reject(Error('Medición cancelada'));
         options.signal.addEventListener('abort', () => reject(Error('Medición cancelada')), { once: true });
       });
@@ -38,6 +39,7 @@ for (let i = 0; i < rate; i++) wav.writeInt16LE(Math.round(9000 * Math.sin(2 * M
     await page.locator('#loudnessOn').check();
     await page.locator('#export').click();
     await page.waitForFunction(() => !document.querySelector('#cancelMeterAnalysis')?.disabled);
+    assert.match(await page.locator('#loudnessResults').innerText(), /50 %/);
     const wavDownload = page.waitForEvent('download');
     await page.locator('#cancelMeterAnalysis').click();
     assert.equal((await wavDownload).suggestedFilename(), 'montana-ai-studio-mezcla.wav');
@@ -50,6 +52,7 @@ for (let i = 0; i < rate; i++) wav.writeInt16LE(Math.round(9000 * Math.sin(2 * M
     await page.locator('#auditOn').check();
     await page.locator('#export').click();
     await page.waitForFunction(() => !document.querySelector('#cancelMeterAnalysis')?.disabled);
+    await page.waitForFunction(() => document.querySelector('#auditStatus')?.textContent?.includes('55 %'));
     const auditWav = page.waitForEvent('download');
     await page.locator('#cancelMeterAnalysis').click();
     assert.equal((await auditWav).suggestedFilename(), 'montana-ai-studio-mezcla.wav');

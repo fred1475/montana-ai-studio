@@ -11,6 +11,7 @@ Fecha de revisión: 2026-10-20. Repositorio `fred1475/montana-ai-studio`, rama p
 - WAV maestro PCM16, limitador de picos de muestra, normalización opcional, stems individuales/ZIP.
 - Medición orientativa LUFS integrado/M/S, LRA, true-peak estimado 4×, e informe JSON de auditoría con CRC32 del WAV exacto.
 - Cancelación manual de las mediciones LUFS/auditoría durante la exportación: omite el análisis restante y mantiene la descarga WAV. Regresión de interfaz con señal simulada en `tests/mixer-meter-cancel-ui.cjs`; no implica certificación EBU.
+- Progreso observable de los cálculos LUFS y auditoría de WAV PCM basado en bloques/etapas efectivamente procesados, con cancelación que no marca falsamente 100 %. No estima el tiempo restante ni sustituye las pruebas con canciones reales.
 - Sesiones JSON y recuperación local voluntaria IndexedDB, sin restauraciones automáticas.
 - **Preparado para revisión final del hardware:** `hardware-check.html` obtiene permisos, enumera dispositivos, captura prueba mono con AudioWorklet, analiza niveles digitales/saturación, exporta WAV/JSON.
 - El mezclador permite **seleccionar una entrada de audio** detectada para grabar, sin persistir los identificadores.

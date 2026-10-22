@@ -25,6 +25,15 @@
   if(typeof measure!=="function")throw Error("No hay motor de análisis");
   const checkCancelled=()=>{if(settings.signal?.aborted)throw Error("Medición cancelada")};
   checkCancelled();
+  let lastProgress=-1;
+  const progress=fraction=>{
+   if(fraction<=lastProgress)return;
+   lastProgress=fraction;
+   if(typeof settings.onProgress==="function"){
+    try{settings.onProgress(fraction)}catch(_error){}
+   }
+  };
+  progress(0);
   const maxAuditBytes=56*1024*1024;
   // Refuse oversized exports BEFORE reading the Blob into a contiguous buffer.
   // An oversized WAV may still be downloaded: only the optional audit is skipped.
@@ -60,6 +69,7 @@
    // Permit UI cancellation during long PCM16/24 audits, before LUFS starts.
    if((i&65535)===0){
     checkCancelled();
+    progress(frames ? .2*i/frames : 0);
     if(settings.yieldToBrowser)await new Promise(resolve=>setTimeout(resolve,0));
     checkCancelled();
    }
@@ -97,7 +107,8 @@
   const monoCancellation=rms>1e-8&&monoRms/rms<.5;
   const highDc=Math.max(Math.abs(meanLeft),Math.abs(meanRight))>=.01;
   const loud=await measure(left,right,sampleRate,{
-   yieldToBrowser:settings.yieldToBrowser===true,signal:settings.signal
+   yieldToBrowser:settings.yieldToBrowser===true,signal:settings.signal,
+   onProgress:fraction=>progress(.2+.7*fraction)
   });
   checkCancelled();
   const i=Number.isFinite(loud.integratedLufs)?loud.integratedLufs:null;
@@ -123,7 +134,7 @@
    {id:"lra_duration",label:"Estabilidad estadística de LRA",
     status:frames/sampleRate>=60?"sufficient-duration":"provisional"}
   ];
-  return {
+  const report={
    schema:"montana-r128-preflight",version:1,generatedAt:new Date().toISOString(),
    file:{name:"montana-ai-studio-mezcla.wav",sizeBytes:bytes.length,crc32:crc32(bytes).toString(16).padStart(8,"0"),
     crcAlgorithm:"CRC-32/ISO-HDLC",encoding:"PCM signed "+bits+"-bit little-endian",bitsPerSample:bits,channels:2,sampleRate,frames,durationSeconds:frames/sampleRate},
@@ -148,6 +159,10 @@
    reproducibility:"El CRC32 permite comprobar que este informe corresponde exactamente a los bytes del WAV descargado. No es una firma criptográfica.",
    reference:"EBU R128 / ITU BS.1770; tolerancias internas de verificación, no homologación."
   };
+  checkCancelled();
+  progress(1);
+  checkCancelled();
+  return report;
  }
  return {crc32,analyzeWav};
 });

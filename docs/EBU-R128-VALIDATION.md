@@ -52,6 +52,22 @@ WAV, durante el recorrido de las muestras por bloques con cesión periódica al
 navegador y después de ejecutar el medidor. En cualquiera de esos casos no
 publica un JSON parcial. Regresión: `tests/mixer-master-audit-cancel.cjs`.
 
+### Progreso visible y verificable del cálculo
+
+El motor LUFS acepta el callback opcional `onProgress(fracción)`; emite **0 al
+iniciar y 1 al finalizar correctamente**, con fracciones de 0 a 1 que avanzan
+solo después de procesar bloques PCM reales. La auditoría informa progreso
+por fases: 0–20 % lectura y diagnóstico PCM, 20–90 % medición LUFS/TP y el
+último tramo al construir el informe y asociar CRC32. Estos porcentajes
+representan trabajo procesado, **no segundos de tiempo restantes**; no hay
+estimación fiable de duración en equipos distintos. El mezclador los muestra
+durante el análisis y conserva el control de cancelación sin alterar el WAV.
+
+Una cancelación no comunica 100 % ni deja informe parcial. Fallas en el callback
+de presentación tampoco deben cambiar la lectura DSP. Pruebas:
+`tests/mixer-meter-progress.cjs`, `tests/mixer-master-audit-cancel.cjs` y
+`tests/mixer-meter-cancel-ui.cjs`.
+
 ## Prueba independiente y criterios de aceptación
 
 El workflow de GitHub Actions ejecuta `tests/mixer-ebu-reference.cjs`, usando **FFmpeg `ebur128`** como implementación independiente. Los audios de prueba se generan matemáticamente dentro del test sin copiar ni incluir secuencias protegidas de terceros. Casos:
