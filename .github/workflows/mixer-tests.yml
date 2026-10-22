@@ -150,6 +150,10 @@ on:
       - 'tests/pitch-blend.cjs'
       - 'tests/pitch-quality.cjs'
       - 'tests/mixer-pitch-quality-ui.cjs'
+      - 'time-lab.html'
+      - 'time-stretch.js'
+      - 'tests/time-stretch.cjs'
+      - 'tests/time-lab-ui.cjs'
       - 'pitch-lab.html'
       - 'pitch-engine.js'
       - 'pitch-melody.js'
@@ -365,6 +369,10 @@ jobs:
           node --check tests/mixer-sync.cjs
           node --check tests/mixer-track-names.cjs
           node --check tests/mixer-record.cjs
+          node --check time-stretch.js
+          node --check tests/time-stretch.cjs
+          node tests/time-stretch.cjs
+          node --check tests/time-lab-ui.cjs
           node --check pitch-engine.js
           node --check pitch-melody.js
           node --check tests/pitch-melody.cjs
@@ -457,6 +465,7 @@ jobs:
           node tests/mixer-vocal-stereo-browser.cjs
           node tests/mixer-vocal-preflight-ui.cjs
           node tests/pitch-ui.cjs
+          node tests/time-lab-ui.cjs
           node tests/pitch-unvoiced-browser.cjs
       - name: Package manual mixer preview
         run: |
@@ -464,7 +473,7 @@ jobs:
           cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
           cp docs/RELEASE-CHECKLIST.md mixer-preview/CHECKLIST-ANTES-DE-PUBLICAR.md
           cp docs/100-PERCENT-ACCEPTANCE.md mixer-preview/CRITERIOS-100-PORCIENTO.md
-          cp index.html hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session-integrity.js mixer-song-markers.js mixer-song-markers-ui.js mixer-section-plan.js mixer-section-preview-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-input-trim.js mixer-pan-automation.js mixer-pan-automation-ui.js mixer-pan-graph.js mixer-pan-graph-ui.js mixer-volume-automation.js mixer-volume-automation-ui.js mixer-volume-graph.js mixer-volume-graph-ui.js mixer-pitch.js pitch-quality.js pitch-blend.js pitch-level-match.js pitch-timbre-guard.js mixer-vocal-audit.js mixer-vocal-audit-ui.js mixer-vocal-ab.js mixer-vocal-ab-ui.js mixer-vocal-blind.js mixer-vocal-blind-ui.js pitch-lab.html beat-engine.js beat-archive.js beat-bridge.js mixer-beat-bridge.js beat-lab.html pitch-engine.js pitch-melody.js pitch-note-audit.js pitch-artifact-timeline.js studio.html studio.js backup.js mixer-preview/
+          cp index.html hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session-integrity.js mixer-song-markers.js mixer-song-markers-ui.js mixer-section-plan.js mixer-section-preview-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-input-trim.js mixer-pan-automation.js mixer-pan-automation-ui.js mixer-pan-graph.js mixer-pan-graph-ui.js mixer-volume-automation.js mixer-volume-automation-ui.js mixer-volume-graph.js mixer-volume-graph-ui.js mixer-pitch.js pitch-quality.js pitch-blend.js pitch-level-match.js pitch-timbre-guard.js mixer-vocal-audit.js mixer-vocal-audit-ui.js mixer-vocal-ab.js mixer-vocal-ab-ui.js mixer-vocal-blind.js mixer-vocal-blind-ui.js pitch-lab.html time-lab.html time-stretch.js beat-engine.js beat-archive.js beat-bridge.js mixer-beat-bridge.js beat-lab.html pitch-engine.js pitch-melody.js pitch-note-audit.js pitch-artifact-timeline.js studio.html studio.js backup.js mixer-preview/
           cp mixer-section-envelope.js mixer-preview/
           printf '%s\n' \
             'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \

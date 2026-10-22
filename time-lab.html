@@ -1,0 +1,108 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Montana AI Studio — Laboratorio de duración vocal</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui;background:#0b101a;color:#f4f7ff}*{box-sizing:border-box}body{max-width:820px;margin:auto;padding:20px;line-height:1.5}h1,a{color:#efc36e}.pane{background:#172132;border:1px solid #435067;border-radius:14px;padding:18px;margin:16px 0}label{display:block;margin:12px 0 5px}input,button{font:inherit}input[type=file],input[type=range]{width:100%}button{border:0;border-radius:8px;padding:11px 16px;font-weight:700;background:#efc36e;color:#22190b;margin:8px 6px 8px 0;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}p,small{color:#becee2}output{font-variant-numeric:tabular-nums}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #ffe09b;outline-offset:3px}
+</style></head><body>
+<a href="mixer-8.html">← Volver al mezclador</a>
+<h1>⏱️ Laboratorio de duración — experimental</h1>
+<p>Montana Music Production LLC</p>
+<p><strong>WSOLA offline:</strong> acorta o alarga un fragmento sin acelerar el reproductor. Mantiene aproximadamente la frecuencia fundamental y la tasa de muestreo; puede producir artefactos en consonantes, ataques, armonías y música compleja. <strong>No es todavía un time-stretch profesional ni está integrado en la línea de tiempo del mezclador.</strong></p>
+<section class="pane">
+<h2>1. Audio y relación temporal</h2>
+<label for="file">Voz o audio corto (mono/estéreo, 0.3–12 s, máx. 20 MB)</label>
+<input id="file" type="file" accept="audio/*,.wav">
+<label for="ratio">Duración resultante: <output id="ratioValue">100%</output></label>
+<input id="ratio" type="range" min="80" max="125" step="5" value="100">
+<small>80 % = más corto; 125 % = más largo. La afinación y los transitorios deben comprobarse escuchando. El original no se sobreescribe.</small>
+<div><button id="process" type="button">⏱️ Procesar duración</button></div>
+<p id="status" role="status" aria-live="polite">Selecciona un archivo para comenzar.</p>
+</section>
+<section class="pane">
+<h2>2. Comparación y salida</h2>
+<output id="results">Todavía no hay resultado.</output>
+<div><button id="original" disabled>▶ Original</button><button id="stretched" disabled>▶ Procesado</button><button id="stop">■ Detener</button></div>
+<button id="download" disabled>⬇ Descargar WAV PCM16</button>
+<small>Procesamiento local, sin subir audio. WAV PCM16 en la tasa de muestreo original. Este laboratorio no certifica calidad vocal, ausencia de microcortes ni conservación de formantes.</small>
+</section>
+<script src="time-stretch.js"></script><script>
+"use strict";
+const $=id=>document.getElementById(id);
+let input=null,output=null,ctx=null,playing=null,epoch=0;
+function stop(){epoch++;if(playing){try{playing.stop()}catch(e){}try{playing.disconnect()}catch(e){}playing=null}}
+function invalidate(){
+ stop();input=null;output=null;
+ $("original").disabled=$("stretched").disabled=$("download").disabled=true;
+ $("results").textContent="Sin resultado para estos ajustes.";
+}
+$("file").addEventListener("change",()=>{
+ invalidate();$("status").textContent=$("file").files?.[0]?"Archivo elegido. Listo para procesar.":"Selecciona un archivo.";
+});
+$("ratio").addEventListener("input",()=>{
+ $("ratioValue").textContent=$("ratio").value+"%";invalidate();
+ $("status").textContent="Cambió la duración: procesa de nuevo antes de exportar.";
+});
+$("stop").addEventListener("click",stop);
+async function play(data){
+ if(!data)return;stop();const token=epoch;
+ ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();
+ await ctx.resume();
+ if(token!==epoch)return;
+ const b=ctx.createBuffer(data.channels.length,data.channels[0].length,data.rate);
+ data.channels.forEach((c,i)=>b.copyToChannel(c,i));
+ const src=ctx.createBufferSource();src.buffer=b;src.connect(ctx.destination);
+ playing=src;src.onended=()=>{if(playing===src)playing=null};src.start();
+}
+$("original").addEventListener("click",()=>play(input).catch(e=>$("status").textContent=e.message));
+$("stretched").addEventListener("click",()=>play(output).catch(e=>$("status").textContent=e.message));
+$("process").addEventListener("click",async()=>{
+ const btn=$("process");btn.disabled=true;invalidate();
+ try{
+  const file=$("file").files?.[0];
+  if(!file)throw Error("Selecciona un archivo.");
+  if(file.size>20000000)throw Error("Archivo mayor de 20 MB.");
+  ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();
+  $("status").textContent="Decodificando y calculando la sincronía...";
+  const token=epoch;
+ const decoded=await ctx.decodeAudioData(await file.arrayBuffer());
+  if(token!==epoch)return;
+  const channels=Array.from({length:decoded.numberOfChannels},(_,i)=>decoded.getChannelData(i).slice());
+  const ratio=Number($("ratio").value)/100;
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  if(token!==epoch)return;
+  const processed=MontanaTimeStretch.stretch(channels,decoded.sampleRate,ratio);
+  input={channels,rate:decoded.sampleRate};
+  output={channels:processed.channels,rate:decoded.sampleRate};
+  $("original").disabled=$("stretched").disabled=$("download").disabled=false;
+  $("results").textContent="Fuente: "+(channels[0].length/decoded.sampleRate).toFixed(3)+
+   " s → salida: "+(processed.outputFrames/decoded.sampleRate).toFixed(3)+" s. "+
+   "Duración "+$("ratio").value+"%. Frecuencia de muestreo: "+decoded.sampleRate+
+   " Hz. El audio original permanece intacto.";
+  $("status").textContent="Audio procesado. Compara ambas versiones y escucha los artefactos antes de usarlo.";
+ }catch(e){$("results").textContent="Sin salida válida.";$("status").textContent="No se pudo procesar: "+e.message}
+ finally{btn.disabled=false}
+});
+function wav(data){
+ const channels=data.channels,rate=data.rate,n=channels[0].length,c=channels.length,size=44+n*c*2;
+ if(size>12000000)throw Error("Salida demasiado grande.");
+ const bytes=new ArrayBuffer(size),v=new DataView(bytes);
+ function str(pos,t){for(let i=0;i<t.length;i++)v.setUint8(pos+i,t.charCodeAt(i))}
+ str(0,"RIFF");v.setUint32(4,size-8,true);str(8,"WAVE");str(12,"fmt ");
+ v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,c,true);
+ v.setUint32(24,rate,true);v.setUint32(28,rate*c*2,true);
+ v.setUint16(32,c*2,true);v.setUint16(34,16,true);str(36,"data");v.setUint32(40,n*c*2,true);
+ for(let i=0;i<n;i++)for(let ch=0;ch<c;ch++){
+  const x=Math.max(-1,Math.min(1,channels[ch][i]));
+  v.setInt16(44+(i*c+ch)*2,Math.round(x<0?x*32768:x*32767),true);
+ }
+ return new Blob([bytes],{type:"audio/wav"});
+}
+$("download").addEventListener("click",()=>{
+ if(!output)return;
+ try{
+  const url=URL.createObjectURL(wav(output)),a=document.createElement("a");
+  a.href=url;a.download="montana-duracion-experimental.wav";
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+ }catch(e){$("status").textContent="No se descargó: "+e.message}
+});
+window.addEventListener("pagehide",()=>{stop();ctx?.close()});
+</script></body></html>

@@ -17,7 +17,7 @@ Estados: `APROBADA` (evidencia requerida completa), `BETA AUTOMÁTICA`
 | Puerta obligatoria | Estado a fecha de revisión | Evidencia actual / falta |
 |---|---|---|
 | 1. Mezclador de 8 pistas | BETA AUTOMÁTICA | Importación, fader, paneo, EQ, compresión, efectos, mute/solo y exportación en Chromium; falta sesión musical real y prueba de producción larga |
-| 2. Editor temporal | PARCIAL | Recorte, división, copias con duración audible independiente, edición de inicios por BPM sin cambiar el sonido, fundidos, snap y deshacer; faltan edición libre completa, automatización continua y time-stretch/warp con preservación de tono |
+| 2. Editor temporal | PARCIAL | Recorte, división, copias con duración audible independiente, edición de inicios por BPM sin cambiar el sonido, fundidos, snap y deshacer; laboratorio WSOLA aislado con cambio de duración y pruebas sintéticas; faltan integración de time-stretch/warp al mezclador, edición libre completa y automatización continua |
 | 3. Grabación y latencia | PARCIAL | MediaRecorder/PCM24 y pruebas de navegador simulado; calibración de interfaz/overdubs y latencia real pendientes |
 | 4. Voz: afinación y formantes | PARCIAL | PSOLA offline limitado y QA local PCM, fase, brillo y microcortes; sin preservación validada de formantes ni retune completo |
 | 5. Mezcla/master de entrega | PARCIAL | WAV16/24, 44.1/48k, stems, limitador de pico de muestra, R128 orientativo y contraste con FFmpeg; sin certificación externa ni prueba auditiva |
@@ -27,6 +27,20 @@ Estados: `APROBADA` (evidencia requerida completa), `BETA AUTOMÁTICA`
 | 9. Calidad, seguridad y compatibilidad | PARCIAL | Tests Chromium CI, archivos locales y diagnósticos; faltan Windows Edge/Chrome con interfaz real, pruebas de estrés prolongadas, accesibilidad y revisión de privacidad |
 | 10. Aceptación final física | PENDIENTE | Una sola sesión final con micrófono/interfaz del propietario: permisos, rutas, latencia, ruido, escucha, fases, over­dubs y estabilidad |
 | 11. Publicación | PENDIENTE | Todas las puertas aprobadas, revisión de licencia/términos, archivo de versión, respaldo y autorización explícita antes de merge |
+
+## Alcance del laboratorio temporal experimental
+El archivo `time-lab.html` y el motor `time-stretch.js` ensayan WSOLA offline
+en audio mono/estéreo de 0,3 a 12 s, a 8–96 kHz, con relación de duración
+0,80–1,25. El motor calcula un plan temporal compartido para ambos canales
+y deja las muestras de entrada intactas. Las pruebas automáticas deben medir
+duración, frecuencia fundamental de una señal sintética, fase estéreo,
+silencio, WAV exportado y controles de regeneración.
+
+**No** certifica conservación de formantes, naturalidad de voz humana,
+transitorios, calidad musical ni ausencia de artefactos; **no** retemporiza
+todavía la línea de tiempo ni las exportaciones multicanal del mezclador.
+Las pruebas auditivas sobre la interfaz del propietario siguen reservadas
+para la única validación física final.
 
 ## Orden de cierre para no repetir pruebas de usuario
 1. Continuar automatización y desarrollo de edición, grabación, voz, mezcla y creación.

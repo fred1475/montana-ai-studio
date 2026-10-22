@@ -5,7 +5,7 @@
  */
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 function scan(folder){
- const pages=['index.html','mixer-8.html','pitch-lab.html','beat-lab.html',
+ const pages=['index.html','mixer-8.html','pitch-lab.html','time-lab.html','beat-lab.html',
   'studio.html','hardware-check.html','hardware-loopback.html'];
  const failures=[],observed=new Set();
  for(const name of pages){
