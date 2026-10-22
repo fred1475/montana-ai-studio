@@ -58,7 +58,9 @@
  function selectClip(i,field){selected={track:i,field};refreshSelection()}
  function registerClip(node,i,field){
   node.dataset.editField=field;
+  node.addEventListener("pointerdown",()=>selectClip(i,field));
   node.addEventListener("focus",()=>selectClip(i,field));
+  node.addEventListener("keydown",()=>selectClip(i,field));
   node.addEventListener("click",()=>selectClip(i,field));
  }
  applyStart.addEventListener("click",()=>{
