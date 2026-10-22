@@ -48,8 +48,13 @@ function wav(){
   await page.locator('#alignMs1').fill('200');
   await page.locator('#alignMs1').dispatchEvent('change');
   await page.waitForFunction(()=>document.querySelector('#timeline [data-edit-field="offset1"]')?.getAttribute('aria-valuenow')==='0.45');
+  assert.deepEqual(await page.evaluate(()=>window.getTrackSegments(1,tracks[1]).map(s=>s.editField)),['offset1']);
   await page.locator('#timeline [data-edit-field="offset1"]').focus();
-  assert.match(await page.locator('#timelineSelectedStatus').textContent(),/Pista 2 · original/);
+  const selectionDiagnostic=await page.evaluate(()=>({active:document.activeElement?.dataset?.editField||document.activeElement?.id,
+   field:document.querySelector('#timeline [data-edit-field="offset1"]')?.dataset?.editField,
+   hasFocus:document.querySelector('#timeline [data-edit-field="offset1"]')===document.activeElement,
+   status:document.getElementById('timelineSelectedStatus').textContent}));
+  assert.match(await page.locator('#timelineSelectedStatus').textContent(),/Pista 2 · original/,JSON.stringify(selectionDiagnostic));
   await page.locator('#timelineDuplicate').click();
   assert.equal(await page.locator('#copyCount1').inputValue(),'1');
   assert.equal(await page.locator('#copySource0_1').inputValue(),'0');
