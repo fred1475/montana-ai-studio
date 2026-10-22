@@ -1,0 +1,29 @@
+name: Studio 2.0 AI music contract tests
+on:
+  pull_request:
+    paths:
+      - 'server/music-generation.js'
+      - 'tests/music-generation-contract.cjs'
+      - 'docs/AI-MUSIC-SERVER-CONTRACT.md'
+      - 'docs/100-PERCENT-ACCEPTANCE.md'
+      - '.github/workflows/music-generation-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-music-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate server-only contract syntax
+        run: |
+          node --check server/music-generation.js
+          node --check tests/music-generation-contract.cjs
+      - name: Test safe access, idempotency, quotas and failure behavior
+        run: node --test tests/music-generation-contract.cjs
