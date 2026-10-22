@@ -99,7 +99,11 @@ function wav(){
   await page.locator('#timelineApplyStart').click();
   assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.1234','Exact editor keeps 0.1 ms precision with musical grid enabled');
   assert.equal(await page.locator('#timelineSelectedStart').inputValue(),'0.1234','Exact editor presents source precision without rounding it away');
-  await page.locator('#timeline [data-edit-field="copyOffset1_1"]').click();
+  // The original overlaps the copied clip's center. Keyboard focus must
+  // select that underlying clip even when pointer hit-testing cannot.
+  await page.locator('#timeline [data-edit-field="copyOffset1_1"]').focus();
+  assert.match(await page.locator('#timelineSelectedStatus').textContent(),/Pista 2 · copia/);
+  assert.equal(await page.locator('#timelineSelectedStart').inputValue(),'1.2');
   await page.locator('#timelineRippleAmount').fill('0.35');
   await page.locator('#timelineRippleMove').click();
   assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.1234','Ripple keeps earlier copies untouched');
