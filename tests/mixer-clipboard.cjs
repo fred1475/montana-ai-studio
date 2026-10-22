@@ -107,6 +107,7 @@ function rms(buf,from,to){
   assert(frequency(restored,660,2.34,2.56)>.1);
   // A pasted copy can now have its own audible length, while retaining
   // the exact source bytes, through export, undo, portable snapshots, restore.
+  await page.locator("#copyDetails1 summary").click();
   await page.locator("#copyDuration1_1").fill("0.15");
   await page.locator("#copyDuration1_1").dispatchEvent("change");
   assert.equal(await page.evaluate(()=>getTrackSegments(1,tracks[1])
