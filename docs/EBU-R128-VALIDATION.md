@@ -32,12 +32,19 @@ mantiene el cálculo completo. Se conserva el pico de muestra y se mantiene el
 mismo tratamiento K-weighting y compuertas LUFS/LRA.
 
 También se admite una señal de cancelación opcional (`opts.signal`, compatible
-con `AbortController`) entre bloques de cálculo; el exportador todavía no
-ofrece un botón de cancelación. La cancelación no altera el WAV original.
+con `AbortController`) entre bloques de cálculo. El exportador muestra
+**«Cancelar medición (el WAV se descargará)»** durante el cálculo opcional
+de LUFS o de auditoría del master. Pulsarlo detiene el cálculo en el siguiente
+punto de comprobación y omite las mediciones opcionales restantes de esa
+exportación, pero **no cancela ni elimina la descarga del WAV**. El informe
+JSON no se ofrece si su análisis quedó cancelado; las fuentes no se modifican.
 `tests/mixer-loudness-silence-cancel.cjs` comprueba un audio sintético de 120
 segundos con 108 segundos de silencio, igualdad de true-peak frente a la señal
 sin cola, comportamiento de la compuerta, transitorio en un límite de bloque,
-y cancelación anterior y durante el cálculo. Es una **prueba interna de
+y cancelación anterior y durante el cálculo. `tests/mixer-meter-cancel-ui.cjs`
+comprueba en Chromium la cancelación del medidor, de la auditoría y de ambas
+opciones juntas, la descarga del WAV y la preservación de la fuente. Son
+**pruebas internas de
 rendimiento**, no una medición de tiempo garantizado en todos los equipos.
 
 ## Prueba independiente y criterios de aceptación

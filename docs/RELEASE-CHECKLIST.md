@@ -10,6 +10,7 @@ Fecha de revisión: 2026-10-20. Repositorio `fred1475/montana-ai-studio`, rama p
 - Herramientas vocales optativas de puerta de ruido/de-esser y afinación monofónica **experimental y limitada**, preservando fuente original.
 - WAV maestro PCM16, limitador de picos de muestra, normalización opcional, stems individuales/ZIP.
 - Medición orientativa LUFS integrado/M/S, LRA, true-peak estimado 4×, e informe JSON de auditoría con CRC32 del WAV exacto.
+- Cancelación manual de las mediciones LUFS/auditoría durante la exportación: omite el análisis restante y mantiene la descarga WAV. Regresión de interfaz con señal simulada en `tests/mixer-meter-cancel-ui.cjs`; no implica certificación EBU.
 - Sesiones JSON y recuperación local voluntaria IndexedDB, sin restauraciones automáticas.
 - **Preparado para revisión final del hardware:** `hardware-check.html` obtiene permisos, enumera dispositivos, captura prueba mono con AudioWorklet, analiza niveles digitales/saturación, exporta WAV/JSON.
 - El mezclador permite **seleccionar una entrada de audio** detectada para grabar, sin persistir los identificadores.

@@ -87,7 +87,9 @@
   const sideImbalance=stronger>1e-5&&(weaker/stronger)<.1;
   const monoCancellation=rms>1e-8&&monoRms/rms<.5;
   const highDc=Math.max(Math.abs(meanLeft),Math.abs(meanRight))>=.01;
-  const loud=await measure(left,right,sampleRate,settings.yieldToBrowser?{yieldToBrowser:true}:{});
+  const loud=await measure(left,right,sampleRate,{
+   yieldToBrowser:settings.yieldToBrowser===true,signal:settings.signal
+  });
   const i=Number.isFinite(loud.integratedLufs)?loud.integratedLufs:null;
   const tp=Number.isFinite(loud.truePeakDbtp)?loud.truePeakDbtp:null;
   const delta=i===null?null:i+23;

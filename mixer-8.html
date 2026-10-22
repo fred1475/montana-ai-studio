@@ -211,8 +211,22 @@ $("play").onclick=async()=>{
  }
 };
 function wav(a,b,rate){return MontanaWavExport.encode(a,b,rate)}
+// Cancel only optional measurement, not rendering or downloading the WAV.
+let activeMeterController=null;
+let cancelMeterForExport=false;
+const cancelMeterButton=document.createElement("button");
+cancelMeterButton.id="cancelMeterAnalysis";cancelMeterButton.type="button";
+cancelMeterButton.textContent="Cancelar medición (el WAV se descargará)";
+cancelMeterButton.disabled=true;
+$("loudnessResults").after(cancelMeterButton);
+cancelMeterButton.onclick=()=>{if(activeMeterController){cancelMeterForExport=true;activeMeterController.abort();cancelMeterButton.disabled=true}};
+async function runOptionalMeasurement(task){
+ const controller=new AbortController();activeMeterController=controller;cancelMeterButton.disabled=false;
+ try{return await task(controller.signal)}
+ finally{if(activeMeterController===controller){activeMeterController=null;cancelMeterButton.disabled=true}}
+}
 $("export").onclick=async()=>{
- const btn=$("export");btn.disabled=true;window.montanaLastAudit=null;$("downloadAudit").disabled=true;$("auditStatus").textContent="Informe pendiente de nueva exportación.";
+ const btn=$("export");btn.disabled=true;cancelMeterForExport=false;window.montanaLastAudit=null;$("downloadAudit").disabled=true;$("auditStatus").textContent="Informe pendiente de nueva exportación.";
  try{
   if(!tracks.some(Boolean))throw Error("Primero importa audio");
   report("Planificando mezcla WAV...");const rate=Number($("wavSampleRate").value),clipSets=tracks.map((b,i)=>b?window.getTrackSegments(i,b):[]),crossfadePlans=clipSets.map((seg,i)=>window.prepareCrossfadePlan(i,seg)),frames=Math.ceil(Math.max(0,...clipSets.flatMap((items,i)=>items.map(t=>t.offset+t.duration+effectTail(i))))*rate);
@@ -251,7 +265,7 @@ $("export").onclick=async()=>{
   if($("loudnessOn").checked){
    $("loudnessResults").textContent="Analizando loudness y picos entre muestras...";
    try{
-    loudness=await MontanaLoudness.measure(left,right,rate,{yieldToBrowser:true});
+    loudness=await runOptionalMeasurement(signal=>MontanaLoudness.measure(left,right,rate,{yieldToBrowser:true,signal}));
     const format=v=>Number.isFinite(v)?v.toFixed(1):"−∞";
     const lra=Number.isFinite(loudness.loudnessRangeLu)?format(loudness.loudnessRangeLu)+(loudness.lraStable?" LU":" LU, provisional"):"N/D";
     const delta=Number.isFinite(loudness.integratedLufs)?(loudness.integratedLufs+23).toFixed(1)+" LU":"N/D";
@@ -265,12 +279,12 @@ $("export").onclick=async()=>{
   }else $("loudnessResults").textContent="Análisis desactivado. No se modificó el audio.";
   const exportBits=Number($("wavBits").value),exportDither=exportBits===16&&$("ditherOn").checked;
   const blob=MontanaWavExport.encode(left,right,rate,{bits:exportBits,dither:exportDither});
-  if($("auditOn").checked){
+  if($("auditOn").checked&&!cancelMeterForExport){
    $("auditStatus").textContent="Midiendo PCM exacto del master exportado...";
    try{
-    const audit=await MontanaMasterAudit.analyzeWav(blob,MontanaLoudness.measure,{
-      normalizationApplied:!!normalization,limiterApplied:!!limiter,ditherApplied:exportDither,yieldToBrowser:true
-    });
+    const audit=await runOptionalMeasurement(signal=>MontanaMasterAudit.analyzeWav(blob,MontanaLoudness.measure,{
+      normalizationApplied:!!normalization,limiterApplied:!!limiter,ditherApplied:exportDither,yieldToBrowser:true,signal
+    }));
     window.montanaLastAudit=audit;
     $("downloadAudit").disabled=false;
     const m=audit.metrics,metric=v=>v===null?"N/D":v.toFixed(2);
@@ -285,7 +299,7 @@ $("export").onclick=async()=>{
    }catch(e){
     $("auditStatus").textContent="No se generó el informe: "+e.message+". El WAV aún se puede descargar.";
    }
-  }else $("auditStatus").textContent="Auditoría desactivada. Solo se descarga el WAV.";
+  }else $("auditStatus").textContent=cancelMeterForExport?"Auditoría omitida por cancelación. El WAV se descarga sin informe.":"Auditoría desactivada. Solo se descarga el WAV.";
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-ai-studio-mezcla.wav";
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   const measured=MontanaExportLevels.analyze(left,right);

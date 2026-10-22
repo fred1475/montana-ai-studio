@@ -89,6 +89,7 @@ on:
       - 'tests/mixer-eight-track-stress.cjs'
       - 'mixer-loudness.js'
       - 'tests/mixer-loudness-silence-cancel.cjs'
+      - 'tests/mixer-meter-cancel-ui.cjs'
       - 'mixer-master-audit.js'
       - 'mixer-wav-export.js'
       - 'tests/mixer-wav-export.cjs'
@@ -221,6 +222,7 @@ jobs:
           node tests/mixer-export-preflight.cjs
           node --check mixer-loudness.js
           node --check tests/mixer-loudness-silence-cancel.cjs
+          node --check tests/mixer-meter-cancel-ui.cjs
           node tests/mixer-loudness-silence-cancel.cjs
           node --check mixer-master-audit.js
           node --check mixer-wav-export.js
@@ -424,6 +426,7 @@ jobs:
           node tests/mixer-recovery.cjs
           node tests/mixer-session-integrity-ui.cjs
           node tests/mixer-song-markers-ui.cjs
+          node tests/mixer-meter-cancel-ui.cjs
           node tests/mixer-section-preview-ui.cjs
           node tests/mixer-timeline-zoom.cjs
           node tests/mixer-keyboard-access.cjs
