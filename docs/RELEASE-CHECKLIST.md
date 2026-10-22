@@ -123,6 +123,19 @@ La prueba sintética `tests/mixer-pcm-record.cjs` valida RIFF mono PCM24, cuanti
 
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
+### Medición R128: pausa de CPU para silencios exactos
+
+El estimador de pico verdadero 4× ahora reconoce ventanas de 40 muestras de
+**silencio digital absoluto** y omite sus convoluciones sin suprimir señales
+tenues. `mixer-loudness.js` admite además una señal de cancelación durante
+las mediciones largas (aún sin botón propio en la UI). La nueva regresión
+`tests/mixer-loudness-silence-cancel.cjs` cubre cola de silencio de 108 s,
+comparación del pico, compuerta integrada, transición entre bloques y
+cancelación. `tests/mixer-ebu-reference.cjs` y `tests/mixer-ebu-multirate.cjs`
+siguen contrastando las lecturas con FFmpeg. Se trata de optimización y
+seguridad operacional, no una nueva certificación EBU ni una garantía de
+tiempos de análisis en hardware real.
+
 ### Acceso por teclado — mejora de navegación del mezclador
 
 Se ha preparado una mejora de accesibilidad para el mezclador de ocho pistas:

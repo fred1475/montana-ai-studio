@@ -21,6 +21,25 @@ Archivo `mixer-loudness.js`, usando solamente JavaScript local:
 
 Todos los cálculos usan PCM interno float; el proceso es opcional y no afecta la mezcla exportada ni modifica sus originales.
 
+### Rendimiento con silencios digitales largos y cancelación voluntaria
+
+`mixer-loudness.js` evita las multiplicaciones de interpolación 4× cuando la
+ventana completa de 40 coeficientes contiene **ceros digitales exactos**. Un
+contador deslizante conserva el contexto entre bloques de análisis, incluso
+cuando un transitorio cae justo en el límite de dos bloques. No se establece
+ningún umbral que omita audio tenue: cualquier muestra distinta de cero
+mantiene el cálculo completo. Se conserva el pico de muestra y se mantiene el
+mismo tratamiento K-weighting y compuertas LUFS/LRA.
+
+También se admite una señal de cancelación opcional (`opts.signal`, compatible
+con `AbortController`) entre bloques de cálculo; el exportador todavía no
+ofrece un botón de cancelación. La cancelación no altera el WAV original.
+`tests/mixer-loudness-silence-cancel.cjs` comprueba un audio sintético de 120
+segundos con 108 segundos de silencio, igualdad de true-peak frente a la señal
+sin cola, comportamiento de la compuerta, transitorio en un límite de bloque,
+y cancelación anterior y durante el cálculo. Es una **prueba interna de
+rendimiento**, no una medición de tiempo garantizado en todos los equipos.
+
 ## Prueba independiente y criterios de aceptación
 
 El workflow de GitHub Actions ejecuta `tests/mixer-ebu-reference.cjs`, usando **FFmpeg `ebur128`** como implementación independiente. Los audios de prueba se generan matemáticamente dentro del test sin copiar ni incluir secuencias protegidas de terceros. Casos:

@@ -46,17 +46,29 @@
  function intersamplePeak(left,right,start,end,basePeak=0){
   let peak=basePeak;
   const buffers=[left,right],n=left.length;
-  for(let i=start;i<end;i++){
-   for(const channel of buffers){
+  for(const channel of buffers){
+   // All 40 interpolation taps are zero in a fully silent window. Keep an
+   // exact sliding nonzero count so long digital gaps take O(n), not 240*n
+   // multiply-adds. No thresholding: even tiny nonzero audio is analyzed.
+   let active=0;
+   for(let j=Math.max(0,start-19);j<Math.min(n,start+21);j++){
+    if(channel[j]!==0)active++;
+   }
+   for(let i=start;i<end;i++){
     peak=Math.max(peak,Math.abs(channel[i]));
-    for(let phase=0;phase<3;phase++){
-     const h=kernel[phase];let y=0;
-     for(let k=0;k<40;k++){
-      const idx=i+k-19;
-      if(idx>=0&&idx<n)y+=channel[idx]*h[k];
+    if(active){
+     for(let phase=0;phase<3;phase++){
+      const h=kernel[phase];let y=0;
+      for(let k=0;k<40;k++){
+       const idx=i+k-19;
+       if(idx>=0&&idx<n)y+=channel[idx]*h[k];
+      }
+      peak=Math.max(peak,Math.abs(y));
      }
-     peak=Math.max(peak,Math.abs(y));
     }
+    const departing=i-19,arriving=i+21;
+    if(departing>=0&&departing<n&&channel[departing]!==0)active--;
+    if(arriving<n&&channel[arriving]!==0)active++;
    }
   }
   return peak;
@@ -67,6 +79,7 @@
   const n=left.length,win=Math.round(rate*.4),hop=Math.round(rate*.1);
   if(n<win)throw Error("Se requieren por lo menos 400 ms para medir LUFS integrado");
   if(n>rate*300)throw Error("El análisis está limitado a cinco minutos");
+  if(opts.signal?.aborted)throw Error("Medición cancelada");
   const [shelf,hp]=coeff(rate);
   const leftShelf=biquad(shelf),rightShelf=biquad(shelf),leftHP=biquad(hp),rightHP=biquad(hp);
   const shortWin=Math.round(rate*3),shortRing=new Float64Array(shortWin),shortBlocks=[];
@@ -91,11 +104,14 @@
     shortBlocks.push(power);shortTermLufs=loud(power);maxShortTermLufs=Math.max(maxShortTermLufs,shortTermLufs);
    }
    if((i+1)%chunk===0){
+    if(opts.signal?.aborted)throw Error("Medición cancelada");
     oversampled=intersamplePeak(left,right,i+1-chunk,i+1,oversampled);
     if(opts.yieldToBrowser)await new Promise(resolve=>setTimeout(resolve,0));
+    if(opts.signal?.aborted)throw Error("Medición cancelada");
    }
   }
   const remainder=n%chunk;
+  if(opts.signal?.aborted)throw Error("Medición cancelada");
   if(remainder)oversampled=intersamplePeak(left,right,n-remainder,n,oversampled);
   const abs=blocks.filter(e=>loud(e)>=-70);
   const shortAbs=shortBlocks.filter(e=>loud(e)>=-70);
