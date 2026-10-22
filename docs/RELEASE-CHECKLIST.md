@@ -123,6 +123,19 @@ La prueba sintética `tests/mixer-pcm-record.cjs` valida RIFF mono PCM24, cuanti
 
 ## 2. Bloqueos de lanzamiento profesional pendientes
 
+### Acceso por teclado — mejora de navegación del mezclador
+
+Se ha preparado una mejora de accesibilidad para el mezclador de ocho pistas:
+enlace «Saltar a los controles de las ocho pistas» visible al recibir foco,
+destino programáticamente enfocable y contorno de alto contraste para botones,
+enlaces, campos, menús, resúmenes y controles interactivos. La regresión
+`tests/mixer-keyboard-access.cjs` verifica en Chromium el primer Tab, el enlace
+de salto, el foco visible, etiquetas de controles esenciales, y las acciones
+nativas de teclado para mute y el panel de compresión. **No es una auditoría
+WCAG completa**; se deben comprobar lectores de pantalla, secuencias completas
+de tabulación, contraste y navegación con hardware/tecnologías de asistencia
+antes del lanzamiento.
+
 Estos requisitos **NO están completados** y no se deduce su cumplimiento de una suite verde:
 
 - **Afinación vocal profesional:** algoritmo probado solo en fragmentos breves; faltan preservar y validar formantes, vibrato, fraseo largo y artefactos con voces reales y un comparador perceptual.

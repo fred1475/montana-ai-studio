@@ -159,6 +159,7 @@ on:
       - 'tests/pitch-ui.cjs'
       - 'mixer-timeline.js'
       - 'tests/mixer-timeline-zoom.cjs'
+      - 'tests/mixer-keyboard-access.cjs'
       - 'tests/mixer-transport-race.cjs'
       - 'mixer-history.js'
       - 'mixer-metronome.js'
@@ -372,6 +373,7 @@ jobs:
           node tests/pitch-engine.cjs
           node --check mixer-timeline.js
           node --check tests/mixer-timeline-zoom.cjs
+          node --check tests/mixer-keyboard-access.cjs
           node --check tests/mixer-transport-race.cjs
           node --check mixer-history.js
           node --check mixer-metronome.js
@@ -421,6 +423,7 @@ jobs:
           node tests/mixer-song-markers-ui.cjs
           node tests/mixer-section-preview-ui.cjs
           node tests/mixer-timeline-zoom.cjs
+          node tests/mixer-keyboard-access.cjs
           node tests/mixer-transport-race.cjs
           node tests/mixer-export-levels.cjs
           node tests/mixer-export-preflight-ui.cjs
