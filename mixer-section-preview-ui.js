@@ -17,9 +17,10 @@
  const status=document.createElement("p");status.id="sectionStatus";status.setAttribute("role","status");
  halt.disabled=true;listen.disabled=true;
  host.append(title,help,from,to,listen,halt,status);
- let playing=null,nonce=0;
+ let playing=null,nonce=0,stopTimer=null;
  function haltPreview(){
   nonce++;
+  if(stopTimer!==null){clearTimeout(stopTimer);stopTimer=null}
   if(playing){
    for(const src of playing.sources){try{src.stop()}catch(_){}try{src.disconnect()}catch(_){}}
    if(playing.master){try{playing.master.disconnect()}catch(_){}}
@@ -27,9 +28,13 @@
   }
   halt.disabled=true;
  }
- window.stopSectionPreview=()=>{if(playing)haltPreview();};
+ window.stopSectionPreview=()=>{
+  const active=!!playing||!halt.disabled;
+  haltPreview(); // Also invalidate any AudioContext.resume() still pending.
+  if(active)status.textContent="Sección detenida desde el transporte principal.";
+ };
  function refresh(){
-  if(playing)haltPreview(); // Never keep auditioning a stale marker pair.
+  if(playing||!halt.disabled)haltPreview(); // Includes a pending device resume.
   const list=window.montanaMarkerState();
   const wasFrom=from.value,wasTo=to.value;
   from.replaceChildren();to.replaceChildren();
@@ -63,7 +68,7 @@
   }
  }
  listen.addEventListener("click",async()=>{
-  const id=++nonce;
+  let token=null;
   try{
    const markers=window.montanaMarkerState(),a=markers[Number(from.value)],b=markers[Number(to.value)];
    if(!a||!b)throw Error("Elige inicio y fin válidos");
@@ -77,7 +82,9 @@
    const buffers=tracks.map((buffer,i)=>buffer?window.getMixBuffer(i):null);
    if(!plan.regions)throw Error("No hay fragmentos audibles en esta sección");
    stop();haltPreview();
-   const token=nonce;
+   token=nonce;
+   halt.disabled=false;
+   status.textContent="Preparando preescucha; puedes detenerla mientras se activa el audio.";
    const ac=audio();await ac.resume();
    if(token!==nonce)return;
    const at=ac.currentTime+.06,master=ac.createGain(),sources=[];
@@ -121,15 +128,18 @@
     " — "+plan.regions+" fragmento(s). Escucha de referencia, no mezcla master.";
    // A UI timeout stops residual effect tails and avoids leaving an output
    // connected after this exact bounded preview.
-   setTimeout(()=>{
+   stopTimer=setTimeout(()=>{
     if(nonce!==token||playing!==built)return;
+    stopTimer=null;
     haltPreview();
     status.textContent="Preescucha terminada. Los WAV originales siguen intactos.";
    },Math.ceil((selected.duration+.13)*1000));
   }catch(e){
-   if(id===nonce||!playing)status.textContent="No se inició la sección: "+e.message;
-   halt.disabled=false;
-   if(!playing)halt.disabled=true;
+   if(token===null){status.textContent="No se inició la sección: "+e.message;}
+   else if(token===nonce){
+    haltPreview();
+    status.textContent="No se inició la sección: "+e.message;
+   }
   }
  });
  halt.addEventListener("click",()=>{

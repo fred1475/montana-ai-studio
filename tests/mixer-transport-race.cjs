@@ -74,6 +74,48 @@ function tone(){
   assert((await page.locator('#status').innerText()).includes('reproduciéndose'));
   await page.locator('#stop').click();
   assert.deepEqual(await page.evaluate(()=>[players.length,activeOutputs.length]),[0,0]);
+
+  // Section previews have their own source graph, and also await resume().
+  await page.locator('#markerName').fill('Inicio');
+  await page.locator('#markerSeconds').fill('0.2');
+  await page.locator('#markerAdd').click();
+  await page.locator('#markerName').fill('Final');
+  await page.locator('#markerSeconds').fill('0.8');
+  await page.locator('#markerAdd').click();
+  await page.evaluate(()=>{
+   window.__sectionStarts=0;
+   window.__nativeSourceStart=AudioBufferSourceNode.prototype.start;
+   AudioBufferSourceNode.prototype.start=function(){
+    window.__sectionStarts++;
+    return window.__nativeSourceStart.apply(this,arguments);
+   };
+   ctx.resume=()=>new Promise((resolve,reject)=>window.__pendingResumes.push({resolve,reject}));
+  });
+  await page.locator('#sectionListen').click();
+  assert((await page.locator('#sectionStatus').innerText()).includes('Preparando'));
+  assert.equal(await page.locator('#sectionHalt').isDisabled(),false,
+   'Section can be cancelled before the audio device is ready');
+  await page.locator('#stop').click();
+  await page.evaluate(()=>window.__pendingResumes.at(-1).resolve());
+  await page.waitForTimeout(25);
+  assert.equal(await page.evaluate(()=>window.__sectionStarts),0,
+   'Global Stop must prevent a pending section from scheduling a source');
+  assert.equal(await page.locator('#sectionHalt').isDisabled(),true);
+  assert((await page.locator('#sectionStatus').innerText()).includes('detenida'));
+
+  await page.locator('#sectionListen').click();
+  await page.locator('#sectionHalt').click();
+  await page.evaluate(()=>window.__pendingResumes.at(-1).resolve());
+  await page.waitForTimeout(25);
+  assert.equal(await page.evaluate(()=>window.__sectionStarts),0,
+   'Local Stop must also invalidate a pending section');
+
+  await page.evaluate(()=>{ctx.resume=window.__realResume});
+  await page.locator('#sectionListen').click();
+  await page.waitForFunction(()=>document.querySelector('#sectionStatus')?.textContent?.includes('Reproduciendo'));
+  assert.equal(await page.evaluate(()=>window.__sectionStarts),1,'A valid section plays once');
+  await page.locator('#sectionHalt').click();
+  assert.equal(await page.locator('#sectionHalt').isDisabled(),true);
   assert.deepEqual(errors,[]);
   console.log('PASS transport: stop/resume cancellation, latest-play wins, error cleanup and normal playback.');
  }finally{await browser.close()}

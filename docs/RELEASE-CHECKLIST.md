@@ -319,6 +319,8 @@ Pruebas `tests/mixer-section-plan.cjs`: intervalos, validaciones, loops cruzando
 
 El botón **Detener** invalida ahora cualquier `AudioContext.resume()` que todavía esté pendiente. Dos pulsaciones rápidas de Reproducir no pueden generar dos grafos maestros: solo gana la última solicitud. Al detener, también se cancela el temporizador de liberación de efectos, y si falla la creación posterior de la reproducción se desconectan los nodos y fuentes ya iniciadas. Esta protección afecta únicamente a la escucha del mezclador; **no toca originales, marcadores, WAV de exportación ni sesiones**. `tests/mixer-transport-race.cjs` cubre reanudaciones retardadas, respuestas fuera de orden, rechazo de dispositivo, fallo de metrónomo y reproducción normal en Chromium. Sigue pendiente la prueba física final con interfaz real.
 
+La misma cancelación se extiende a **«Escuchar sección entre marcadores»**: pulsar Detener, detener la sección o editar los marcadores mientras el `AudioContext` se activa impide que empiece una reproducción tardía; el botón local de parada también funciona durante la preparación. El ensayo y el reloj maestro no se mezclan. La regresión cubre el camino pendiente de reanudación y un ensayo válido después de cancelar; no constituye validación auditiva de hardware.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.
