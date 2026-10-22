@@ -321,6 +321,10 @@ El botón **Detener** invalida ahora cualquier `AudioContext.resume()` que todav
 
 La misma cancelación se extiende a **«Escuchar sección entre marcadores»**: pulsar Detener, detener la sección o editar los marcadores mientras el `AudioContext` se activa impide que empiece una reproducción tardía; el botón local de parada también funciona durante la preparación. El ensayo y el reloj maestro no se mezclan. La regresión cubre el camino pendiente de reanudación y un ensayo válido después de cancelar; no constituye validación auditiva de hardware.
 
+### Transporte seguro de Beat Lab
+
+En `beat-lab.html`, un identificador de sesión invalida cualquier `AudioContext.resume()` que permanezca pendiente al pulsar Detener, cambiar golpes/BPM/preset o solicitar una nueva reproducción. Se cancela el temporizador de finalización anterior, se cierran los contextos de audio desplazados y un error de activación no interrumpe un patrón más reciente. **No altera** la secuencia guardada, los MIDI, los stems ni el motor de síntesis. `tests/beat-transport-race.cjs` ensaya reanudaciones retrasadas, doble Play fuera de orden, error de dispositivo, edición concurrente y reproducción normal con Chromium. La interfaz física sigue pendiente de la etapa final.
+
 ## 3. Aceptación diferida del usuario (NO pedir hasta el final)
 
 El usuario decidió: **terminar primero todo el desarrollo y análisis automático; ejecutar las pruebas manuales de interfaz y material real una sola vez en la fase final**. No pedir WAV de voz, detalles de interfaz, conexión o gastos intermedios.

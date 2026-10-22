@@ -38,6 +38,8 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#211707}but
 'use strict';
 const B=MontanaBeat,$=id=>document.getElementById(id);
 let pattern=B.preset('trap'),playing=null,busy=false;
+// A Stop, pattern edit or newer Play revokes earlier asynchronous resume().
+let transportEpoch=0,transportTimer=null;
 const labels={kick:'Bombo',snare:'Caja',clap:'Palmas',hat:'Hi-hat'};
 const notes=[[null,'—'],[36,'C2'],[38,'D2'],[39,'Eb2'],[41,'F2'],[43,'G2'],[46,'Bb2'],[48,'C3'],[50,'D3'],[51,'Eb3'],[53,'F3'],[55,'G3'],[58,'Bb3'],[60,'C4']];
 function status(message){$('status').textContent=message;}
@@ -73,10 +75,13 @@ function draw(){
  $('bpm').value=pattern.bpm;$('bars').value=String(pattern.bars);
  $('swing').value=String(pattern.swing);$('swingValue').textContent=pattern.swing+'%';
 }
-function invalidateAudio(){if(playing)stopAudio();status('Patrón editado. Listo para reproducir o exportar.');}
+function invalidateAudio(){stopAudio();status('Patrón editado. Listo para reproducir o exportar.');}
 function current(){return B.validate(pattern);}
 async function stopAudio(){
- if(playing){const context=playing;playing=null;try{await context.close();}catch(e){}}
+ transportEpoch++;
+ if(transportTimer!==null){clearTimeout(transportTimer);transportTimer=null;}
+ const context=playing;playing=null;
+ if(context){try{await context.close();}catch(e){}}
 }
 $('preset').addEventListener('change',()=>{try{pattern=B.preset($('preset').value);draw();invalidateAudio();}catch(e){status(e.message);}});
 $('bpm').addEventListener('change',()=>{
@@ -87,14 +92,23 @@ $('bars').addEventListener('change',()=>{pattern.bars=Number($('bars').value);in
 $('swing').addEventListener('input',()=>{pattern.swing=Number($('swing').value);$('swingValue').textContent=pattern.swing+'%';invalidateAudio();});
 $('stop').addEventListener('click',()=>{stopAudio();status('Reproducción detenida.');});
 $('play').addEventListener('click',async()=>{
+ let token=null;
  try{
-  if(busy)return;await stopAudio();
+  if(busy)return;
+  const closing=stopAudio();token=transportEpoch;
+  await closing;
+  if(token!==transportEpoch)return;
   const context=new(window.AudioContext||window.webkitAudioContext)();playing=context;
   await context.resume();
+  if(token!==transportEpoch||playing!==context)return;
   const info=B.schedule(context,current(),context.currentTime+.04);
   status('Reproduciendo '+info.notes+' eventos originales. Duración musical '+info.duration.toFixed(2)+' s.');
-  setTimeout(()=>{if(playing===context){stopAudio();status('Reproducción completada.');}},Math.ceil((info.duration+.4)*1000));
- }catch(e){stopAudio();status('No se pudo reproducir: '+e.message);}
+  transportTimer=setTimeout(()=>{
+   if(token===transportEpoch&&playing===context){stopAudio();status('Reproducción completada.');}
+  },Math.ceil((info.duration+.4)*1000));
+ }catch(e){
+  if(token===transportEpoch){stopAudio();status('No se pudo reproducir: '+e.message);}
+ }
 });
 function save(bytes,name,type){
  const blob=new Blob([bytes],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');

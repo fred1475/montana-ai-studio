@@ -15,6 +15,7 @@ on:
       - 'tests/beat-bundle-ui.cjs'
       - 'tests/beat-engine.cjs'
       - 'tests/beat-ui.cjs'
+      - 'tests/beat-transport-race.cjs'
       - 'mixer-session.js'
       - 'mixer-session-integrity.js'
       - 'mixer-song-markers.js'
@@ -308,6 +309,7 @@ jobs:
           node tests/beat-archive.cjs
           node --check tests/beat-engine.cjs
           node --check tests/beat-ui.cjs
+          node --check tests/beat-transport-race.cjs
           node tests/beat-engine.cjs
           node --check mixer-pitch.js
           node --check pitch-quality.js
@@ -395,6 +397,7 @@ jobs:
           node tests/mixer-volume-graph-ui.cjs
           node tests/mixer-track-names.cjs
           node tests/beat-ui.cjs
+          node tests/beat-transport-race.cjs
           node tests/beat-bundle-ui.cjs
           node tests/beat-bridge-ui.cjs
           node tests/beat-stems-transfer-ui.cjs
