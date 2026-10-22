@@ -48,6 +48,46 @@
    count+" clip(s) pegado(s), independientes en tiempo y enlazados al audio original.":
    "Sin copias. Puedes copiar cualquier fragmento existente del archivo fuente.";
  }
+ function paste(i,index,offset){
+  if(!tracks[i])throw Error("Importa audio primero");
+  const base=baseSegments(i,tracks[i]),count=Number($("copyCount"+i).value);
+  if(count>=maxCopies)throw Error("Máximo de 4 copias por pista");
+  const snapped=window.gridSnapTime(offset);
+  validate({copies:[{sourceIndex:index,offset:snapped}]},i,base,true);
+  $("copySource"+count+"_"+i).value=String(index);
+  $("copyOffset"+count+"_"+i).value=String(snapped);
+  $("copyCount"+i).value=String(count+1);
+  $("copyCount"+i).dispatchEvent(new Event("change",{bubbles:true}));
+  return "copyOffset"+count+"_"+i;
+ }
+ // The timeline may sort clips by position; resolve the immutable source by
+ // editField, never by its current visual index.
+ function duplicateFromTimeline(i,field){
+  if(!tracks[i])throw Error("Importa audio primero");
+  const original=baseSegments(i,tracks[i]),segment=get(i,tracks[i]).find(x=>x.editField===field);
+  if(!segment)throw Error("Selecciona un fragmento válido");
+  const index=segment.copied?Number($("copySource"+field.match(/^copyOffset(\d+)_/)[1]+"_"+i).value):
+   original.findIndex((_,j)=>(j===0?"offset"+i:j===1?"splitOffset"+i:"splitOffset"+j+"_"+i)===field);
+  if(index<0)throw Error("Origen del clip no disponible");
+  const next=round(segment.offset+segment.duration);
+  if(next>300)throw Error("La copia supera el límite de 300 s");
+  return paste(i,index,next);
+ }
+ function removeTimelineCopy(i,field){
+  const match=field.match(new RegExp("^copyOffset([0-3])_"+i+"$"));
+  if(!match)throw Error("El fragmento original se conserva; solo puedes quitar copias");
+  const index=Number(match[1]),count=Number($("copyCount"+i).value);
+  if(index>=count)throw Error("Copia no disponible");
+  for(let j=index;j<count-1;j++){
+   $("copySource"+j+"_"+i).value=$("copySource"+(j+1)+"_"+i).value;
+   $("copyOffset"+j+"_"+i).value=$("copyOffset"+(j+1)+"_"+i).value;
+  }
+  $("copySource"+(count-1)+"_"+i).value="0";
+  $("copyOffset"+(count-1)+"_"+i).value="0";
+  $("copyCount"+i).value=String(count-1);
+  $("copyCount"+i).dispatchEvent(new Event("change",{bubbles:true}));
+ }
+ window.montanaTimelineClipActions={duplicate:duplicateFromTimeline,removeCopy:removeTimelineCopy};
  function sourceSegmentsForRestore(item,split,i){
   if(!item.decoded)return [];
   const b=item.decoded,desired=item.offset+(i?item.alignMs/1000:0);
@@ -120,16 +160,8 @@
   }
   $("copyPaste"+i).addEventListener("click",()=>{
    try{
-    if(!tracks[i])throw Error("Importa audio primero");
-    const base=baseSegments(i,tracks[i]),index=Number($("copySelect"+i).value),
-     offset=window.gridSnapTime(Number($("copyAt"+i).value)),count=Number($("copyCount"+i).value);
-    if(count>=maxCopies)throw Error("Máximo de 4 copias por pista");
-    validate({copies:[{sourceIndex:index,offset}]},i,base,true);
-    $("copySource"+count+"_"+i).value=String(index);
-    $("copyOffset"+count+"_"+i).value=String(offset);
-    $("copyCount"+i).value=String(count+1);
-    $("copyCount"+i).dispatchEvent(new Event("change",{bubbles:true}));
-    report("Canal "+(i+1)+": copia "+(count+1)+" creada a "+offset+" s sin modificar el original.");
+    const field=paste(i,Number($("copySelect"+i).value),Number($("copyAt"+i).value));
+    report("Canal "+(i+1)+": "+field+" creado sin modificar el original.");
    }catch(e){report("No se pegó el clip: "+e.message)}
   });
   $("copyRemove"+i).addEventListener("click",()=>{

@@ -6,6 +6,7 @@ Fecha de revisión: 2026-10-20. Repositorio `fred1475/montana-ai-studio`, rama p
 
 - Mezclador local de 8 pistas, volumen, panorama, EQ, compresión, reverb, delay, mute/solo, medidores.
 - Línea de tiempo, recortes, loops, hasta 4 fragmentos por pista, hasta 4 copias enlazadas, crossfades y BPM snap; Deshacer/Rehacer.
+- Selección accesible de clips en la línea de tiempo, colocación numérica exacta, duplicación contigua y eliminación de una copia específica; no se elimina una región fuente. Los cambios reutilizan el historial y formato de sesión actuales.
 - Grabación con MediaRecorder, guía de reproducción, rescate de fuente, alineación manual.
 - Herramientas vocales optativas de puerta de ruido/de-esser y afinación monofónica **experimental y limitada**, preservando fuente original.
 - WAV maestro PCM16, limitador de picos de muestra, normalización opcional, stems individuales/ZIP.
@@ -16,6 +17,12 @@ Fecha de revisión: 2026-10-20. Repositorio `fred1475/montana-ai-studio`, rama p
 - **Preparado para revisión final del hardware:** `hardware-check.html` obtiene permisos, enumera dispositivos, captura prueba mono con AudioWorklet, analiza niveles digitales/saturación, exporta WAV/JSON.
 - El mezclador permite **seleccionar una entrada de audio** detectada para grabar, sin persistir los identificadores.
 - Tests automatizados de Chromium con micrófono **simulado**, PCM medido, registros JSON, regresión, compatibilidad anterior y comparación de loudness con FFmpeg.
+
+### Editor de clips: acciones directas y alineación por identidad
+
+En el editor temporal se selecciona el fragmento haciendo clic o enfocándolo con teclado. El panel contextual muestra duración y permite fijar un inicio exacto de 0 a 300 s, duplicar junto al final del clip elegido o quitar **la copia seleccionada**, no siempre la última. La copia mantiene su referencia al fragmento fuente y se rechaza si excede la capacidad de cuatro copias del canal. Todos los archivos de audio de origen permanecen intactos; las acciones usan el mismo esquema de sesión, deshacer/rehacer y exportación.
+
+Se corrigió además una desalineación al mover fragmentos cuando una copia aparece cronológicamente antes del original: el ajuste fino de sincronización se resta **solo al campo de la región original**, identificado por `editField`, aunque los fragmentos estén ordenados de otra manera en pantalla. La prueba Chromium `tests/mixer-timeline-zoom.cjs` cubre desplazamiento, duplicación, edición exacta, orden cambiado, teclado, eliminación individual, deshacer e igualdad byte a byte de la fuente. Siguen faltando operaciones totalmente libres de edición de fuente y time-stretch; este cambio no completa por sí solo la puerta del editor ni requiere pruebas manuales ahora.
 
 ## Nuevo hito en QA de entrega: maestro PCM24 y dither TPDF de 16 bits
 

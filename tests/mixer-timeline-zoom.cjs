@@ -42,8 +42,46 @@ function wav(){
   await page.locator('#timelineZoomFit').click();
   assert.deepEqual(await page.evaluate(()=>window.montanaTimelineZoomState()),{factor:1,index:0});
   assert.equal(await page.locator('#timelineZoomOut').isDisabled(),true);
+  // Timeline contextual editing must identify clips by source field, even
+  // when a copied clip sorts before the aligned original in the viewport.
+  assert.equal(await page.locator('#timelineDuplicate').isDisabled(),true);
+  await page.locator('#alignMs1').fill('200');
+  await page.locator('#alignMs1').dispatchEvent('change');
+  await page.waitForFunction(()=>document.querySelector('#timeline [data-edit-field="offset1"]')?.getAttribute('aria-valuenow')==='0.45');
+  await page.locator('#timeline [data-edit-field="offset1"]').focus();
+  assert.match(await page.locator('#timelineSelectedStatus').textContent(),/Pista 2 · original/);
+  await page.locator('#timelineDuplicate').click();
+  assert.equal(await page.locator('#copyCount1').inputValue(),'1');
+  assert.equal(await page.locator('#copySource0_1').inputValue(),'0');
+  assert.equal(await page.locator('#copyOffset0_1').inputValue(),'1.45');
+  assert.match(await page.locator('#timelineSelectedStatus').textContent(),/Pista 2 · copia/);
+  await page.locator('#timelineSelectedStart').fill('0.10');
+  await page.locator('#timelineApplyStart').click();
+  assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.1');
+  assert.equal(await page.locator('#offset1').inputValue(),'0.25','Copy move must not subtract alignment');
+  assert.deepEqual(await page.locator('#timeline [data-track="1"][data-edit-field]').evaluateAll(nodes=>nodes.map(n=>n.dataset.editField)),['copyOffset0_1','offset1']);
+  await page.locator('#timeline [data-edit-field="offset1"]').focus();
+  await page.locator('#timelineSelectedStart').fill('1.20');
+  await page.locator('#timelineApplyStart').click();
+  assert.equal(await page.locator('#offset1').inputValue(),'1','Original move must subtract only its own alignment');
+  await page.locator('#timeline [data-edit-field="offset1"]').press('ArrowRight');
+  assert.equal(await page.locator('#offset1').inputValue(),'1.1','Original keyboard move must respect alignment when sorted second');
+  await page.locator('#timeline [data-edit-field="copyOffset0_1"]').press('ArrowRight');
+  assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.2','Copy keyboard move must not subtract alignment when sorted first');
+  await page.locator('#timelineSelectedStart').fill('-1');
+  await page.locator('#timelineApplyStart').click();
+  assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.2','Invalid exact start is rejected');
+  await page.locator('#timelineDuplicate').click();
+  assert.equal(await page.locator('#copyCount1').inputValue(),'2');
+  assert.equal(await page.locator('#copySource1_1').inputValue(),'0','Duplicating a copy keeps source identity');
+  await page.locator('#timeline [data-edit-field="copyOffset0_1"]').focus();
+  await page.locator('#timelineRemoveCopy').click();
+  assert.equal(await page.locator('#copyCount1').inputValue(),'1');
+  assert.equal(await page.locator('#copyOffset0_1').inputValue(),'1.2','Deleting a chosen copy shifts remaining copies, not source clips');
+  await page.locator('#undoEdit').click();
+  assert.equal(await page.locator('#copyCount1').inputValue(),'2','Undo restores removed timeline copy');
   assert.deepEqual(Buffer.from(await page.evaluate(async()=>new Uint8Array(await originalFiles[1].arrayBuffer()))),original);
   assert.deepEqual(errors,[]);
-  console.log('PASS timeline zoom: independent viewport, scroll, original clip positions and byte-exact source preservation.');
+  console.log('PASS timeline zoom and clip editing: selection, duplicate, sorted clip move, exact start, delete, undo and byte-exact source preservation.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});

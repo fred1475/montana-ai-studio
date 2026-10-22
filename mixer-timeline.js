@@ -17,6 +17,86 @@
  minus.textContent="− Alejar";plus.textContent="+ Acercar";reset.textContent="Ajustar vista";
  status.setAttribute("aria-live","polite");
  controls.append(minus,plus,reset,status);root.before(controls);
+ // Clip-level controls operate on an explicit source ID, not on the sorted
+ // visual position. Keeping edits in the existing fields preserves backups,
+ // undo/redo, preview, WAV export and stems without changing the schema.
+ const clipControls=document.createElement("div");
+ clipControls.style.cssText="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0";
+ const selectedStatus=document.createElement("output");selectedStatus.id="timelineSelectedStatus";
+ selectedStatus.setAttribute("aria-live","polite");
+ const selectedLabel=document.createElement("label");selectedLabel.textContent="Inicio exacto (s) ";
+ const selectedStart=document.createElement("input");selectedStart.id="timelineSelectedStart";
+ selectedStart.type="number";selectedStart.min="0";selectedStart.max="300";selectedStart.step="0.01";
+ selectedStart.style.width="95px";selectedLabel.append(selectedStart);
+ const applyStart=document.createElement("button");applyStart.type="button";applyStart.id="timelineApplyStart";applyStart.textContent="Aplicar inicio";
+ const duplicate=document.createElement("button");duplicate.type="button";duplicate.id="timelineDuplicate";duplicate.textContent="Duplicar clip";
+ const remove=document.createElement("button");remove.type="button";remove.id="timelineRemoveCopy";remove.textContent="Quitar copia";
+ clipControls.append(selectedStatus,selectedLabel,applyStart,duplicate,remove);root.before(clipControls);
+ let selected=null;
+ function selectedClip(){
+  if(!selected||!tracks[selected.track])return null;
+  try{return window.getTrackSegments(selected.track,tracks[selected.track]).find(p=>p.editField===selected.field)||null}
+  catch(e){return null}
+ }
+ function highlight(){
+  root.querySelectorAll("[data-edit-field]").forEach(node=>{
+   node.style.outline=selected&&node.dataset.track===String(selected.track)&&node.dataset.editField===selected.field?
+    "3px solid #fff":"1px solid #141c2b";
+  });
+ }
+ function refreshSelection(){
+  const clip=selectedClip();
+  if(!clip)selected=null;
+  selectedStatus.textContent=clip?"Pista "+(selected.track+1)+" · "+(clip.copied?"copia":"original")+
+   " · "+clip.duration.toFixed(2)+" s":"Selecciona un fragmento en la línea de tiempo";
+  if(clip&&document.activeElement!==selectedStart)selectedStart.value=round(clip.offset).toFixed(2);
+  if(!clip)selectedStart.value="";
+  selectedStart.disabled=applyStart.disabled=duplicate.disabled=!clip;
+  remove.disabled=!clip||!clip.copied;
+  highlight();
+ }
+ function selectClip(i,field){selected={track:i,field};refreshSelection()}
+ function registerClip(node,i,field){
+  node.dataset.editField=field;
+  node.addEventListener("focus",()=>selectClip(i,field));
+  node.addEventListener("click",()=>selectClip(i,field));
+ }
+ applyStart.addEventListener("click",()=>{
+  if(!selectedClip())return;
+  const desired=Number(selectedStart.value);
+  if(!selectedStart.value.trim()||!Number.isFinite(desired)||desired<0||desired>300){
+   report("Inicio inválido: usa entre 0 y 300 segundos");return;
+  }
+  const {track,field}=selected;
+  const shift=field==="offset"+track&&track>0?Number($("alignMs"+track).value)/1000:0;
+  const base=round(desired-shift);
+  if(base<0||base>300){report("La alineación del canal impide ese inicio exacto");return}
+  const el=$(field),before=el.value;
+  el.value=String(base);
+  try{window.getTrackSegments(track,tracks[track]);}
+  catch(e){el.value=before;report("No se pudo mover el clip: "+e.message);return}
+  if(before!==el.value)el.dispatchEvent(new Event("change",{bubbles:true}));
+  refreshSelection();
+ });
+ selectedStart.addEventListener("keydown",event=>{
+  if(event.key==="Enter"){event.preventDefault();applyStart.click()}
+ });
+ duplicate.addEventListener("click",()=>{
+  if(!selectedClip())return;
+  try{
+   const {track,field}=selected,next=window.montanaTimelineClipActions.duplicate(track,field);
+   selected={track,field:next};refreshSelection();
+   report("Pista "+(track+1)+": clip duplicado sin alterar la fuente original.");
+  }catch(e){report("No se pudo duplicar: "+e.message)}
+ });
+ remove.addEventListener("click",()=>{
+  if(!selectedClip()||!selectedClip().copied)return;
+  try{
+   const {track,field}=selected;selected=null;
+   window.montanaTimelineClipActions.removeCopy(track,field);
+   refreshSelection();report("Copia de pista "+(track+1)+" retirada; el original permanece.");
+  }catch(e){report("No se pudo quitar la copia: "+e.message);refreshSelection()}
+ });
  function setZoom(index){
   zoomIndex=clamp(index,0,zoomLevels.length-1);
   minus.disabled=zoomIndex===0;plus.disabled=zoomIndex===zoomLevels.length-1;
@@ -50,6 +130,7 @@
        block.style.width=(100*part.duration/end)+"%";
        let current=round(part.offset),drag=null,keysMoved=false;
        const fieldId=part.editField||(j===0?"offset"+i:j===1?"splitOffset"+i:"splitOffset"+j+"_"+i);
+       registerClip(block,i,fieldId);
        const description=()=>{
         const s="Pista "+(i+1)+", fragmento "+(j+1)+", inicio "+current.toFixed(2)+" s, duración "+part.duration.toFixed(2)+" s";
         block.title=s;block.setAttribute("aria-label",s);
@@ -60,7 +141,7 @@
         block.style.left=(100*current/end)+"%";description();
        };
        const commit=()=>{
-        const field=$(fieldId),shift=j===0&&i>0?Number($("alignMs"+i).value)/1000:0;
+        const field=$(fieldId),shift=fieldId==="offset"+i&&i>0?Number($("alignMs"+i).value)/1000:0;
         const next=round(Math.max(0,current-shift));
         if(Number(field.value)===next)return;
         field.value=next;field.dispatchEvent(new Event("change",{bubbles:true}));
@@ -95,7 +176,7 @@
         event.preventDefault();
         const step=event.shiftKey?1:0.1;
         position(event.key==="Home"?0:(window.gridSettings().on?window.gridNudge(current,event.key==="ArrowRight"?1:-1,event.shiftKey):current+(event.key==="ArrowRight"?step:-step)));
-        const shift=j===0&&i>0?Number($("alignMs"+i).value)/1000:0;
+        const shift=fieldId==="offset"+i&&i>0?Number($("alignMs"+i).value)/1000:0;
         $(fieldId).value=round(Math.max(0,current-shift));keysMoved=true;
        });
        block.addEventListener("keyup",event=>{
@@ -123,6 +204,7 @@
        field.dispatchEvent(new Event("change",{bubbles:true}));
      };
      clip.dataset.track=String(i);
+     registerClip(clip,i,"offset"+i);
      clip.style.cssText="position:absolute;top:4px;bottom:4px;border-radius:4px;cursor:grab;touch-action:none;min-width:8px;outline-offset:2px";
      clip.style.background=colors[i];
      clip.style.width=(100*t.duration/end)+"%";
@@ -182,6 +264,7 @@
   const footer=document.createElement("small");
   footer.textContent="0 s — "+end.toFixed(1)+" s · Zoom visual ×"+zoomLevels[zoomIndex]+". Arrastra cualquier fragmento para moverlo. Flechas: 0.1 s; Shift + flecha: 1 s. Los archivos originales no cambian.";
   root.append(footer);
+  refreshSelection();
  }
  const observer=new MutationObserver(redraw);
  observer.observe(document.getElementById("tracks"),{childList:true,subtree:true,characterData:true});
