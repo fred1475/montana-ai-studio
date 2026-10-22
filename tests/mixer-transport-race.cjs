@@ -82,6 +82,8 @@ function tone(){
   await page.locator('#markerName').fill('Final');
   await page.locator('#markerSeconds').fill('0.8');
   await page.locator('#markerAdd').click();
+  await page.locator('#sectionFrom').selectOption('0');
+  await page.locator('#sectionTo').selectOption('1');
   await page.evaluate(()=>{
    window.__sectionStarts=0;
    window.__nativeSourceStart=AudioBufferSourceNode.prototype.start;
