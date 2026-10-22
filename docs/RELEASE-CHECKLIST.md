@@ -22,6 +22,8 @@ Fecha de revisión: 2026-10-20. Repositorio `fred1475/montana-ai-studio`, rama p
 
 En el editor temporal se selecciona el fragmento haciendo clic o enfocándolo con teclado. El panel contextual muestra duración y permite fijar un inicio exacto de 0 a 300 s, duplicar junto al final del clip elegido o quitar **la copia seleccionada**, no siempre la última. La copia mantiene su referencia al fragmento fuente y se rechaza si excede la capacidad de cuatro copias del canal. Todos los archivos de audio de origen permanecen intactos; las acciones usan el mismo esquema de sesión, deshacer/rehacer y exportación.
 
+En un clip seleccionado, **Ctrl/Cmd + D** crea una copia y **Supr** quita una copia sin eliminar audio fuente; Deshacer revierte ambos cambios. El control numérico conserva hasta cuatro decimales cuando la cuadrícula musical está activa, sin reducir su posición a dos decimales al mostrarla. Los atajos se limitan al foco de un clip para no interferir con los campos del formulario.
+
 Se corrigió además una desalineación al mover fragmentos cuando una copia aparece cronológicamente antes del original: el ajuste fino de sincronización se resta **solo al campo de la región original**, identificado por `editField`, aunque los fragmentos estén ordenados de otra manera en pantalla. La prueba Chromium `tests/mixer-timeline-zoom.cjs` cubre desplazamiento, duplicación, edición exacta, orden cambiado, teclado, eliminación individual, deshacer e igualdad byte a byte de la fuente. Siguen faltando operaciones totalmente libres de edición de fuente y time-stretch; este cambio no completa por sí solo la puerta del editor ni requiere pruebas manuales ahora.
 
 ## Nuevo hito en QA de entrega: maestro PCM24 y dither TPDF de 16 bits

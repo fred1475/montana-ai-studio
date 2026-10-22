@@ -26,7 +26,7 @@
  selectedStatus.setAttribute("aria-live","polite");
  const selectedLabel=document.createElement("label");selectedLabel.textContent="Inicio exacto (s) ";
  const selectedStart=document.createElement("input");selectedStart.id="timelineSelectedStart";
- selectedStart.type="number";selectedStart.min="0";selectedStart.max="300";selectedStart.step="0.01";
+ selectedStart.type="number";selectedStart.min="0";selectedStart.max="300";selectedStart.step="0.0001";
  selectedStart.style.width="95px";selectedLabel.append(selectedStart);
  const applyStart=document.createElement("button");applyStart.type="button";applyStart.id="timelineApplyStart";applyStart.textContent="Aplicar inicio";
  const duplicate=document.createElement("button");duplicate.type="button";duplicate.id="timelineDuplicate";duplicate.textContent="Duplicar clip";
@@ -49,9 +49,10 @@
   if(!clip)selected=null;
   selectedStatus.textContent=clip?"Pista "+(selected.track+1)+" · "+(clip.copied?"copia":"original")+
    " · "+clip.duration.toFixed(2)+" s":"Selecciona un fragmento en la línea de tiempo";
-  if(clip&&document.activeElement!==selectedStart)selectedStart.value=round(clip.offset).toFixed(2);
+  if(clip&&document.activeElement!==selectedStart)selectedStart.value=String(round(clip.offset));
   if(!clip)selectedStart.value="";
-  selectedStart.disabled=applyStart.disabled=duplicate.disabled=!clip;
+  selectedStart.disabled=applyStart.disabled=!clip;
+  duplicate.disabled=!clip||Number($("copyCount"+selected.track).value)>=4;
   remove.disabled=!clip||!clip.copied;
   highlight();
  }
@@ -60,8 +61,16 @@
   node.dataset.editField=field;
   node.addEventListener("pointerdown",()=>selectClip(i,field));
   node.addEventListener("focus",()=>selectClip(i,field));
-  node.addEventListener("keydown",()=>selectClip(i,field));
+  node.addEventListener("keydown",event=>{
+   selectClip(i,field);
+   if((event.ctrlKey||event.metaKey)&&!event.altKey&&event.key.toLowerCase()==="d"){
+    event.preventDefault();event.stopPropagation();duplicateCurrent();
+   }else if(event.key==="Delete"&&selectedClip()?.copied){
+    event.preventDefault();event.stopPropagation();removeCurrent();
+   }
+  });
   node.addEventListener("click",()=>selectClip(i,field));
+  node.setAttribute("aria-keyshortcuts","Control+D Meta+D Delete");
  }
  applyStart.addEventListener("click",()=>{
   if(!selectedClip())return;
@@ -83,22 +92,24 @@
  selectedStart.addEventListener("keydown",event=>{
   if(event.key==="Enter"){event.preventDefault();applyStart.click()}
  });
- duplicate.addEventListener("click",()=>{
+ function duplicateCurrent(){
   if(!selectedClip())return;
   try{
    const {track,field}=selected,next=window.montanaTimelineClipActions.duplicate(track,field);
    selected={track,field:next};refreshSelection();
    report("Pista "+(track+1)+": clip duplicado sin alterar la fuente original.");
   }catch(e){report("No se pudo duplicar: "+e.message)}
- });
- remove.addEventListener("click",()=>{
+ }
+ function removeCurrent(){
   if(!selectedClip()||!selectedClip().copied)return;
   try{
    const {track,field}=selected;selected=null;
    window.montanaTimelineClipActions.removeCopy(track,field);
    refreshSelection();report("Copia de pista "+(track+1)+" retirada; el original permanece.");
   }catch(e){report("No se pudo quitar la copia: "+e.message);refreshSelection()}
- });
+ }
+ duplicate.addEventListener("click",duplicateCurrent);
+ remove.addEventListener("click",removeCurrent);
  function setZoom(index){
   zoomIndex=clamp(index,0,zoomLevels.length-1);
   minus.disabled=zoomIndex===0;plus.disabled=zoomIndex===zoomLevels.length-1;
@@ -264,7 +275,7 @@
   const markerRuler=window.renderSongMarkerRuler?.(end);
   if(markerRuler){markerRuler.style.minWidth=minWidth+"px";root.prepend(markerRuler)}
   const footer=document.createElement("small");
-  footer.textContent="0 s — "+end.toFixed(1)+" s · Zoom visual ×"+zoomLevels[zoomIndex]+". Arrastra cualquier fragmento para moverlo. Flechas: 0.1 s; Shift + flecha: 1 s. Los archivos originales no cambian.";
+  footer.textContent="0 s — "+end.toFixed(1)+" s · Zoom visual ×"+zoomLevels[zoomIndex]+". Arrastra o usa flechas para mover; Ctrl/Cmd + D duplica; Supr quita una copia; Deshacer recupera. Los originales no cambian.";
   root.append(footer);
   refreshSelection();
  }

@@ -85,8 +85,22 @@ function wav(){
   assert.equal(await page.locator('#copyOffset0_1').inputValue(),'1.2','Deleting a chosen copy shifts remaining copies, not source clips');
   await page.locator('#undoEdit').click();
   assert.equal(await page.locator('#copyCount1').inputValue(),'2','Undo restores removed timeline copy');
+  await page.locator('#timeline [data-edit-field="offset1"]').click();
+  await page.locator('#timeline [data-edit-field="offset1"]').press('Control+d');
+  assert.equal(await page.locator('#copyCount1').inputValue(),'3','Ctrl+D duplicates the selected clip');
+  await page.locator('#timeline [data-edit-field="copyOffset2_1"]').click();
+  await page.locator('#timeline [data-edit-field="copyOffset2_1"]').press('Delete');
+  assert.equal(await page.locator('#copyCount1').inputValue(),'2','Delete removes only the focused copied clip');
+  await page.locator('#undoEdit').click();
+  assert.equal(await page.locator('#copyCount1').inputValue(),'3','Undo restores keyboard-deleted copy');
+  await page.locator('#gridSnapOn').check();
+  await page.locator('#timeline [data-edit-field="copyOffset0_1"]').click();
+  await page.locator('#timelineSelectedStart').fill('0.1234');
+  await page.locator('#timelineApplyStart').click();
+  assert.equal(await page.locator('#copyOffset0_1').inputValue(),'0.1234','Exact editor keeps 0.1 ms precision with musical grid enabled');
+  assert.equal(await page.locator('#timelineSelectedStart').inputValue(),'0.1234','Exact editor presents source precision without rounding it away');
   assert.deepEqual(Buffer.from(await page.evaluate(async()=>new Uint8Array(await originalFiles[1].arrayBuffer()))),original);
   assert.deepEqual(errors,[]);
-  console.log('PASS timeline zoom and clip editing: selection, duplicate, sorted clip move, exact start, delete, undo and byte-exact source preservation.');
+  console.log('PASS timeline zoom and clip editing: selection, duplicate, shortcuts, sorted clip move, sub-ms exact start, delete, undo and byte-exact source preservation.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
