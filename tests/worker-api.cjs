@@ -39,6 +39,9 @@ function services(overrides = {}) {
   const quota = {
     usage: async () => ({ limitCents: 1000, reservedCents: 8, spentCents: 16 }),
     pendingCount: async () => 1,
+    pending: async () => [{
+      reservationId: 'reservation0123456789', month: '2026-10', reservedCents: 8
+    }],
     reserve: async () => {
       trace.reservations++;
       return { status: 'reserved', reservationId: 'reservation0123456789' };
@@ -110,6 +113,39 @@ test('private balance fails closed when cross-month pending status is unavailabl
   assert.deepEqual(await response.json(), { error: 'QUOTA_UNAVAILABLE' });
 });
 
+test('reconciliation inventory requires private identity and verified browser origin', async () => {
+  const { app, trace } = services();
+  const request = use('/v1/pending', { headers: { Origin: origin } });
+  const response = await app.fetch(request, env, ctx);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { pending: [{
+    reservationId: 'reservation0123456789', month: '2026-10', reservedCents: 8
+  }] });
+  assert.equal((await app.fetch(request, env, {})).status, 401);
+  assert.equal((await app.fetch(use('/v1/pending'), env, ctx)).status, 403);
+  assert.equal((await app.fetch(use('/v1/pending', {
+    headers: { Origin: 'https://evil.example.test' }
+  }), env, ctx)).status, 403);
+  assert.equal(trace.providerCalls, 0);
+  assert.equal(trace.reservations, 0);
+});
+
+test('private reconciliation cannot be used to mutate a reservation', async () => {
+  const { app, trace } = services();
+  const wrongMethod = await app.fetch(use('/v1/pending', {
+    method: 'POST', headers: { Origin: origin }
+  }), env, ctx);
+  assert.equal(wrongMethod.status, 405);
+  const fail = services({ quota: {
+    pending: async () => { throw new Error('private database error'); }
+  } });
+  const response = await fail.app.fetch(use('/v1/pending', {
+    headers: { Origin: origin }
+  }), env, ctx);
+  assert.equal(response.status, 503);
+  assert.equal((await response.text()).includes('private database error'), false);
+  assert.equal(trace.reservations, 0);
+});
 test('generation is disabled by default even if adapters are provided', async () => {
   const { app, trace } = services();
   const response = await app.fetch(post(), { ...env, PRIVATE_GENERATION_ENABLED: undefined }, ctx);
