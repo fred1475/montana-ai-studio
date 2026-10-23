@@ -125,6 +125,31 @@ function createD1Quota({
       }
     },
 
+    async pending() {
+      // Read-only reconciliation inventory for the Access-authenticated owner.
+      // Never expose user identifiers, prompt text or provider credentials.
+      const result = await db.prepare(
+        "SELECT reservation_id,month,cost_cents FROM reservations WHERE state='reserved' ORDER BY month ASC,reservation_id ASC LIMIT 8"
+      ).bind().all();
+      if (!result || !Array.isArray(result.results)) {
+        throw new Error('PENDING_RESERVATIONS_UNAVAILABLE');
+      }
+      return result.results.map(row => {
+        if (!row || !RESERVATION_ID.test(row.reservation_id || '') ||
+            typeof row.month !== 'string' ||
+            !/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(row.month) ||
+            !Number.isSafeInteger(row.cost_cents) ||
+            row.cost_cents < 1 || row.cost_cents > monthlyLimitCents) {
+          throw new Error('PENDING_RESERVATIONS_INVALID');
+        }
+        return {
+          reservationId: row.reservation_id,
+          month: row.month,
+          reservedCents: row.cost_cents
+        };
+      });
+    },
+
     async pendingCount() {
       // Global across UTC months: an unresolved prior-month provider call
       // must be visible even when the new month's balance is untouched.
