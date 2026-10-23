@@ -4,8 +4,11 @@ on:
     paths:
       - 'server/music-generation.js'
       - 'server/lyria-provider.js'
+      - 'server/d1-quota.js'
+      - 'server/schema/d1-quota.sql'
       - 'tests/music-generation-contract.cjs'
       - 'tests/lyria-provider.cjs'
+      - 'tests/d1-quota.cjs'
       - 'docs/AI-MUSIC-SERVER-CONTRACT.md'
       - 'docs/100-PERCENT-ACCEPTANCE.md'
       - '.github/workflows/music-generation-contract.yml'
@@ -27,7 +30,9 @@ jobs:
         run: |
           node --check server/music-generation.js
           node --check server/lyria-provider.js
+          node --check server/d1-quota.js
           node --check tests/music-generation-contract.cjs
           node --check tests/lyria-provider.cjs
+          node --check tests/d1-quota.cjs
       - name: Test safe access, idempotency, quotas and failure behavior
-        run: node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs
+        run: node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs tests/d1-quota.cjs
