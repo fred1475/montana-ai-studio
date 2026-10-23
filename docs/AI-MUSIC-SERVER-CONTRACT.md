@@ -1,6 +1,6 @@
-# Montana AI Studio 2.0 — contrato de generación musical IA (sin proveedor)
+# Montana AI Studio 2.0 — contrato de generación musical IA (integración pendiente)
 
-**Estado: preparación de infraestructura, no generador funcional.** Este hito
+**Estado: proveedor de referencia seleccionado para preparar integración, todavía no generador funcional.** Este hito
 introduce `server/music-generation.js` y pruebas. La página sigue siendo
 estática; **no existe endpoint público de generación, modelo conectado,
 cuenta de proveedor, servicio desplegado ni gasto autorizado**.
@@ -13,7 +13,8 @@ Un backend futuro debe aceptar un objeto JSON con exactamente:
 |---|---|
 | `requestId` | UUID de idempotencia, creado para un solo intento de contenido |
 | `prompt` | Texto de 10–1400 caracteres, sin caracteres de control |
-| `style` | Descripción opcional, máximo 240 caracteres |
+| `style` | Descripción opcional, máximo 1,000 caracteres (compatible con el formato creativo de Montana) |
+| `lyrics` | Letra original opcional, máximo 5,000 caracteres; permite saltos de línea |
 | `mode` | `instrumental` o `vocal` |
 | `durationSeconds` | Entero entre 15 y 180 segundos |
 | `language` | Opcional, `es` o `en` |
@@ -46,11 +47,18 @@ puede haber facturado; tampoco duplicar generaciones durante solicitudes
 simultáneas. El adaptador de cuotas debe comprobar que la repetición usa el
 mismo usuario, UUID y huella del contenido.
 
+## Decisión de producto — 23 octubre de 2026
+
+- **Candidato inicial:** Google Lyria 3.5 mediante Gemini API (sujeto a verificación de la cuenta, elegibilidad y licencia antes de desplegar).
+- **Control presupuestario propuesto y aceptado:** techo de **USD 10 por mes** para evaluación; no es una suscripción contratada y no se autoriza un cargo ni activación automática con este documento.
+- **Precio público de referencia en la fecha de evaluación:** USD 0.08 por canción, sujeto a cambios y a facturación real. El techo debe aplicarse mediante reserva atómica en servidor, con persistencia, no mediante una etiqueta visual.
+- **Prioridades:** canciones originales en español puertorriqueño, letra hasta 5,000 caracteres, STYLE hasta 1,000, duración objetivo 170 segundos no garantizada por el modelo, salida que pueda importarse al mezclador.
+- **Claves:** exclusivamente del lado servidor. No introducir ningún secreto en GitHub, la aplicación estática ni los archivos de sesión.
+- **Estado actual:** sin API key, sin billing, sin proveedor invocado, sin salida musical real y sin cambios en `main`.
+
 ## Pendiente antes de activar un solo usuario
 
-- Escoger proveedor con licencia y permisos de distribución comercial
-  compatibles con Montana Music Production LLC, voz en español y el tipo de
-  contenido previsto; leer los términos vigentes al contratar.
+- Verificar el acceso a Google Lyria 3.5 y las condiciones vigentes de distribución comercial compatibles con Montana Music Production LLC, incluyendo voz en español; revisar términos antes de contratar.
 - Presupuesto máximo mensual/diario y coste por trabajo definido y autorizado
   por el propietario. Implementar cuota transaccional con persistencia y
   reconciliación de estados después de caídas del servidor.
