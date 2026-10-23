@@ -84,9 +84,10 @@ test('real generation requests balance before spending, without keys or supplied
     assert.deepEqual(input, {
       requestId: id, prompt: valid.prompt, style: valid.style,
       lyrics: valid.lyrics, mode: 'vocal', durationSeconds: 170,
-      language: 'es', confirmsRights: true, consentToSendPrompt: true
+      language: 'es', confirmsRights: true, consentToSendPrompt: true,
+      confirmsCost: true
     });
-    assert.equal('confirmsCost' in input, false);
+    assert.equal(input.confirmsCost, true);
     assert.equal('apiKey' in input, false);
     assert.equal('price' in input, false);
     return reply({ asset: {
@@ -167,6 +168,11 @@ test('owner can inspect pending reservations without a generation POST', async (
     month: '2026-09', reservedCents: 8
   }] }));
   await assert.rejects(broken.pending(), /CONCILIACION_NO_DISPONIBLE/);
+  const overBudget = client(async () => reply({ pending: [{
+    reservationId: 'reservation0123456789',
+    month: '2026-09', reservedCents: 301
+  }] }));
+  await assert.rejects(overBudget.pending(), /CONCILIACION_NO_DISPONIBLE/);
 });
 
 test('server is disabled by default; no automatic paid retries follow 503', async () => {
