@@ -202,6 +202,36 @@ test('read-only pending inventory includes month and amount but not owner or lyr
   assert.equal((await quota.pendingCount()), 1);
   assert.equal(db.sqlite.prepare('SELECT count(*) AS total FROM reservations').get().total, 1);
 });
+test('verified paid generation with lost output consumes budget and opens single-flight safely', async () => {
+  const { quota, db } = harness({ maxConcurrentReservations: 1 });
+  const original = req(id(32));
+  const ticket = await quota.reserve(original);
+  await assert.rejects(quota.settleChargedWithoutAsset(ticket.reservationId, {
+    providerCharged: false, assetUnavailable: true, evidenceRef: 'audit_ticket_0001'
+  }), /PROOF_REQUIRED/);
+  assert.equal((await quota.pendingCount()), 1);
+  await quota.settleChargedWithoutAsset(ticket.reservationId, {
+    providerCharged: true, assetUnavailable: true, evidenceRef: 'audit_ticket_0001'
+  });
+  assert.equal((await quota.pendingCount()), 0);
+  assert.deepEqual(await quota.usage(), {
+    limitCents: 16, reservedCents: 0, spentCents: 8
+  });
+  const row = db.sqlite.prepare(
+    'SELECT state,asset_id,reconciliation_reference FROM reservations WHERE reservation_id=?'
+  ).get(ticket.reservationId);
+  assert.deepEqual(row, {
+    state: 'charged_without_asset', asset_id: null,
+    reconciliation_reference: 'audit_ticket_0001'
+  });
+  assert.equal((await quota.reserve(original)).status, 'denied');
+  assert.equal((await quota.reserve(req(id(33)))).status, 'reserved');
+  await assert.rejects(quota.release(ticket.reservationId), /RECONCILIATION/);
+  await assert.rejects(quota.settleChargedWithoutAsset(ticket.reservationId, {
+    providerCharged: true, assetUnavailable: true, evidenceRef: 'audit_ticket_0002'
+  }), /RECONCILIATION/);
+});
+
 test('invalid single-flight settings fail before any transaction', () => {
   const { db } = harness();
   assert.throws(() => createD1Quota({
