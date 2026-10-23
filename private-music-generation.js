@@ -117,6 +117,30 @@
         remainingCents, pendingReservations });
     }
 
+    async function pending() {
+      const response = await request('/v1/pending', {
+        method: 'GET', headers: { Accept: 'application/json' }
+      });
+      if (response.status !== 200) throw new Error('CONCILIACION_NO_DISPONIBLE');
+      const data = await readJson(response);
+      if (!Array.isArray(data.pending) || data.pending.length > 8) {
+        throw new Error('CONCILIACION_NO_DISPONIBLE');
+      }
+      return Object.freeze(data.pending.map(row => {
+        if (!row || typeof row.reservationId !== 'string' ||
+            !ASSET.test(row.reservationId) ||
+            !/^\\d{4}-(0[1-9]|1[0-2])$/.test(row.month) ||
+            !Number.isSafeInteger(row.reservedCents) ||
+            row.reservedCents < 1 || row.reservedCents > 1000) {
+          throw new Error('CONCILIACION_NO_DISPONIBLE');
+        }
+        return Object.freeze({
+          reservationId: row.reservationId,
+          month: row.month, reservedCents: row.reservedCents
+        });
+      }));
+    }
+
     async function generate(input) {
       // Consent and format are checked before any network request. An
       // authenticated balance check is mandatory before trying paid generation.
@@ -157,7 +181,7 @@
       });
     }
 
-    return Object.freeze({ usage, generate });
+    return Object.freeze({ usage, pending, generate });
   }
 
   const api = Object.freeze({
