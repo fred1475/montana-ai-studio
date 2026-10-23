@@ -11,6 +11,7 @@ function createD1Quota({
   db,
   monthlyLimitCents = 1000,
   requestCostCents = 8,
+  maxConcurrentReservations = 32,
   now = () => new Date(),
   makeId = () => globalThis.crypto.randomUUID()
 } = {}) {
@@ -18,6 +19,8 @@ function createD1Quota({
       !Number.isSafeInteger(monthlyLimitCents) || monthlyLimitCents < 1 ||
       !Number.isSafeInteger(requestCostCents) || requestCostCents < 1 ||
       requestCostCents > monthlyLimitCents ||
+      !Number.isSafeInteger(maxConcurrentReservations) ||
+      maxConcurrentReservations < 1 || maxConcurrentReservations > 1024 ||
       typeof now !== 'function' || typeof makeId !== 'function') {
     throw new TypeError('Durable D1 transaction interface and server cost settings required');
   }
@@ -52,8 +55,8 @@ function createD1Quota({
       // duplicate costs for retries. Each attempt has a fresh opaque ID.
       const result = await db.batch([
         prepare('INSERT INTO monthly_budgets (month,limit_cents,reserved_cents,spent_cents) VALUES(?,?,0,0) ON CONFLICT(month) DO UPDATE SET limit_cents=MIN(limit_cents,excluded.limit_cents)', period, monthlyLimitCents),
-        prepare("INSERT INTO reservations (reservation_id,user_id,request_id,fingerprint,month,cost_cents,state) SELECT ?,?,?,?,?,?,'reserved' FROM monthly_budgets WHERE month=? AND (spent_cents+reserved_cents+?)<=limit_cents ON CONFLICT(user_id,request_id) DO NOTHING",
-          id, userId, requestId, fingerprint.toLowerCase(), period, requestCostCents, period, requestCostCents),
+        prepare("INSERT INTO reservations (reservation_id,user_id,request_id,fingerprint,month,cost_cents,state) SELECT ?,?,?,?,?,?,'reserved' FROM monthly_budgets WHERE month=? AND (spent_cents+reserved_cents+?)<=limit_cents AND (SELECT COUNT(*) FROM reservations WHERE state='reserved')<? ON CONFLICT(user_id,request_id) DO NOTHING",
+          id, userId, requestId, fingerprint.toLowerCase(), period, requestCostCents, period, requestCostCents, maxConcurrentReservations),
         prepare("UPDATE monthly_budgets SET reserved_cents=reserved_cents+? WHERE month=? AND EXISTS(SELECT 1 FROM reservations WHERE reservation_id=? AND state='reserved')",
           requestCostCents, period, id)
       ]);
@@ -65,7 +68,17 @@ function createD1Quota({
       }
 
       const row = await existing(userId, requestId);
-      if (!row || row.fingerprint !== fingerprint.toLowerCase() || row.state === 'released') {
+      if (!row) {
+        // The global single-flight limit is also a financial safety latch:
+        // ambiguous provider failures retain a reservation, so no additional
+        // paid requests can be issued until a trusted operator reconciles it.
+        const active = await db.prepare("SELECT COUNT(*) AS total FROM reservations WHERE state='reserved'").first();
+        if (Number(active?.total) >= maxConcurrentReservations) {
+          return { status: 'pending' };
+        }
+        return { status: 'denied' };
+      }
+      if (row.fingerprint !== fingerprint.toLowerCase() || row.state === 'released') {
         return { status: 'denied' };
       }
       if (row.state === 'committed') {
