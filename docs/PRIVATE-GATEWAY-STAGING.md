@@ -13,7 +13,7 @@
 - `OPTIONS` habilita la prevalidación CORS únicamente para el origen exacto configurado. La solicitud real sigue exigiendo Access.
 - La respuesta de generación expone únicamente el descriptor opaco que permite el contrato. No filtra claves, URLs de proveedores, MP3, facturas ni identidad.
 
-En la composición del Worker privado la cuota D1 impone **una sola reserva activa global**. Una respuesta del proveedor con coste dudoso deja esa reserva abierta y, por diseño, bloquea otra generación hasta conciliación por un operador confiable. Este límite de concurrencia es adicional al presupuesto de USD 10/mes y a la idempotencia.
+En la composición del Worker privado la cuota D1 impone **una sola reserva activa global**. Una respuesta del proveedor con coste dudoso deja esa reserva abierta y, por diseño, bloquea otra generación hasta conciliación por un operador confiable. Este límite de concurrencia es adicional al subpresupuesto de USD 3/mes para canciones dentro de USD 10/mes totales y a la idempotencia.
 
 El **interruptor financiero está apagado por defecto**. Incluso con autentificación aprobada, la petición de generación devuelve `GENERATION_NOT_ENABLED` salvo que exista la bandera explícita `PRIVATE_GENERATION_ENABLED=YES_I_APPROVE_REAL_GENERATION_COSTS` y se hayan inyectado adaptadores reales, seguros y revisados de políticas y proveedor. Esta bandera no constituye por sí sola autorización para gastar.
 
@@ -34,7 +34,7 @@ Este archivo **no es un Worker desplegable por sí solo**. El operador tendrá q
 3. Crear almacenamiento R2 privado para resultados musicales; validar decodificación, duración, MIME y retención; controlar recuperación por propietario y borrado consentido.
 4. Inyectar el proveedor Lyria y una política de cribado auténtica. Los tests no conectan ninguna de ellas.
 5. Configurar secretos privados `OWNER_EMAIL`, `ACCESS_AUD`, `STUDIO_ORIGIN`, clave de Google, y límites adicionales del proveedor. **No incluir ningún valor real en este repositorio público**.
-6. Verificar derechos de distribución comercial, elegibilidad del modelo, contenido permitido, costes actualizados, alertas del proveedor y gastos asociados a Cloudflare. El límite D1 de 1,000 centavos protege las solicitudes registradas por esta aplicación, **no bloquea automáticamente todos los cargos externos**.
+6. Verificar derechos de distribución comercial, elegibilidad del modelo, contenido permitido, costes actualizados, alertas del proveedor y gastos asociados a Cloudflare. El límite D1 de 300 centavos protege las solicitudes registradas por esta aplicación, **no bloquea automáticamente todos los cargos externos**.
 7. Completar la interfaz de **generación** del Studio: formulario de letra/estilo con consentimiento explícito antes de enviar datos a Google, estado de generación, recuperación de sesiones y reproducción/descarga confirmada. El puente opt-in de **importación** al mezclador ya está en la rama, pero permanece desconectado y la configuración de origen vacío es intencional. Solo se debe introducir un origen HTTPS verificado del Worker de la empresa, sin claves ni tokens en HTML.
 8. Ejecutar una única prueba real mínima de generación con material genérico solo después de aprobación de gasto puntual. Comparar factura y ledger.
 9. Completar las once puertas de `docs/100-PERCENT-ACCEPTANCE.md`; reservar las pruebas de micrófono e interfaz física para la fase final.
