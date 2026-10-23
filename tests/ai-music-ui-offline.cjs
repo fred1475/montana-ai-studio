@@ -13,6 +13,8 @@ test('real music page is financially inert on public static hosting', () => {
   assert.match(html, /id="privateAiConfig" data-api-origin=""/);
   assert.match(html, /id="generateButton" type="submit" disabled/);
   assert.match(html, /id="usageButton" disabled/);
+  assert.match(html, /id="pendingButton" disabled/);
+  assert.match(script, /client\.pending\(\)/);
   assert.match(html, /id="listenButton" disabled/);
   assert.match(html, /id="downloadButton" disabled/);
   assert.match(html, /id="copyButton" disabled/);
