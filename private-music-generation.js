@@ -103,15 +103,18 @@
       } });
       if (response.status !== 200) throw new Error('SALDO_PRIVADO_NO_DISPONIBLE');
       const data = await readJson(response);
-      const { limitCents, spentCents, reservedCents, remainingCents } = data;
-      if (![limitCents, spentCents, reservedCents, remainingCents].every(
-        Number.isSafeInteger
-      ) || limitCents < 1 || limitCents > 1000 || spentCents < 0 ||
-        reservedCents < 0 || remainingCents < 0 ||
+      const { limitCents, spentCents, reservedCents,
+        remainingCents, pendingReservations } = data;
+      if (![limitCents, spentCents, reservedCents, remainingCents,
+        pendingReservations].every(Number.isSafeInteger) ||
+        limitCents < 1 || limitCents > 1000 || spentCents < 0 ||
+        reservedCents < 0 || remainingCents < 0 || pendingReservations < 0 ||
+        pendingReservations > 1000000 ||
         spentCents + reservedCents + remainingCents !== limitCents) {
         throw new Error('SALDO_PRIVADO_INVALIDO');
       }
-      return Object.freeze({ limitCents, spentCents, reservedCents, remainingCents });
+      return Object.freeze({ limitCents, spentCents, reservedCents,
+        remainingCents, pendingReservations });
     }
 
     async function generate(input) {
@@ -119,6 +122,11 @@
       // authenticated balance check is mandatory before trying paid generation.
       const data = prepareRequest(input, uuid);
       const budget = await usage();
+      if (budget.pendingReservations !== 0) {
+        // An older-month charge can be unresolved even if the current-month
+        // balance looks full. Never submit another paid request.
+        throw new Error('CONCILIACION_PENDIENTE');
+      }
       if (budget.remainingCents < COST_PER_SONG_CENTS) {
         throw new Error('PRESUPUESTO_AGOTADO');
       }
