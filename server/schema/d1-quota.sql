@@ -23,8 +23,9 @@ CREATE TABLE IF NOT EXISTS reservations (
   duration_seconds REAL,
   reconciliation_reference TEXT,
   UNIQUE(user_id, request_id),
-  CHECK(reconciliation_reference IS NULL OR
-    (state='charged_without_asset' AND length(reconciliation_reference) BETWEEN 8 AND 128)),
+  CHECK((state='charged_without_asset' AND reconciliation_reference IS NOT NULL
+    AND length(reconciliation_reference) BETWEEN 8 AND 128)
+    OR (state!='charged_without_asset' AND reconciliation_reference IS NULL)),
   CHECK((state='committed' AND asset_id IS NOT NULL AND mime_type IS NOT NULL AND duration_seconds > 0)
     OR (state!='committed' AND asset_id IS NULL AND mime_type IS NULL AND duration_seconds IS NULL))
 );
