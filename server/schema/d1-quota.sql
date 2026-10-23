@@ -17,11 +17,14 @@ CREATE TABLE IF NOT EXISTS reservations (
   fingerprint TEXT NOT NULL,
   month TEXT NOT NULL REFERENCES monthly_budgets(month),
   cost_cents INTEGER NOT NULL CHECK(cost_cents > 0),
-  state TEXT NOT NULL CHECK(state IN ('reserved','committed','released')),
+  state TEXT NOT NULL CHECK(state IN ('reserved','committed','released','charged_without_asset')),
   asset_id TEXT,
   mime_type TEXT,
   duration_seconds REAL,
+  reconciliation_reference TEXT,
   UNIQUE(user_id, request_id),
+  CHECK(reconciliation_reference IS NULL OR
+    (state='charged_without_asset' AND length(reconciliation_reference) BETWEEN 8 AND 128)),
   CHECK((state='committed' AND asset_id IS NOT NULL AND mime_type IS NOT NULL AND duration_seconds > 0)
     OR (state!='committed' AND asset_id IS NULL AND mime_type IS NULL AND duration_seconds IS NULL))
 );
