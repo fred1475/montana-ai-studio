@@ -197,3 +197,105 @@ test('CORS preflight allows only configured origin and no wildcard', async () =>
   assert.equal(response.headers.get('access-control-allow-headers'), 'Content-Type');
   assert.equal(trace.providerCalls, 0);
 });
+
+function audioGet(assetId = 'reservation0123456789', options = {}) {
+  return new Request('https://private.example.test/v1/audio/' + assetId, {
+    headers: { Origin: origin, ...options.headers },
+    method: options.method || 'GET'
+  });
+}
+function privateAudioGateway({ object, onLookup } = {}) {
+  const trace = { storeCreations: 0, lookups: 0 };
+  const app = createPrivateMusicGateway({
+    quotaFactory: () => ({
+      usage: async () => ({ limitCents: 1000, spentCents: 0, reservedCents: 0 })
+    }),
+    audioStoreFactory: () => {
+      trace.storeCreations++;
+      return {
+        async getOwnedAudio(args) {
+          trace.lookups++;
+          assert.equal(args.userId, 'owner@example.test');
+          assert.equal(args.assetId, 'reservation0123456789');
+          assert.equal(args.db, env.DB);
+          if (onLookup) return onLookup(args);
+          return object;
+        }
+      };
+    }
+  });
+  return { app, trace };
+}
+function mp3Object(overrides = {}) {
+  return {
+    size: 2048,
+    httpMetadata: { contentType: 'audio/mpeg' },
+    body: new Response(new Uint8Array(2048).fill(42)).body,
+    ...overrides
+  };
+}
+
+test('private MP3 plays only for Access-authenticated owner and exact origin', async () => {
+  const { app, trace } = privateAudioGateway({ object: mp3Object() });
+  const disabledEnv = { ...env, PRIVATE_GENERATION_ENABLED: undefined };
+  const result = await app.fetch(audioGet(), disabledEnv, ctx);
+  assert.equal(result.status, 200);
+  assert.equal(result.headers.get('Content-Type'), 'audio/mpeg');
+  assert.equal(result.headers.get('Content-Length'), '2048');
+  assert.equal(result.headers.get('Cache-Control'), 'no-store');
+  assert.equal(result.headers.get('access-control-allow-origin'), origin);
+  assert.equal(result.headers.get('Content-Disposition'),
+    'inline; filename="montana-ai-studio.mp3"');
+  assert.equal((await result.arrayBuffer()).byteLength, 2048);
+  assert.equal(trace.lookups, 1);
+});
+
+test('audio rejects missing/wrong Access, origin, and unsupported request method', async () => {
+  const { app, trace } = privateAudioGateway({ object: mp3Object() });
+  assert.equal((await app.fetch(audioGet(), env, {})).status, 401);
+  assert.equal((await app.fetch(audioGet(), env, {
+    access: { aud: env.ACCESS_AUD,
+      getIdentity: async () => ({ email: 'intruder@example.test' }) }
+  })).status, 401);
+  assert.equal((await app.fetch(audioGet('reservation0123456789', {
+    headers: { Origin: 'https://untrusted.example.test' }
+  }), env, ctx)).status, 403);
+  assert.equal((await app.fetch(audioGet('reservation0123456789', {
+    headers: { Origin: '' }
+  }), env, ctx)).status, 403);
+  assert.equal((await app.fetch(audioGet('reservation0123456789', {
+    headers: { Range: 'bytes=0-100' }
+  }), env, ctx)).status, 416);
+  assert.equal((await app.fetch(audioGet('reservation0123456789', {
+    method: 'DELETE'
+  }), env, ctx)).status, 405);
+  assert.equal((await app.fetch(audioGet('bad'), env, ctx)).status, 404);
+  assert.equal(trace.lookups, 0);
+});
+
+test('private audio hides absent assets, blocks invalid stored media, and fails closed', async () => {
+  const absent = privateAudioGateway({ object: null });
+  assert.equal((await absent.app.fetch(audioGet(), env, ctx)).status, 404);
+  const tooLarge = privateAudioGateway({ object: mp3Object({
+    size: 21 * 1024 * 1024
+  }) });
+  const r1 = await tooLarge.app.fetch(audioGet(), env, ctx);
+  assert.equal(r1.status, 503);
+  assert.equal((await r1.json()).error, 'AUDIO_UNAVAILABLE');
+  const wrongMime = privateAudioGateway({ object: mp3Object({
+    httpMetadata: { contentType: 'text/html' }
+  }) });
+  assert.equal((await wrongMime.app.fetch(audioGet(), env, ctx)).status, 503);
+  const brokenDb = privateAudioGateway({
+    onLookup: async () => { throw new Error('secret database details'); }
+  });
+  const r2 = await brokenDb.app.fetch(audioGet(), env, ctx);
+  assert.equal(r2.status, 503);
+  assert.equal((await r2.text()).includes('secret database details'), false);
+  const missingStorage = createPrivateMusicGateway({
+    quotaFactory: () => ({ usage: async () => ({ limitCents: 1000 }) })
+  });
+  const r3 = await missingStorage.fetch(audioGet(), env, ctx);
+  assert.equal(r3.status, 503);
+  assert.equal((await r3.json()).error, 'AUDIO_NOT_CONFIGURED');
+});
