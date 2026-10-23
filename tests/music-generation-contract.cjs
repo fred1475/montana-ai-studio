@@ -8,7 +8,7 @@ const REQUEST_ID = '11111111-2222-4333-8444-555555555555';
 const ASSET = { assetId: 'asset_00000001', mimeType: 'audio/wav', durationSeconds: 30 };
 const REQUEST = { requestId: REQUEST_ID, prompt: 'Instrumental boricua con percusión original',
   style: 'Trap y reggaetón', mode: 'instrumental', durationSeconds: 30,
-  language: 'es', confirmsRights: true, consentToSendPrompt: true };
+  language: 'es', confirmsRights: true, consentToSendPrompt: true, confirmsCost: true };
 
 function harness(override = {}) {
   const calls = { screen: 0, reserve: 0, generate: 0, release: 0, commit: 0 };
@@ -80,6 +80,10 @@ test('strict DTO: normalize fields and reject client authority, secrets, malform
   assert.throws(() => validateRequest({ ...REQUEST, confirmsRights: false }),
     error => error.code === 'CONSENT_REQUIRED');
   assert.throws(() => validateRequest({ ...REQUEST, consentToSendPrompt: false }),
+    error => error.code === 'CONSENT_REQUIRED');
+  assert.throws(() => validateRequest({ ...REQUEST, confirmsCost: false }),
+    error => error.code === 'CONSENT_REQUIRED');
+  assert.throws(() => validateRequest({ ...REQUEST, confirmsCost: undefined }),
     error => error.code === 'CONSENT_REQUIRED');
 });
 
