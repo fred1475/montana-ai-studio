@@ -123,9 +123,18 @@
       const rows = await client.pending();
       pendingOutput.textContent = rows.length === 0 ?
         'No hay reservas sin conciliar en ningún mes.' :
-        'Reservas pendientes (solo lectura; NO libera dinero):\\n' +
+        'Reservas pendientes (solo lectura; NO libera dinero):\n' +
         rows.map(row => row.month + ' · ' + row.reservationId +
-          ' · 
+          ' · USD ' + (row.reservedCents / 100).toFixed(2)).join('\n') +
+        '\nVerifica la factura del proveedor antes de cualquier conciliación.';
+    } catch (error) {
+      pendingOutput.textContent = message(error);
+    } finally {
+      pendingButton.disabled = false;
+    }
+  });
+
+  byId('musicForm').addEventListener('submit', async event => {
     event.preventDefault();
     if (!client || busy || generateButton.disabled) return;
     busy = true;
