@@ -37,7 +37,7 @@ function use(path = '/v1/usage', options = {}) {
 function services(overrides = {}) {
   const trace = { providerCalls: 0, screens: 0, reservations: 0 };
   const quota = {
-    usage: async () => ({ limitCents: 1000, reservedCents: 8, spentCents: 16 }),
+    usage: async () => ({ limitCents: 300, reservedCents: 8, spentCents: 16 }),
     pendingCount: async () => 1,
     pending: async () => [{
       reservationId: 'reservation0123456789', month: '2026-10', reservedCents: 8
@@ -65,8 +65,8 @@ function services(overrides = {}) {
   return { app, trace };
 }
 
-test('fixed global budget constants never exceed the approved $10', () => {
-  assert.equal(COST_LIMIT_CENTS, 1000);
+test('generation ledger reserves $3 under the approved $10 total pilot', () => {
+  assert.equal(COST_LIMIT_CENTS, 300);
   assert.equal(COST_PER_SONG_CENTS, 8);
   assert.equal(typeof LIVE_FLAG, 'string');
 });
@@ -100,8 +100,8 @@ test('usage is private and excludes credentials and provider details', async () 
   const response = await app.fetch(use(), env, ctx);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
-    limitCents: 1000, spentCents: 16, reservedCents: 8,
-    remainingCents: 976, pendingReservations: 1
+    limitCents: 300, spentCents: 16, reservedCents: 8,
+    remainingCents: 276, pendingReservations: 1
   });
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
@@ -157,7 +157,7 @@ test('generation is disabled by default even if adapters are provided', async ()
 
 test('requires a reviewed policy and provider before live generation', async () => {
   const app = createPrivateMusicGateway({ quotaFactory: () => ({
-    usage: async () => ({ limitCents: 1000, spentCents: 0, reservedCents: 0 })
+    usage: async () => ({ limitCents: 300, spentCents: 0, reservedCents: 0 })
   }) });
   const response = await app.fetch(post(), env, ctx);
   assert.equal(response.status, 503);
@@ -253,7 +253,7 @@ function privateAudioGateway({ object, onLookup } = {}) {
   const trace = { storeCreations: 0, lookups: 0 };
   const app = createPrivateMusicGateway({
     quotaFactory: () => ({
-      usage: async () => ({ limitCents: 1000, spentCents: 0, reservedCents: 0 })
+      usage: async () => ({ limitCents: 300, spentCents: 0, reservedCents: 0 })
     }),
     audioStoreFactory: () => {
       trace.storeCreations++;
@@ -338,7 +338,7 @@ test('private audio hides absent assets, blocks invalid stored media, and fails 
   assert.equal(r2.status, 503);
   assert.equal((await r2.text()).includes('secret database details'), false);
   const missingStorage = createPrivateMusicGateway({
-    quotaFactory: () => ({ usage: async () => ({ limitCents: 1000 }) })
+    quotaFactory: () => ({ usage: async () => ({ limitCents: 300 }) })
   });
   const r3 = await missingStorage.fetch(audioGet(), env, ctx);
   assert.equal(r3.status, 503);
