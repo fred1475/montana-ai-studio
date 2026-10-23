@@ -154,3 +154,54 @@ test('no R2 or provider key means no request to model', async () => {
   assert.equal(trace.reserved, 0);
   assert.equal(trace.providerCalls, 0);
 });
+
+test('full adapter chain streams MP3 only after the D1 owner/commit lookup', async () => {
+  const { app, env, ctx } = arrange();
+  let checked = 0;
+  let reads = 0;
+  const bytes = new Uint8Array(2048).fill(42);
+  env.DB.prepare = sql => {
+    assert.match(sql, /user_id=\? AND asset_id=\? AND state='committed'/);
+    return {
+      bind(userId, assetId) {
+        checked++;
+        assert.equal(userId, 'owner@example.test');
+        assert.equal(assetId, 'reservation123456789');
+        return { first: async () => ({
+          reservation_id: 'reservation123456789'
+        }) };
+      }
+    };
+  };
+  env.R2.get = async key => {
+    reads++;
+    assert.match(key, /^private-music\/[a-f0-9]{64}\/reservation123456789\.mp3$/);
+    return {
+      size: bytes.byteLength,
+      httpMetadata: { contentType: 'audio/mpeg' },
+      body: new Response(bytes).body
+    };
+  };
+  const response = await app.fetch(new Request(
+    'https://private.example.test/v1/audio/reservation123456789',
+    { headers: { Origin: origin } }), env, ctx);
+  assert.equal(response.status, 200);
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes);
+  assert.equal(checked, 1);
+  assert.equal(reads, 1);
+});
+
+test('unauthorized or uncommitted MP3 requests do not read private R2 objects', async () => {
+  const { app, env, ctx } = arrange();
+  let reads = 0;
+  env.R2.get = async () => { reads++; return null; };
+  env.DB.prepare = () => ({
+    bind: () => ({ first: async () => null })
+  });
+  const req = new Request(
+    'https://private.example.test/v1/audio/reservation123456789',
+    { headers: { Origin: origin } });
+  assert.equal((await app.fetch(req, env, {})).status, 401);
+  assert.equal((await app.fetch(req, env, ctx)).status, 404);
+  assert.equal(reads, 0);
+});
