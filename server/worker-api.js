@@ -164,10 +164,25 @@ function createPrivateMusicGateway({
 
       if (path === '/v1/usage') {
         try {
-          const usage = await quota.usage();
+          // A remaining balance in a new month can coexist with an unresolved
+          // provider charge from last month. Expose and validate both values.
+          if (typeof quota.pendingCount !== 'function') throw new Error('PENDING_COUNT_REQUIRED');
+          const [usage, pendingReservations] = await Promise.all([
+            quota.usage(), quota.pendingCount()
+          ]);
+          if (!Number.isSafeInteger(pendingReservations) ||
+              pendingReservations < 0 || pendingReservations > 1000000 ||
+              ![usage?.limitCents, usage?.spentCents, usage?.reservedCents].every(
+                Number.isSafeInteger
+              ) || usage.limitCents < 1 || usage.spentCents < 0 ||
+              usage.reservedCents < 0 ||
+              usage.spentCents + usage.reservedCents > usage.limitCents) {
+            throw new Error('INVALID_QUOTA_DATA');
+          }
           return json({ limitCents: usage.limitCents,
             spentCents: usage.spentCents, reservedCents: usage.reservedCents,
-            remainingCents: Math.max(0, usage.limitCents - usage.spentCents - usage.reservedCents)
+            remainingCents: usage.limitCents - usage.spentCents - usage.reservedCents,
+            pendingReservations
           }, 200, origin, requestOrigin);
         } catch (_) {
           return json({ error: 'QUOTA_UNAVAILABLE' }, 503, origin, requestOrigin);
