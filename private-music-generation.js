@@ -45,7 +45,8 @@
     return Object.freeze({
       requestId, prompt, style, lyrics,
       mode: input.mode, durationSeconds: input.durationSeconds,
-      language: input.language, confirmsRights: true, consentToSendPrompt: true
+      language: input.language, confirmsRights: true, consentToSendPrompt: true,
+      confirmsCost: true
     });
   }
 
@@ -131,7 +132,7 @@
             !ASSET.test(row.reservationId) ||
             !/^\d{4}-(0[1-9]|1[0-2])$/.test(row.month) ||
             !Number.isSafeInteger(row.reservedCents) ||
-            row.reservedCents < 1 || row.reservedCents > 1000) {
+            row.reservedCents < 1 || row.reservedCents > 300) {
           throw new Error('CONCILIACION_NO_DISPONIBLE');
         }
         return Object.freeze({
