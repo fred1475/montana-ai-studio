@@ -9,6 +9,7 @@
 - `GET /health`: indicador genérico de componente instalado; **no** afirma que el motor genere música.
 - `GET /v1/usage`: consulta privada del límite global mensual, reservado, gastado y restante.
 - `POST /v1/generate`: ruta protegida para una petición futura. Necesita Cloudflare Access real con `ctx.access`, audiencia exacta, propietario autorizado, origen HTTPS exacto y consentimiento en el cuerpo. Solo admite JSON hasta 32 KiB; utiliza el ledger D1 antes de invocar el proveedor.
+- `GET /v1/audio/{assetId}`: transmite un MP3 completo desde R2 **solo** después de autenticar al propietario y confirmar su reserva `committed` en D1. Exige cabecera `Origin` exacta (el cliente debe utilizar `fetch` con credenciales), comprueba MIME y tamaño, niega `Range` por ahora y fija `no-store`. No crea URL compartible ni abre R2 al público.
 - `OPTIONS` habilita la prevalidación CORS únicamente para el origen exacto configurado. La solicitud real sigue exigiendo Access.
 - La respuesta de generación expone únicamente el descriptor opaco que permite el contrato. No filtra claves, URLs de proveedores, MP3, facturas ni identidad.
 
@@ -18,7 +19,7 @@ El **interruptor financiero está apagado por defecto**. Incluso con autentifica
 
 `server/worker-runtime.js` prepara la composición de `worker-api.js`, `d1-quota.js`, `lyria-provider.js` y `r2-audio-store.js`. La suite `tests/worker-runtime.cjs` simula un ciclo completo de petición, autorización, reserva, respuesta del proveedor, inspección de bytes, guardado privado y liquidación; verifica también rechazos de contenido, errores de proveedor, MP3 no decodificable y falta de R2. **Los MP3 del test son bytes ficticios y el inspector es un doble de prueba; no constituye una decodificación ni un archivo musical real.**
 
-El adaptador R2 usa claves derivadas de SHA-256 de la identidad, no permite devolver un objeto sin fila D1 confirmada para el propietario y requiere `inspectMp3` confiable (con decodificación y duración real). No está implementado el decodificador real ni existe punto de entrada desplegable. No se publican URL de R2.
+El adaptador R2 usa claves derivadas de SHA-256 de la identidad, no permite devolver un objeto sin fila D1 confirmada para el propietario y requiere `inspectMp3` confiable (con decodificación y duración real). La ruta de lectura y sus rechazos están probados con dobles de D1/R2; **no** se ha probado audio auténtico. No está implementado el decodificador real ni existe punto de entrada desplegable. No se publican URL de R2.
 
 ## Dependencias todavía ausentes
 
@@ -30,7 +31,7 @@ Este archivo **no es un Worker desplegable por sí solo**. El operador tendrá q
 4. Inyectar el proveedor Lyria y una política de cribado auténtica. Los tests no conectan ninguna de ellas.
 5. Configurar secretos privados `OWNER_EMAIL`, `ACCESS_AUD`, `STUDIO_ORIGIN`, clave de Google, y límites adicionales del proveedor. **No incluir ningún valor real en este repositorio público**.
 6. Verificar derechos de distribución comercial, elegibilidad del modelo, contenido permitido, costes actualizados, alertas del proveedor y gastos asociados a Cloudflare. El límite D1 de 1,000 centavos protege las solicitudes registradas por esta aplicación, **no bloquea automáticamente todos los cargos externos**.
-7. Integrar la interfaz segura del Studio, reproducción/importación de MP3, recuperación de sesiones, manejo de errores e indicación expresa del consentimiento antes de enviar letras/prompts a Google.
+7. Integrar la interfaz segura del Studio con `GET /v1/audio/{assetId}` (vía `fetch` con `credentials: 'include'`, revisión de estado HTTP, Blob local y revocación de URL temporal), importación a pistas, recuperación de sesiones y manejo de errores. El consentimiento debe ser expreso antes de enviar letras/prompts a Google. La ruta autenticada de entrega de bytes ya está escrita, pero el reproductor del cliente todavía no está integrado.
 8. Ejecutar una única prueba real mínima de generación con material genérico solo después de aprobación de gasto puntual. Comparar factura y ledger.
 9. Completar las once puertas de `docs/100-PERCENT-ACCEPTANCE.md`; reservar las pruebas de micrófono e interfaz física para la fase final.
 
