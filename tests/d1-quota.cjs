@@ -240,3 +240,28 @@ test('invalid single-flight settings fail before any transaction', () => {
     db, maxConcurrentReservations: 1025
   }), TypeError);
 });
+
+test('the $3 Lyria pilot permits only 37 eight-cent songs per UTC month', async () => {
+  const { quota, setTime } = harness({
+    monthlyLimitCents: 300, requestCostCents: 8,
+    maxConcurrentReservations: 1
+  });
+  for (let i = 1; i <= 37; i++) {
+    const reservation = await quota.reserve(req(id(1000 + i)));
+    assert.equal(reservation.status, 'reserved');
+    await quota.commit(reservation.reservationId, {
+      assetId: reservation.reservationId,
+      mimeType: 'audio/mpeg', durationSeconds: 170
+    });
+  }
+  assert.deepEqual(await quota.usage(), {
+    limitCents: 300, reservedCents: 0, spentCents: 296
+  });
+  assert.equal((await quota.reserve(req(id(2000)))).status, 'denied',
+    'four cents left cannot authorize another eight-cent generation');
+  setTime('2026-11-01T00:01:00Z');
+  assert.deepEqual(await quota.usage(), {
+    limitCents: 300, reservedCents: 0, spentCents: 0
+  });
+  assert.equal((await quota.reserve(req(id(2001)))).status, 'reserved');
+});
