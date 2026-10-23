@@ -5,7 +5,7 @@ const { createHash } = require('node:crypto');
 // All adapters must be implemented on a private, authenticated backend.
 const INPUT_KEYS = new Set([
   'requestId', 'prompt', 'style', 'lyrics', 'mode', 'durationSeconds',
-  'language', 'confirmsRights', 'consentToSendPrompt'
+  'language', 'confirmsRights', 'consentToSendPrompt', 'confirmsCost'
 ]);
 const MODES = new Set(['instrumental', 'vocal']);
 const LANGUAGES = new Set(['es', 'en']);
@@ -41,11 +41,13 @@ function validateRequest(input) {
   if (!MODES.has(input.mode) || !Number.isInteger(input.durationSeconds) ||
       input.durationSeconds < 15 || input.durationSeconds > 180) fail('INVALID_REQUEST');
   if (input.language !== undefined && !LANGUAGES.has(input.language)) fail('INVALID_REQUEST');
-  if (input.confirmsRights !== true || input.consentToSendPrompt !== true) fail('CONSENT_REQUIRED');
+  if (input.confirmsRights !== true || input.consentToSendPrompt !== true ||
+      input.confirmsCost !== true) fail('CONSENT_REQUIRED');
   return Object.freeze({
     requestId: input.requestId.toLowerCase(), prompt: input.prompt.trim(),
     style: (input.style || '').trim(), lyrics: (input.lyrics || '').trim(), mode: input.mode,
-    durationSeconds: input.durationSeconds, language: input.language || 'es'
+    durationSeconds: input.durationSeconds, language: input.language || 'es',
+    confirmsCost: true
   });
 }
 
