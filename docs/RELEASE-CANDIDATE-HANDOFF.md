@@ -44,7 +44,7 @@
 - Google publica **USD 0.08 por canción Lyria 3.5** en nivel pagado. La cuota interna D1 propuesta para este piloto es **USD 3/mes en canciones**, hasta 37 solicitudes de USD 0.08 (USD 2.96), sin garantizar límite externo de facturación.
 - Cloudflare Workers Paid tiene un cargo **mínimo USD 5/mes**. El Free tiene un límite de CPU que no podemos asumir compatible con decodificación MP3 completa; R2 Standard dispone de cuota gratuita con condiciones.
 - Propuesta conservadora bajo autorización interpretada de USD 10 **TOTALES/mes**: USD 5 mínimos de Cloudflare Workers Paid + hasta USD 3 de Lyria + USD 2 de colchón para impuestos/operaciones/imprevistos. Esta suma es una planificación, **no un límite externo garantizado**. Si no se pueden configurar topes y alertas verificables, no contratar ni activar.
-- Falta confirmar con el propietario que USD 10 es efectivamente el límite total (su «aprobados» se ha interpretado provisionalmente por la alternativa prudente). **No se ha aprobado ningún cargo concreto ni habilitado facturación.** Si los gastos fijos/impuestos no caben en el objetivo, elegir arquitectura alternativa o pedir nueva autorización explícita.
+- El propietario **confirmó USD 10 como objetivo mensual TOTAL** para el piloto. **No se ha aprobado ningún cargo concreto ni habilitado facturación.** Si gastos fijos, impuestos o consumos potenciales no caben en el objetivo o no hay controles externos confiables, elegir arquitectura alternativa o pedir autorización explícita.
 
 Fuentes: https://ai.google.dev/gemini-api/docs/pricing · https://developers.cloudflare.com/workers/platform/pricing/ · https://developers.cloudflare.com/workers/platform/limits/ · https://developers.cloudflare.com/r2/pricing/
 
@@ -60,7 +60,7 @@ Fuentes: https://ai.google.dev/gemini-api/docs/pricing · https://developers.clo
 
 ## Protocolo del laboratorio musical
 
-- `ai-music-lab.html`: `data-api-origin=""` por defecto. Muestra letras, estilo, costo orientativo y tres consentimientos, pero el botón está desactivado sin servidor real.
+- `ai-music-lab.html`: `data-api-origin=""` por defecto. Muestra letras, estilo, costo orientativo y tres consentimientos, pero el botón está desactivado sin servidor real. **El servidor valida también `confirmsCost: true` por cada solicitud** antes del ledger; una casilla marcada solo en la interfaz no basta.
 - Antes de cada generación se consulta `GET /v1/usage`, incluyendo `pendingReservations` de TODOS los meses UTC. Si hay una reserva pendiente, si el conteo falta o si no hay saldo válido, no se efectúa POST. Nunca se reintenta automáticamente un POST ambiguo.
 - `GET /v1/pending`: inventario de reservas sin conciliar en todos los meses, solo lectura, con ID opaco, mes y centavos; requiere Access y Origin exacto, sin letras ni identidad en respuesta. **No** ofrece cancelación/liberación desde el navegador.
 - `POST /v1/generate`: verificación de dueño mediante Access, cribado, reserva en D1, Lyria, decodificación y objeto privado R2, `commit`; las claves solo en servidor.
