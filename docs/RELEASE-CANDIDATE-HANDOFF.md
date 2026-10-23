@@ -53,6 +53,7 @@
 
 - `ai-music-lab.html`: `data-api-origin=""` por defecto. Muestra letras, estilo, costo orientativo y tres consentimientos, pero el botón está desactivado sin servidor real.
 - Antes de cada generación se consulta `GET /v1/usage`, incluyendo `pendingReservations` de TODOS los meses UTC. Si hay una reserva pendiente, si el conteo falta o si no hay saldo válido, no se efectúa POST. Nunca se reintenta automáticamente un POST ambiguo.
+- `GET /v1/pending`: inventario de reservas sin conciliar en todos los meses, solo lectura, con ID opaco, mes y centavos; requiere Access y Origin exacto, sin letras ni identidad en respuesta. **No** ofrece cancelación/liberación desde el navegador.
 - `POST /v1/generate`: verificación de dueño mediante Access, cribado, reserva en D1, Lyria, decodificación y objeto privado R2, `commit`; las claves solo en servidor.
 - `GET /v1/audio/{assetId}`: la lectura necesita propietario autenticado y fila `committed`; salida MP3 para escucha/descarga o importación.
 - `mixer-8.html`: su puente privado también está apagado hasta verificar Worker. Si la pista se ocupa durante la descarga o decodificación, rechaza la sustitución.
