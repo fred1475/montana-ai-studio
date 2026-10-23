@@ -8,7 +8,9 @@ const { createD1Quota } = require('./d1-quota');
 
 const MAX_JSON_BYTES = 32 * 1024;
 const LIVE_FLAG = 'YES_I_APPROVE_REAL_GENERATION_COSTS';
-const COST_LIMIT_CENTS = 1000;
+// Pilot allocation: $3 Lyria + $5 planned Worker + $2 reserve = $10 total.
+// This is NOT an external hard spending cap; no vendor account is active.
+const COST_LIMIT_CENTS = 300;
 const COST_PER_SONG_CENTS = 8;
 const MAX_SERVED_MP3_BYTES = 20 * 1024 * 1024;
 const AUDIO_PATH = /^\/v1\/audio\/([A-Za-z0-9][A-Za-z0-9_-]{7,127})$/;
