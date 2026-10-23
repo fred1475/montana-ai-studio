@@ -1,7 +1,7 @@
 # Montana AI Studio 2.0 — contrato de generación musical IA (integración pendiente)
 
 **Estado: proveedor de referencia seleccionado para preparar integración, todavía no generador funcional.** Este hito
-introduce `server/music-generation.js` y pruebas. La página sigue siendo
+introduce `server/music-generation.js`, un adaptador privado experimental `server/lyria-provider.js` y pruebas simuladas. La página sigue siendo
 estática; **no existe endpoint público de generación, modelo conectado,
 cuenta de proveedor, servicio desplegado ni gasto autorizado**.
 
@@ -56,6 +56,24 @@ mismo usuario, UUID y huella del contenido.
 - **Claves:** exclusivamente del lado servidor. No introducir ningún secreto en GitHub, la aplicación estática ni los archivos de sesión.
 - **Estado actual:** sin API key, sin billing, sin proveedor invocado, sin salida musical real y sin cambios en `main`.
 
+## Adaptador Lyria preparado en rama experimental
+
+El adaptador Node.js usa el endpoint oficial POST /v1beta/models/lyria-3.5:generateContent.
+Prepara el prompt a partir de la entrada validada por el contrato del servidor. Recibe una
+clave exclusivamente mediante inyección en backend, nunca desde HTML ni GitHub Pages.
+El resultado MP3 se entrega como bytes a una función privada storeAudio, que deberá
+verificar el archivo, medir la duración real, cifrarlo y guardarlo asociado al propietario.
+La función devuelve únicamente un identificador opaco y metadatos mínimos.
+
+El adaptador **no crea una cuenta, endpoint web, aplicación desplegada ni factura**.
+No contiene claves reales. Las pruebas usan respuestas simuladas: no generan música
+ni certifican acceso a Google. Cualquier fallo después de enviar al proveedor
+se trata como coste incierto y se reserva para conciliación, sin reintento automático.
+
+USD 0.08 es una tarifa **por canción**, no una cuota mensual fija. El techo
+aceptado de USD 10 permitiría 125 peticiones como máximo aritmético si se
+dedicara todo a esa tarifa; backend y almacenamiento tienen costes adicionales.
+
 ## Pendiente antes de activar un solo usuario
 
 - Verificar el acceso a Google Lyria 3.5 y las condiciones vigentes de distribución comercial compatibles con Montana Music Production LLC, incluyendo voz en español; revisar términos antes de contratar.
@@ -73,7 +91,7 @@ mismo usuario, UUID y huella del contenido.
 
 ## Prueba automática
 
-Ejecutar `node --test tests/music-generation-contract.cjs`. Los casos incluyen
+Ejecutar `node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs`. Los casos incluyen
 entrada maliciosa, falta de autenticación/consentimiento, rechazo de política,
 cuota, reintento concurrente, idempotencia, respuesta insegura y fallas con
 coste ambiguo. Todos los adaptadores de pruebas son **simulados**; ninguno
