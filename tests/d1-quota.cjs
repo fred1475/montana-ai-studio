@@ -145,3 +145,40 @@ test('SQL statement errors roll back every reservation and budget increment', as
   const row = db.sqlite.prepare('SELECT count(*) AS total FROM monthly_budgets').get();
   assert.equal(row.total, 0);
 });
+
+test('single-flight pilot blocks additional paid requests while one is pending', async () => {
+  const { quota } = harness({ maxConcurrentReservations: 1 });
+  const first = await quota.reserve(req(id(25)));
+  assert.equal(first.status, 'reserved');
+  assert.equal((await quota.reserve(req(id(26)))).status, 'pending');
+  assert.deepEqual(await quota.usage(),
+    { limitCents: 16, reservedCents: 8, spentCents: 0 });
+  await quota.commit(first.reservationId, asset);
+  const second = await quota.reserve(req(id(26)));
+  assert.equal(second.status, 'reserved');
+  assert.equal((await quota.reserve(req(id(27)))).status, 'pending');
+  await quota.release(second.reservationId);
+  assert.equal((await quota.reserve(req(id(27)))).status, 'reserved');
+});
+
+test('unreconciled reservation blocks fresh month until operator resolves it', async () => {
+  const { quota, setTime } = harness({ maxConcurrentReservations: 1 });
+  const october = await quota.reserve(req(id(28)));
+  assert.equal(october.status, 'reserved');
+  setTime('2026-11-01T00:01:00Z');
+  assert.equal((await quota.reserve(req(id(29)))).status, 'pending');
+  assert.deepEqual(await quota.usage(),
+    { limitCents: 16, reservedCents: 0, spentCents: 0 });
+  await quota.commit(october.reservationId, asset);
+  assert.equal((await quota.reserve(req(id(29)))).status, 'reserved');
+});
+
+test('invalid single-flight settings fail before any transaction', () => {
+  const { db } = harness();
+  assert.throws(() => createD1Quota({
+    db, maxConcurrentReservations: 0
+  }), TypeError);
+  assert.throws(() => createD1Quota({
+    db, maxConcurrentReservations: 1025
+  }), TypeError);
+});
