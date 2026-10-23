@@ -129,7 +129,7 @@
       return Object.freeze(data.pending.map(row => {
         if (!row || typeof row.reservationId !== 'string' ||
             !ASSET.test(row.reservationId) ||
-            !/^\\d{4}-(0[1-9]|1[0-2])$/.test(row.month) ||
+            !/^\d{4}-(0[1-9]|1[0-2])$/.test(row.month) ||
             !Number.isSafeInteger(row.reservedCents) ||
             row.reservedCents < 1 || row.reservedCents > 1000) {
           throw new Error('CONCILIACION_NO_DISPONIBLE');
