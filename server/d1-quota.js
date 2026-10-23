@@ -125,6 +125,18 @@ function createD1Quota({
       }
     },
 
+    async pendingCount() {
+      // Global across UTC months: an unresolved prior-month provider call
+      // must be visible even when the new month's balance is untouched.
+      const row = await db.prepare("SELECT COUNT(*) AS total FROM reservations WHERE state='reserved'")
+        .bind().first();
+      const total = Number(row?.total);
+      if (!Number.isSafeInteger(total) || total < 0) {
+        throw new Error('PENDING_RESERVATIONS_UNAVAILABLE');
+      }
+      return total;
+    },
+
     async usage() {
       const row = await db.prepare('SELECT limit_cents,reserved_cents,spent_cents FROM monthly_budgets WHERE month=?')
         .bind(month()).first();
