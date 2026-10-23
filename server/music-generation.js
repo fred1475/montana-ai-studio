@@ -4,7 +4,7 @@ const { createHash } = require('node:crypto');
 // Server-side contract only. Not an HTTP endpoint, AI model, or billing system.
 // All adapters must be implemented on a private, authenticated backend.
 const INPUT_KEYS = new Set([
-  'requestId', 'prompt', 'style', 'mode', 'durationSeconds',
+  'requestId', 'prompt', 'style', 'lyrics', 'mode', 'durationSeconds',
   'language', 'confirmsRights', 'consentToSendPrompt'
 ]);
 const MODES = new Set(['instrumental', 'vocal']);
@@ -34,14 +34,17 @@ function validateRequest(input) {
   if (typeof input.prompt !== 'string' || input.prompt.trim().length < 10 ||
       input.prompt.length > 1400 || /[\u0000-\u001f\u007f]/.test(input.prompt)) fail('INVALID_REQUEST');
   if (input.style !== undefined && (typeof input.style !== 'string' ||
-      input.style.length > 240 || /[\u0000-\u001f\u007f]/.test(input.style))) fail('INVALID_REQUEST');
+      input.style.length > 1000 || /[\u0000-\u001f\u007f]/.test(input.style))) fail('INVALID_REQUEST');
+  // Lyrics can contain natural line breaks; reject other control characters.
+  if (input.lyrics !== undefined && (typeof input.lyrics !== 'string' ||
+      input.lyrics.length > 5000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(input.lyrics))) fail('INVALID_REQUEST');
   if (!MODES.has(input.mode) || !Number.isInteger(input.durationSeconds) ||
       input.durationSeconds < 15 || input.durationSeconds > 180) fail('INVALID_REQUEST');
   if (input.language !== undefined && !LANGUAGES.has(input.language)) fail('INVALID_REQUEST');
   if (input.confirmsRights !== true || input.consentToSendPrompt !== true) fail('CONSENT_REQUIRED');
   return Object.freeze({
     requestId: input.requestId.toLowerCase(), prompt: input.prompt.trim(),
-    style: (input.style || '').trim(), mode: input.mode,
+    style: (input.style || '').trim(), lyrics: (input.lyrics || '').trim(), mode: input.mode,
     durationSeconds: input.durationSeconds, language: input.language || 'es'
   });
 }
