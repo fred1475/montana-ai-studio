@@ -1,0 +1,6 @@
+{
+  "name": "montana-ai-studio-preflight",
+  "main": "server/private-preflight.mjs",
+  "compatibility_date": "2026-10-23",
+  "workers_dev": true
+}
