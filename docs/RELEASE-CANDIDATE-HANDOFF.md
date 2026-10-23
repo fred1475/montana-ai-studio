@@ -32,7 +32,7 @@
 
 1. Terminar edición musical, time-stretch integrado, afinación/formantes y mezcla con regresiones.
 2. Construir política de cribado aplicable y auditable. Confirmación de derechos del usuario **no** sustituye la revisión real; no fingir que un regex resuelve derechos de autor.
-3. Elegir decodificador MP3 que produzca PCM verificado; comprobar compatibilidad con Workers, límite de CPU/memoria y licencia. El parser de cabecera, MIME o duración declarada **no** son decodificación.
+3. Elegir decodificador MP3 que produzca PCM verificado; comprobar compatibilidad con Workers, límite de CPU/memoria y licencia. Existe una frontera `server/mp3-inspection.js` que valida PCM e integridad declarada por un decodificador **inyectado**, pero todavía NO un códec real. Un MP3 de 170 segundos a 44.1 kHz estéreo puede ocupar aproximadamente 60 MB solo en PCM de 32 bits; sumar respuesta JSON/base64, WASM, MP3 y runtime podría exceder los 128 MB por isolate de Cloudflare. Ensayar uso real de memoria y considerar arquitectura de procesamiento separada. El parser de cabecera, MIME o duración declarada **no** son decodificación.
 4. Preparar Worker real y pruebas de D1/R2/Access, sin desplegar ni introducir secretos en GitHub. Probar concurrencia D1 e idempotencia contra cuentas reales solo con permiso.
 5. Revisar seguridad de origen y Access en el navegador real: un Worker con Static Assets puede no pasar `ctx.access`; evitarlo. Comprobar redirecciones/login y CORS de `credentials: 'include'`.
 6. Añadir recuperación y borrado autorizados de activos, retención, observabilidad segura y reconciliación de costos.
@@ -52,7 +52,7 @@
 ## Protocolo del laboratorio musical
 
 - `ai-music-lab.html`: `data-api-origin=""` por defecto. Muestra letras, estilo, costo orientativo y tres consentimientos, pero el botón está desactivado sin servidor real.
-- Antes de cada generación se consulta `GET /v1/usage`; si no hay saldo válido, no se efectúa POST. Nunca se reintenta automáticamente un POST ambiguo.
+- Antes de cada generación se consulta `GET /v1/usage`, incluyendo `pendingReservations` de TODOS los meses UTC. Si hay una reserva pendiente, si el conteo falta o si no hay saldo válido, no se efectúa POST. Nunca se reintenta automáticamente un POST ambiguo.
 - `POST /v1/generate`: verificación de dueño mediante Access, cribado, reserva en D1, Lyria, decodificación y objeto privado R2, `commit`; las claves solo en servidor.
 - `GET /v1/audio/{assetId}`: la lectura necesita propietario autenticado y fila `committed`; salida MP3 para escucha/descarga o importación.
 - `mixer-8.html`: su puente privado también está apagado hasta verificar Worker. Si la pista se ocupa durante la descarga o decodificación, rechaza la sustitución.
@@ -62,7 +62,7 @@
 
 | Bloqueo | Por qué importa |
 |---|---|
-| Falta decodificador real | R2 nunca debe guardar respuestas falsas o corrompidas como música confirmada |
+| Falta decodificador real y prueba de memoria | R2 nunca debe guardar respuestas falsas/corrompidas; el procesamiento PCM de canciones completas puede sobrepasar memoria/CPU del Worker |
 | Faltan cuentas y secretos privados | No se puede ensayar IA real ni asegurar gastos de infraestructura |
 | Derechos y política pendientes | No se puede prometer distribución comercial autorizada sin revisar términos |
 | Pruebas de hardware pendientes | No se puede certificar grabación ni master real desde CI |
