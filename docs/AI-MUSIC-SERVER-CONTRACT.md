@@ -58,7 +58,7 @@ mismo usuario, UUID y huella del contenido.
 
 ## Adaptador Lyria preparado en rama experimental
 
-El adaptador Node.js en la rama de integración #5 usa el endpoint oficial POST /v1beta/interactions con `model: lyria-3.5` y `input` como texto. La respuesta REST se lee desde los bloques de tipo `audio` en los pasos `model_output`; el formato antiguo `generateContent` **no es válido para esta integración**.
+El adaptador Node.js en la rama de integración #5 usa el endpoint oficial POST /v1beta/interactions con `model: lyria-3.5` y `input` como texto. La respuesta REST se lee desde los bloques de tipo `audio` en los pasos `model_output`. Se eligió Interactions para esta integración; la documentación separada de Google también presenta `generateContent` como opción *legacy*, pero ese endpoint no forma parte del adaptador ensayado.
 Prepara el prompt a partir de la entrada validada por el contrato del servidor. Recibe una
 clave exclusivamente mediante inyección en backend, nunca desde HTML ni GitHub Pages.
 El resultado MP3 se entrega como bytes a una función privada storeAudio, que deberá
@@ -101,7 +101,13 @@ puerta 8 del documento de aceptación.
 
 ### Actualización de integración (23 octubre 2026)
 
-La documentación oficial vigente indica **Interactions API** en lugar de `generateContent`; la suite de pruebas en PR #5 ahora exige `POST /v1beta/interactions`, `model=lyria-3.5` y salida `steps[].content[]` con bloques `audio`.
+El adaptador utiliza la **Interactions API** documentada oficialmente, sin depender de la ruta legacy `generateContent`; la suite de pruebas en PR #5 ahora exige `POST /v1beta/interactions`, `model=lyria-3.5` y salida `steps[].content[]` con bloques `audio`.
 Fuente oficial: https://ai.google.dev/gemini-api/docs/music-generation
 
 Estas pruebas siguen siendo simuladas. **No se invocó Google** ni se validó la elegibilidad de la cuenta, precio cobrado o calidad del audio real.
+
+### Interfaz privada de preparación
+
+Se añadieron `ai-music-lab.html`, `ai-music-lab.js` y `private-music-generation.js` (PR #5). Son una interfaz con presupuesto consultado al backend, consentimiento para enviar datos a Google, confirmación de derechos y autorización de coste **por intento**. Los botones están desactivados hasta que se configure un servidor HTTPS privado revisado; no existe una generación activa ni una cuenta de pago. El audio confirmado se recuperaría mediante el endpoint autenticado `/v1/audio/{assetId}` y puede importarse al mezclador con el puente igualmente inactivo por defecto.
+
+Documentación del cierre: `docs/RELEASE-CANDIDATE-HANDOFF.md`. El proyecto no está listo para publicarse todavía.
