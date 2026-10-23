@@ -64,6 +64,8 @@ async function rejectsCode(promise, code) {
 test('strict DTO: normalize fields and reject client authority, secrets, malformed inputs', () => {
   assert.equal(validateRequest(REQUEST).prompt, REQUEST.prompt);
   assert.equal(validateRequest(REQUEST).style, REQUEST.style);
+  assert.equal(validateRequest({ ...REQUEST, lyrics: 'Verso 1\nCoro' }).lyrics, 'Verso 1\nCoro');
+  assert.equal(validateRequest({ ...REQUEST, style: 'x'.repeat(1000), lyrics: 'a'.repeat(5000) }).lyrics.length, 5000);
   for (const bad of [
     null, [], { ...REQUEST, userId: 'admin' }, { ...REQUEST, apiKey: 'exposed' },
     { ...REQUEST, provider: 'charge-to-card' }, { ...REQUEST, price: 0 },
@@ -71,7 +73,8 @@ test('strict DTO: normalize fields and reject client authority, secrets, malform
     { ...REQUEST, requestId: 'not-uuid' }, { ...REQUEST, durationSeconds: 999 },
     { ...REQUEST, durationSeconds: 17.5 }, { ...REQUEST, mode: 'video' },
     { ...REQUEST, prompt: 'X'.repeat(1401) }, { ...REQUEST, prompt: 'abc' },
-    { ...REQUEST, prompt: 'prompt\nsecret text' }, { ...REQUEST, style: 'x'.repeat(241) },
+    { ...REQUEST, prompt: 'prompt\nsecret text' }, { ...REQUEST, style: 'x'.repeat(1001) },
+    { ...REQUEST, lyrics: 'a'.repeat(5001) }, { ...REQUEST, lyrics: 'Voz\u0000' },
     { ...REQUEST, language: 'zz' }
   ]) assert.throws(() => validateRequest(bad), MusicGenerationError);
   assert.throws(() => validateRequest({ ...REQUEST, confirmsRights: false }),
