@@ -19,6 +19,9 @@ function database() {
             args,
             async first() {
               return sqlite.prepare(sql).get(...args) || null;
+            },
+            async all() {
+              return { results: sqlite.prepare(sql).all(...args) };
             }
           };
         }
@@ -187,6 +190,18 @@ test('pending count spans calendar months, even when new-month balance appears f
   assert.equal(await quota.pendingCount(), 0);
 });
 
+test('read-only pending inventory includes month and amount but not owner or lyrics', async () => {
+  const { quota, db } = harness({ maxConcurrentReservations: 1 });
+  assert.deepEqual(await quota.pending(), []);
+  const ticket = await quota.reserve(req(id(31), 'private-owner-name'));
+  const rows = await quota.pending();
+  assert.deepEqual(rows, [{
+    reservationId: ticket.reservationId, month: '2026-10', reservedCents: 8
+  }]);
+  assert.equal(JSON.stringify(rows).includes('private-owner-name'), false);
+  assert.equal((await quota.pendingCount()), 1);
+  assert.equal(db.sqlite.prepare('SELECT count(*) AS total FROM reservations').get().total, 1);
+});
 test('invalid single-flight settings fail before any transaction', () => {
   const { db } = harness();
   assert.throws(() => createD1Quota({
