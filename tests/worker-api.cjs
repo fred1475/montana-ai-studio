@@ -21,7 +21,7 @@ const validBody = {
   requestId: '12345678-1234-4123-a123-123456789abc',
   prompt: 'Original instrumental de prueba sin material privado',
   mode: 'instrumental', durationSeconds: 170,
-  confirmsRights: true, consentToSendPrompt: true
+  confirmsRights: true, consentToSendPrompt: true, confirmsCost: true
 };
 
 function post(body = validBody, headers = {}) {
@@ -175,6 +175,9 @@ test('POST requires exact origin, JSON content type and valid body', async () =>
   assert.equal(wrongType.status, 415);
   const malformed = await app.fetch(post('{"broken":'), env, ctx);
   assert.equal(malformed.status, 400);
+  const noPriceConsent = await app.fetch(post({ ...validBody, confirmsCost: false }), env, ctx);
+  assert.equal(noPriceConsent.status, 400);
+  assert.equal((await noPriceConsent.json()).error, 'CONSENT_REQUIRED');
   assert.equal(trace.reservations, 0);
   assert.equal(trace.providerCalls, 0);
 });
