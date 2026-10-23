@@ -13,6 +13,8 @@
 - `OPTIONS` habilita la prevalidación CORS únicamente para el origen exacto configurado. La solicitud real sigue exigiendo Access.
 - La respuesta de generación expone únicamente el descriptor opaco que permite el contrato. No filtra claves, URLs de proveedores, MP3, facturas ni identidad.
 
+En la composición del Worker privado la cuota D1 impone **una sola reserva activa global**. Una respuesta del proveedor con coste dudoso deja esa reserva abierta y, por diseño, bloquea otra generación hasta conciliación por un operador confiable. Este límite de concurrencia es adicional al presupuesto de USD 10/mes y a la idempotencia.
+
 El **interruptor financiero está apagado por defecto**. Incluso con autentificación aprobada, la petición de generación devuelve `GENERATION_NOT_ENABLED` salvo que exista la bandera explícita `PRIVATE_GENERATION_ENABLED=YES_I_APPROVE_REAL_GENERATION_COSTS` y se hayan inyectado adaptadores reales, seguros y revisados de políticas y proveedor. Esta bandera no constituye por sí sola autorización para gastar.
 
 ## Integración simulada de componentes
