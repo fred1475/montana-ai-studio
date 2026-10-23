@@ -10,7 +10,7 @@ const MIME_TYPES = new Set(['audio/mpeg', 'audio/wav', 'audio/flac']);
 
 function createD1Quota({
   db,
-  monthlyLimitCents = 1000,
+  monthlyLimitCents = 300,
   requestCostCents = 8,
   maxConcurrentReservations = 32,
   now = () => new Date(),
