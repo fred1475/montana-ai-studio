@@ -5,19 +5,23 @@
 const { createPrivateMusicGateway } = require('./worker-api');
 const { createPrivateR2AudioStore } = require('./r2-audio-store');
 const { createLyriaProvider } = require('./lyria-provider');
-const { createDecodedMp3Inspector } = require('./mp3-inspection');
+const { createDecodedMp3Inspector, createStreamingMp3Inspector } = require('./mp3-inspection');
 
 function createCloudflareMusicRuntime({
-  screen, inspectMp3, decodeMp3, fetchImpl = globalThis.fetch, quotaFactory
+  screen, inspectMp3, decodeMp3, decodeMp3Chunks,
+  fetchImpl = globalThis.fetch, quotaFactory
 } = {}) {
-  // Production should provide decodeMp3: the inspector then measures duration
-  // from complete PCM rather than trusting provider metadata. inspectMp3 is
-  // retained for isolated contract tests only.
-  if (decodeMp3 !== undefined && inspectMp3 !== undefined) {
-    throw new TypeError('Supply one trusted decoder pathway only');
+  // Production should prefer decodeMp3Chunks for bounded PCM validation.
+  // The chunk producer must attest full compressed-byte consumption.
+  // inspectMp3 remains for isolated contract tests only.
+  const options = [inspectMp3, decodeMp3, decodeMp3Chunks];
+  if (options.filter(item => item !== undefined).length !== 1) {
+    throw new TypeError('Supply exactly one trusted decoder pathway');
   }
-  const inspector = typeof decodeMp3 === 'function' ?
-    createDecodedMp3Inspector({ decodeMp3 }) : inspectMp3;
+  const inspector = decodeMp3Chunks !== undefined ?
+    createStreamingMp3Inspector({ decodeMp3Chunks }) :
+    decodeMp3 !== undefined ? createDecodedMp3Inspector({ decodeMp3 }) :
+      inspectMp3;
   if (typeof screen !== 'function' || typeof inspector !== 'function' ||
       typeof fetchImpl !== 'function') {
     throw new TypeError('Reviewed screening, actual MP3 decoding and fetch are mandatory');
