@@ -1,0 +1,515 @@
+name: Studio mixer browser tests
+on:
+  pull_request:
+    paths:
+      - 'mixer-8.html'
+      - 'beat-lab.html'
+      - 'beat-bridge.js'
+      - 'tests/beat-bridge.cjs'
+      - 'mixer-beat-bridge.js'
+      - 'tests/beat-bridge-ui.cjs'
+      - 'tests/beat-stems-transfer-ui.cjs'
+      - 'beat-engine.js'
+      - 'beat-archive.js'
+      - 'tests/beat-archive.cjs'
+      - 'tests/beat-bundle-ui.cjs'
+      - 'tests/beat-engine.cjs'
+      - 'tests/beat-ui.cjs'
+      - 'tests/beat-transport-race.cjs'
+      - 'mixer-session.js'
+      - 'mixer-session-integrity.js'
+      - 'mixer-song-markers.js'
+      - 'mixer-song-markers-ui.js'
+      - 'tests/mixer-song-markers.cjs'
+      - 'tests/mixer-song-markers-ui.cjs'
+      - 'mixer-section-plan.js'
+      - 'mixer-section-envelope.js'
+      - 'mixer-section-preview-ui.js'
+      - 'tests/mixer-section-plan.cjs'
+      - 'tests/mixer-section-envelope.cjs'
+      - 'tests/mixer-section-preview-ui.cjs'
+      - 'tests/mixer-session-integrity.cjs'
+      - 'tests/mixer-session-integrity-ui.cjs'
+      - 'tests/mixer-preview-assets.cjs'
+      - 'pitch-level-match.js'
+      - 'pitch-timbre-guard.js'
+      - 'pitch-note-audit.js'
+      - 'pitch-artifact-timeline.js'
+      - 'tests/pitch-artifact-timeline.cjs'
+      - 'tests/mixer-artifact-timeline-ui.cjs'
+      - 'tests/pitch-note-audit.cjs'
+      - 'tests/mixer-pitch-note-audit-ui.cjs'
+      - 'mixer-vocal-audit.js'
+      - 'mixer-vocal-audit-ui.js'
+      - 'mixer-vocal-ab.js'
+      - 'mixer-vocal-ab-ui.js'
+      - 'mixer-vocal-blind.js'
+      - 'mixer-vocal-blind-ui.js'
+      - 'tests/mixer-vocal-blind.cjs'
+      - 'tests/mixer-vocal-blind-ui.cjs'
+      - 'tests/mixer-vocal-ab.cjs'
+      - 'tests/mixer-vocal-ab-ui.cjs'
+      - 'tests/mixer-vocal-audit.cjs'
+      - 'tests/mixer-vocal-audit-ui.cjs'
+      - 'tests/pitch-timbre-guard.cjs'
+      - 'tests/mixer-pitch-timbre-ui.cjs'
+      - 'tests/pitch-level-match.cjs'
+      - 'tests/mixer-pitch-level-match-ui.cjs'
+      - 'mixer-input-trim.js'
+      - 'mixer-pan-automation.js'
+      - 'mixer-pan-automation-ui.js'
+      - 'mixer-pan-graph.js'
+      - 'mixer-pan-graph-ui.js'
+      - 'tests/mixer-pan-graph.cjs'
+      - 'tests/mixer-pan-graph-ui.cjs'
+      - 'tests/mixer-pan-automation.cjs'
+      - 'tests/mixer-pan-automation-ui.cjs'
+      - 'mixer-volume-automation.js'
+      - 'mixer-volume-automation-ui.js'
+      - 'mixer-volume-graph.js'
+      - 'mixer-volume-graph-ui.js'
+      - 'tests/mixer-volume-graph.cjs'
+      - 'tests/mixer-volume-graph-ui.cjs'
+      - 'tests/mixer-volume-automation.cjs'
+      - 'tests/mixer-volume-automation-ui.cjs'
+      - 'tests/mixer-input-trim.cjs'
+      - 'tests/mixer-input-trim-ui.cjs'
+      - 'mixer-record.js'
+      - 'mixer-pcm-record.js'
+      - 'tests/mixer-pcm-record.cjs'
+      - 'mixer-meter.js'
+      - 'mixer-stems.js'
+      - 'mixer-fades.js'
+      - 'mixer-recovery.js'
+      - 'mixer-export-levels.js'
+      - 'mixer-export-preflight.js'
+      - 'mixer-export-preflight-ui.js'
+      - 'tests/mixer-export-preflight.cjs'
+      - 'tests/mixer-export-preflight-ui.cjs'
+      - 'tests/mixer-eight-track-stress.cjs'
+      - 'mixer-loudness.js'
+      - 'tests/mixer-loudness-silence-cancel.cjs'
+      - 'tests/mixer-meter-progress.cjs'
+      - 'tests/mixer-meter-cancel-ui.cjs'
+      - 'tests/mixer-master-audit-cancel.cjs'
+      - 'mixer-master-audit.js'
+      - 'mixer-wav-export.js'
+      - 'tests/mixer-wav-export.cjs'
+      - 'tests/mixer-wav-chunks.cjs'
+      - 'tests/mixer-export-samplerate.cjs'
+      - 'mixer-split.js'
+      - 'mixer-crossfade.js'
+      - 'mixer-clipboard.js'
+      - 'mixer-grid.js'
+      - 'docs/RELEASE-CHECKLIST.md'
+      - 'docs/100-PERCENT-ACCEPTANCE.md'
+      - 'hardware-check.html'
+      - 'hardware-loopback.html'
+      - 'hardware-loopback.js'
+      - 'hardware-loopback-ui.js'
+      - 'tests/hardware-loopback.cjs'
+      - 'tests/hardware-loopback-ui.cjs'
+      - 'hardware-check.js'
+      - 'hardware-diagnostics.js'
+      - 'tests/hardware-check.cjs'
+      - 'tests/mixer-grid.cjs'
+      - 'tests/mixer-clipboard.cjs'
+      - 'tests/mixer-crossfade.cjs'
+      - 'tests/mixer-split.cjs'
+      - 'tests/mixer-multiclip.cjs'
+      - 'tests/mixer-master-audit.cjs'
+      - 'tests/mixer-master-stereo-qa.cjs'
+      - 'tests/mixer-master-stereo-browser.cjs'
+      - 'tests/mixer-loudness.cjs'
+      - 'tests/mixer-ebu-reference.cjs'
+      - 'tests/mixer-ebu-multirate.cjs'
+      - 'docs/EBU-R128-VALIDATION.md'
+      - 'tests/mixer-loops.cjs'
+      - 'tests/mixer-export-levels.cjs'
+      - 'tests/mixer-recovery.cjs'
+      - 'tests/mixer-fades.cjs'
+      - 'tests/mixer-stems.cjs'
+      - 'tests/mixer-stems24.cjs'
+      - 'tests/mixer-stems-multirate.cjs'
+      - 'tests/mixer-stems-streamed.cjs'
+      - 'mixer-limiter.js'
+      - 'mixer-vocal-dsp.js'
+      - 'mixer-vocal-clean.js'
+      - 'mixer-vocal-preflight.js'
+      - 'mixer-vocal-preflight-ui.js'
+      - 'tests/mixer-vocal-preflight.cjs'
+      - 'tests/mixer-vocal-preflight-ui.cjs'
+      - 'tests/mixer-vocal-dsp.cjs'
+      - 'tests/mixer-vocal-stereo-link.cjs'
+      - 'tests/mixer-vocal-stereo-browser.cjs'
+      - 'tests/mixer-vocal-clean.cjs'
+      - 'tests/mixer-limiter.cjs'
+      - 'mixer-pitch.js'
+      - 'pitch-quality.js'
+      - 'pitch-blend.js'
+      - 'tests/pitch-blend.cjs'
+      - 'tests/pitch-quality.cjs'
+      - 'tests/mixer-pitch-quality-ui.cjs'
+      - 'time-lab.html'
+      - 'time-stretch.js'
+      - 'tests/time-stretch.cjs'
+      - 'tests/time-lab-ui.cjs'
+      - 'pitch-lab.html'
+      - 'pitch-engine.js'
+      - 'pitch-melody.js'
+      - 'tests/pitch-engine.cjs'
+      - 'tests/pitch-melody.cjs'
+      - 'tests/pitch-stereo-reference.cjs'
+      - 'tests/pitch-stereo-coherence.cjs'
+      - 'tests/pitch-unvoiced-guard.cjs'
+      - 'tests/pitch-unvoiced-browser.cjs'
+      - 'tests/pitch-mark-validation.cjs'
+      - 'tests/pitch-ui.cjs'
+      - 'mixer-timeline.js'
+      - 'tests/mixer-timeline-zoom.cjs'
+      - 'tests/mixer-keyboard-access.cjs'
+      - 'tests/mixer-transport-race.cjs'
+      - 'mixer-history.js'
+      - 'mixer-metronome.js'
+      - 'tests/mixer-smoke.cjs'
+      - 'tests/mixer-track-names.cjs'
+      - 'tests/mixer-pitch.cjs'
+      - 'tests/mixer-sync.cjs'
+      - 'tests/mixer-record.cjs'
+      - '.github/workflows/mixer-tests.yml'
+  workflow_dispatch:
+jobs:
+  mixer-smoke:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Verify test syntax
+        run: |
+          node --check tests/mixer-smoke.cjs
+          node --check mixer-session.js
+          node --check mixer-session-integrity.js
+          node --check mixer-song-markers.js
+          node --check mixer-song-markers-ui.js
+          node --check tests/mixer-song-markers.cjs
+          node --check tests/mixer-song-markers-ui.cjs
+          node tests/mixer-song-markers.cjs
+          node --check mixer-section-plan.js
+          node --check mixer-section-envelope.js
+          node --check mixer-section-preview-ui.js
+          node --check tests/mixer-section-plan.cjs
+          node --check tests/mixer-section-envelope.cjs
+          node --check tests/mixer-section-preview-ui.cjs
+          node tests/mixer-section-plan.cjs
+          node tests/mixer-section-envelope.cjs
+          node --check tests/mixer-session-integrity.cjs
+          node --check tests/mixer-session-integrity-ui.cjs
+          node --check tests/mixer-preview-assets.cjs
+          node tests/mixer-session-integrity.cjs
+          node --check mixer-record.js
+          node --check mixer-pcm-record.js
+          node --check tests/mixer-pcm-record.cjs
+          node tests/mixer-pcm-record.cjs
+          node --check mixer-meter.js
+          node --check mixer-stems.js
+          node --check mixer-fades.js
+          node --check mixer-recovery.js
+          node --check mixer-export-levels.js
+          node --check mixer-export-preflight.js
+          node --check mixer-export-preflight-ui.js
+          node --check tests/mixer-export-preflight.cjs
+          node --check tests/mixer-export-preflight-ui.cjs
+          node --check tests/mixer-eight-track-stress.cjs
+          node tests/mixer-export-preflight.cjs
+          node --check mixer-loudness.js
+          node --check tests/mixer-loudness-silence-cancel.cjs
+          node --check tests/mixer-meter-progress.cjs
+          node --check tests/mixer-meter-cancel-ui.cjs
+          node tests/mixer-loudness-silence-cancel.cjs
+          node tests/mixer-meter-progress.cjs
+          node --check mixer-master-audit.js
+          node tests/mixer-master-audit-cancel.cjs
+          node --check mixer-wav-export.js
+          node --check tests/mixer-wav-export.cjs
+          node --check tests/mixer-wav-chunks.cjs
+          node tests/mixer-wav-chunks.cjs
+          node --check tests/mixer-export-samplerate.cjs
+          node --check mixer-split.js
+          node --check mixer-crossfade.js
+          node --check mixer-clipboard.js
+          node --check mixer-grid.js
+          node --check hardware-check.js
+          node --check hardware-loopback.js
+          node --check hardware-loopback-ui.js
+          node --check tests/hardware-loopback.cjs
+          node --check tests/hardware-loopback-ui.cjs
+          node tests/hardware-loopback.cjs
+          node --check hardware-diagnostics.js
+          node --check tests/hardware-check.cjs
+          node --check tests/mixer-grid.cjs
+          node --check tests/mixer-clipboard.cjs
+          node --check tests/mixer-crossfade.cjs
+          node --check tests/mixer-split.cjs
+          node --check tests/mixer-multiclip.cjs
+          node --check tests/mixer-master-audit.cjs
+          node --check tests/mixer-master-stereo-qa.cjs
+          node --check tests/mixer-master-stereo-browser.cjs
+          node tests/mixer-master-stereo-qa.cjs
+          node --check tests/mixer-loudness.cjs
+          node --check tests/mixer-ebu-reference.cjs
+          node --check tests/mixer-ebu-multirate.cjs
+          node --check tests/mixer-loops.cjs
+          node --check tests/mixer-export-levels.cjs
+          node --check tests/mixer-recovery.cjs
+          node --check tests/mixer-fades.cjs
+          node --check tests/mixer-stems.cjs
+          node --check tests/mixer-stems24.cjs
+          node --check tests/mixer-stems-multirate.cjs
+          node --check tests/mixer-stems-streamed.cjs
+          node --check mixer-limiter.js
+          node --check mixer-vocal-dsp.js
+          node --check mixer-vocal-clean.js
+          node --check mixer-vocal-preflight.js
+          node --check mixer-vocal-preflight-ui.js
+          node --check tests/mixer-vocal-preflight.cjs
+          node --check tests/mixer-vocal-preflight-ui.cjs
+          node tests/mixer-vocal-preflight.cjs
+          node --check tests/mixer-vocal-dsp.cjs
+          node --check tests/mixer-vocal-stereo-link.cjs
+          node --check tests/mixer-vocal-stereo-browser.cjs
+          node tests/mixer-vocal-stereo-link.cjs
+          node --check tests/mixer-vocal-clean.cjs
+          node tests/mixer-vocal-dsp.cjs
+          node --check tests/mixer-limiter.cjs
+          node tests/mixer-limiter.cjs
+          node --check mixer-input-trim.js
+          node --check mixer-pan-automation.js
+          node --check mixer-pan-automation-ui.js
+          node --check mixer-pan-graph.js
+          node --check mixer-pan-graph-ui.js
+          node --check tests/mixer-pan-graph.cjs
+          node --check tests/mixer-pan-graph-ui.cjs
+          node tests/mixer-pan-graph.cjs
+          node --check tests/mixer-pan-automation.cjs
+          node --check tests/mixer-pan-automation-ui.cjs
+          node tests/mixer-pan-automation.cjs
+          node --check mixer-volume-automation.js
+          node --check mixer-volume-automation-ui.js
+          node --check mixer-volume-graph.js
+          node --check mixer-volume-graph-ui.js
+          node --check tests/mixer-volume-graph.cjs
+          node --check tests/mixer-volume-graph-ui.cjs
+          node tests/mixer-volume-graph.cjs
+          node --check tests/mixer-volume-automation.cjs
+          node --check tests/mixer-volume-automation-ui.cjs
+          node tests/mixer-volume-automation.cjs
+          node --check tests/mixer-input-trim.cjs
+          node --check tests/mixer-input-trim-ui.cjs
+          node tests/mixer-input-trim.cjs
+          node --check beat-engine.js
+          node --check beat-bridge.js
+          node --check tests/beat-bridge.cjs
+          node tests/beat-bridge.cjs
+          node --check mixer-beat-bridge.js
+          node --check tests/beat-bridge-ui.cjs
+          node --check tests/beat-stems-transfer-ui.cjs
+          node --check beat-archive.js
+          node --check tests/beat-archive.cjs
+          node --check tests/beat-bundle-ui.cjs
+          node tests/beat-archive.cjs
+          node --check tests/beat-engine.cjs
+          node --check tests/beat-ui.cjs
+          node --check tests/beat-transport-race.cjs
+          node tests/beat-engine.cjs
+          node --check mixer-pitch.js
+          node --check pitch-quality.js
+          node --check pitch-blend.js
+          node --check pitch-level-match.js
+          node --check pitch-note-audit.js
+          node --check pitch-artifact-timeline.js
+          node --check tests/pitch-artifact-timeline.cjs
+          node --check tests/mixer-artifact-timeline-ui.cjs
+          node tests/pitch-artifact-timeline.cjs
+          node --check tests/pitch-note-audit.cjs
+          node --check tests/mixer-pitch-note-audit-ui.cjs
+          node tests/pitch-note-audit.cjs
+          node --check pitch-timbre-guard.js
+          node --check mixer-vocal-audit.js
+          node --check mixer-vocal-audit-ui.js
+          node --check mixer-vocal-ab.js
+          node --check mixer-vocal-ab-ui.js
+          node --check mixer-vocal-blind.js
+          node --check mixer-vocal-blind-ui.js
+          node --check tests/mixer-vocal-blind.cjs
+          node --check tests/mixer-vocal-blind-ui.cjs
+          node tests/mixer-vocal-blind.cjs
+          node --check tests/mixer-vocal-ab.cjs
+          node --check tests/mixer-vocal-ab-ui.cjs
+          node tests/mixer-vocal-ab.cjs
+          node --check tests/mixer-vocal-audit.cjs
+          node --check tests/mixer-vocal-audit-ui.cjs
+          node tests/mixer-vocal-audit.cjs
+          node --check tests/pitch-timbre-guard.cjs
+          node --check tests/mixer-pitch-timbre-ui.cjs
+          node tests/pitch-timbre-guard.cjs
+          node --check tests/pitch-level-match.cjs
+          node --check tests/mixer-pitch-level-match-ui.cjs
+          node tests/pitch-level-match.cjs
+          node --check tests/pitch-blend.cjs
+          node tests/pitch-blend.cjs
+          node --check tests/pitch-quality.cjs
+          node --check tests/mixer-pitch-quality-ui.cjs
+          node tests/pitch-quality.cjs
+          node --check tests/mixer-pitch.cjs
+          node --check tests/mixer-sync.cjs
+          node --check tests/mixer-track-names.cjs
+          node --check tests/mixer-record.cjs
+          node --check time-stretch.js
+          node --check tests/time-stretch.cjs
+          node tests/time-stretch.cjs
+          node --check tests/time-lab-ui.cjs
+          node --check pitch-engine.js
+          node --check pitch-melody.js
+          node --check tests/pitch-melody.cjs
+          node --check tests/pitch-stereo-reference.cjs
+          node --check tests/pitch-stereo-coherence.cjs
+          node --check tests/pitch-unvoiced-guard.cjs
+          node --check tests/pitch-unvoiced-browser.cjs
+          node --check tests/pitch-mark-validation.cjs
+          node tests/pitch-mark-validation.cjs
+          node tests/pitch-melody.cjs
+          node tests/pitch-stereo-reference.cjs
+          node tests/pitch-stereo-coherence.cjs
+          node tests/pitch-unvoiced-guard.cjs
+          node --check tests/pitch-engine.cjs
+          node --check tests/pitch-ui.cjs
+          node tests/pitch-engine.cjs
+          node --check mixer-timeline.js
+          node --check tests/mixer-timeline-zoom.cjs
+          node --check tests/mixer-keyboard-access.cjs
+          node --check tests/mixer-transport-race.cjs
+          node --check mixer-history.js
+          node --check mixer-metronome.js
+      - name: Install browser tooling
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Verify FFmpeg reference availability
+        run: |
+          command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          ffmpeg -hide_banner -version | head -n 1
+      - name: Run mixer functional checks
+        run: |
+          node tests/mixer-ebu-reference.cjs
+          node tests/mixer-ebu-multirate.cjs
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/studio-server.log 2>&1 &
+          sleep 2
+          node tests/mixer-smoke.cjs
+          node tests/mixer-input-trim-ui.cjs
+          node tests/mixer-volume-automation-ui.cjs
+          node tests/mixer-pan-automation-ui.cjs
+          node tests/mixer-pan-graph-ui.cjs
+          node tests/mixer-volume-graph-ui.cjs
+          node tests/mixer-track-names.cjs
+          node tests/beat-ui.cjs
+          node tests/beat-transport-race.cjs
+          node tests/beat-bundle-ui.cjs
+          node tests/beat-bridge-ui.cjs
+          node tests/beat-stems-transfer-ui.cjs
+          node tests/mixer-pitch.cjs
+          node tests/mixer-pitch-quality-ui.cjs
+          node tests/mixer-pitch-level-match-ui.cjs
+          node tests/mixer-pitch-timbre-ui.cjs
+          node tests/mixer-pitch-note-audit-ui.cjs
+          node tests/mixer-artifact-timeline-ui.cjs
+          node tests/mixer-vocal-audit-ui.cjs
+          node tests/mixer-vocal-ab-ui.cjs
+          node tests/mixer-vocal-blind-ui.cjs
+          node tests/mixer-sync.cjs
+          node tests/mixer-stems.cjs
+          node tests/mixer-stems24.cjs
+          node tests/mixer-stems-multirate.cjs
+          node tests/mixer-stems-streamed.cjs
+          node tests/mixer-fades.cjs
+          node tests/mixer-recovery.cjs
+          node tests/mixer-session-integrity-ui.cjs
+          node tests/mixer-song-markers-ui.cjs
+          node tests/mixer-meter-cancel-ui.cjs
+          node tests/mixer-section-preview-ui.cjs
+          node tests/mixer-timeline-zoom.cjs
+          node tests/mixer-keyboard-access.cjs
+          node tests/mixer-transport-race.cjs
+          node tests/mixer-export-levels.cjs
+          node tests/mixer-export-preflight-ui.cjs
+          node tests/mixer-eight-track-stress.cjs
+          node tests/mixer-loudness.cjs
+          node tests/mixer-master-audit.cjs
+          node tests/mixer-master-stereo-browser.cjs
+          node tests/mixer-wav-export.cjs
+          node tests/mixer-export-samplerate.cjs
+          node tests/mixer-split.cjs
+          node tests/mixer-multiclip.cjs
+          node tests/mixer-crossfade.cjs
+          node tests/mixer-clipboard.cjs
+          node tests/mixer-grid.cjs
+          node tests/hardware-check.cjs
+          node tests/hardware-loopback-ui.cjs
+          node tests/mixer-loops.cjs
+          node tests/mixer-record.cjs
+          node tests/mixer-vocal-clean.cjs
+          node tests/mixer-vocal-stereo-browser.cjs
+          node tests/mixer-vocal-preflight-ui.cjs
+          node tests/pitch-ui.cjs
+          node tests/time-lab-ui.cjs
+          node tests/pitch-unvoiced-browser.cjs
+      - name: Package manual mixer preview
+        run: |
+          mkdir -p mixer-preview
+          cp docs/EBU-R128-VALIDATION.md mixer-preview/VALIDACION-EBU-R128.md
+          cp docs/RELEASE-CHECKLIST.md mixer-preview/CHECKLIST-ANTES-DE-PUBLICAR.md
+          cp docs/100-PERCENT-ACCEPTANCE.md mixer-preview/CRITERIOS-100-PORCIENTO.md
+          cp index.html hardware-loopback.html hardware-loopback.js hardware-loopback-ui.js hardware-check.html hardware-check.js hardware-diagnostics.js mixer-export-preflight.js mixer-export-preflight-ui.js mixer-wav-export.js mixer-8.html mixer-grid.js mixer-crossfade.js mixer-clipboard.js mixer-split.js mixer-stems.js mixer-fades.js mixer-recovery.js mixer-export-levels.js mixer-loudness.js mixer-master-audit.js mixer-limiter.js mixer-vocal-dsp.js mixer-vocal-clean.js mixer-vocal-preflight.js mixer-vocal-preflight-ui.js mixer-session-integrity.js mixer-song-markers.js mixer-song-markers-ui.js mixer-section-plan.js mixer-section-preview-ui.js mixer-session.js mixer-pcm-record.js mixer-record.js mixer-timeline.js mixer-history.js mixer-metronome.js mixer-meter.js mixer-input-trim.js mixer-pan-automation.js mixer-pan-automation-ui.js mixer-pan-graph.js mixer-pan-graph-ui.js mixer-volume-automation.js mixer-volume-automation-ui.js mixer-volume-graph.js mixer-volume-graph-ui.js mixer-pitch.js pitch-quality.js pitch-blend.js pitch-level-match.js pitch-timbre-guard.js mixer-vocal-audit.js mixer-vocal-audit-ui.js mixer-vocal-ab.js mixer-vocal-ab-ui.js mixer-vocal-blind.js mixer-vocal-blind-ui.js pitch-lab.html time-lab.html time-stretch.js beat-engine.js beat-archive.js beat-bridge.js mixer-beat-bridge.js beat-lab.html pitch-engine.js pitch-melody.js pitch-note-audit.js pitch-artifact-timeline.js studio.html studio.js backup.js mixer-preview/
+          cp mixer-section-envelope.js mixer-preview/
+          printf '%s\n' \
+            'MONTANA AI STUDIO — MIXER 8 TRACKS / DEVELOPMENT PREVIEW' \
+            '1. Extraiga los archivos en la misma carpeta.' \
+            '2. Abra mixer-8.html en Chrome o Edge.' \
+            '3. Importe dos WAV cortos para probar reproducción, recortes, panorama y exportación.' \
+            '4. Pruebe el compresor dentro del panel de cada pista y escuche la diferencia.' \
+            '5. Mueva el bloque en la línea de tiempo con el ratón y guarde la sesión JSON.' \
+            '6. Abra esa sesión JSON para comprobar que se recuperan pistas y posiciones.' \
+            '7. La grabación con micrófono puede requerir HTTPS o localhost; no se garantiza desde file://.' \
+            '8. Observe niveles por pista y mezcla final durante reproducción.' \
+            '9. La afinación vocal experimental se aplica en los canales 2–8 a fragmentos breves; NO es Auto-Tune profesional.' \
+            '10. Pruebe pitch-lab.html y el control de mezcla seco/procesado de 0 a 100%; no es afinación profesional. El WAV incorpora esa mezcla y el original permanece intacto.' \
+            '11. Use Deshacer/Rehacer para ajustar posición y recortes sin destruir audio.' \
+            '12. Active el metrónomo y ajuste BPM; los clics no están en el WAV exportado.' \
+            '13. Active el limitador maestro solo para exportar WAV y seleccione techo de muestra; no mide true-peak ni LUFS.' \
+            '14. En cada canal de voz puede activar puerta de ruido y de-esser locales; son una beta, escuchar antes de entregar.' \
+            '15. Use alineación vocal manual de -250 a +250 ms y Rescatar fuente del canal después de una toma.' \
+            '16. Aún falta calibración automática con equipo físico; esta es una beta.' \
+            '17. Descargue cada stem WAV o todos en ZIP. Archivos alineados desde 0:00, sin mezcla maestra ni mute/solo.' \
+            '18. Ajuste los fundidos de entrada/salida de cada pista. Se aplican al WAV, stems y referencia de grabación.' \
+            '19. Active el autoguardado local de IndexedDB solo si lo desea; restaure manualmente y conserve un JSON de respaldo.' \
+            '20. Pruebe normalización de picos de muestra y medición RMS al exportar; no equivale a LUFS o true-peak.' \
+            '21. Active medición EBU R128 orientativa: integrado, M, S, LRA y true-peak 4×. Comparada con FFmpeg; NO está oficialmente certificada.' \
+            '22. Puede repetir 1–8 veces una región recortada en su pista, escuchándola y exportando WAV/stems.' \
+            '23. Active Auditoría de master WAV si desea JSON EBU de preentrega con CRC32 del PCM16 exacto.' \
+            '24. Use hasta cuatro fragmentos, cuatro copias adicionales y BPM grid snap opcional (1/4, 1/8, 1/16) en la línea de tiempo.' \
+            '25. hardware-check.html y hardware-loopback.html quedan reservados para probar la interfaz y estimar latencia SOLO en validación final, con loopback seguro.' \
+            '26. El master puede exportarse en PCM16 o PCM24 a 44.1 o 48 kHz; el dither TPDF opcional solo se aplica a 16 bits. Los stems permiten PCM16/24 a 44.1/48 kHz con selección independiente.' \
+            '27. Puede elegir WAV mono PCM24 sin compresión adicional mediante AudioWorklet o modo compatible WebM/MP4 mediante MediaRecorder. Ninguno garantiza captura bit-perfect ni latencia calibrada.' \
+            '28. Este módulo NO está terminado. Use audio de prueba y conserve siempre sus originales.' \
+            '29. Beat Lab: cree un ritmo y pulse Enviar al mezclador para guardarlo temporalmente en IndexedDB y confirmar manualmente la importacion al canal 1 sin descargarlo; no es IA generativa.' \
+            '30. La matriz CRITERIOS-100-PORCIENTO.md documenta puertas pendientes y evidencia necesaria antes de declarar una versión terminada.' > mixer-preview/README.txt
+          node tests/mixer-preview-assets.cjs mixer-preview
+      - uses: actions/upload-artifact@v5
+        with:
+          name: montana-mixer-8-preview
+          path: mixer-preview/
+          retention-days: 7

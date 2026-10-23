@@ -1,0 +1,85 @@
+'use strict';
+/* Beat Lab browser acceptance — no microphones, samples, accounts or cloud. */
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+  const page=await browser.newPage({acceptDownloads:true});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://127.0.0.1:8765/beat-lab.html');
+  assert((await page.locator('h1').innerText()).includes('Beat Lab'));
+  assert.equal(await page.locator('#steps button[data-track]').count(),64);
+  assert.equal(await page.locator('#steps select[data-bass]').count(),16);
+  const first=page.locator('#steps button[data-track="kick"][data-step="0"]');
+  assert.equal(await first.getAttribute('aria-pressed'),'true');
+  await first.click();assert.equal(await first.getAttribute('aria-pressed'),'false');
+  assert.equal(await first.evaluate(el=>document.activeElement===el),true,'Editing a step must preserve keyboard focus');
+  await page.locator('#bpm').fill('120');await page.locator('#bpm').dispatchEvent('change');
+  await page.locator('#bars').selectOption('2');
+  await page.locator('#swing').fill('20');await page.locator('#swing').dispatchEvent('input');
+  await page.locator('#steps select[data-bass="5"]').selectOption('48');
+  assert.equal(await page.locator('#swingValue').textContent(),'20%');
+  const [jsonDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#saveJson').click()]);
+  const jsonPath=path.join(process.cwd(),'beat-lab-test-pattern.json');await jsonDownload.saveAs(jsonPath);
+  const pattern=JSON.parse(fs.readFileSync(jsonPath,'utf8'));
+  assert.equal(pattern.bpm,120);assert.equal(pattern.bars,2);assert.equal(pattern.swing,20);
+  assert.equal(pattern.drums.kick[0],0);assert.equal(pattern.bass[5],48);
+  // Invalid JSON cannot overwrite active pattern.
+  await page.locator('#loadJson').setInputFiles({name:'beat-invalid.json',mimeType:'application/json',buffer:Buffer.from('{"version":1,"bpm":999}')});
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Patrón rechazado'));
+  assert.equal(await page.locator('#bpm').inputValue(),'120');
+  await page.locator('#preset').selectOption('empty');
+  assert.equal(await page.locator('#steps button[data-track="snare"][aria-pressed="true"]').count(),0);
+  await page.locator('#loadJson').setInputFiles(jsonPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('restaurado correctamente'));
+  assert.equal(await page.locator('#bpm').inputValue(),'120');
+  assert.equal(await page.locator('#bars').inputValue(),'2');
+  assert.equal(await page.locator('#steps select[data-bass="5"]').inputValue(),'48');
+  const [midiDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#exportMidi').click()]);
+  const midiPath=path.join(process.cwd(),'beat-lab-test.mid');await midiDownload.saveAs(midiPath);
+  const midi=fs.readFileSync(midiPath);
+  assert.equal(midi.toString('ascii',0,4),'MThd');
+  assert.equal(midi.readUInt16BE(8),0);assert.equal(midi.readUInt16BE(12),480);
+  assert.equal(midi.readUInt32BE(18),midi.length-22);
+  const [wavDownload]=await Promise.all([page.waitForEvent('download',{timeout:60000}),page.locator('#exportWav').click()]);
+  const wavPath=path.join(process.cwd(),'beat-lab-test.wav');await wavDownload.saveAs(wavPath);
+  const wav=fs.readFileSync(wavPath),sampleRate=wav.readUInt32LE(24);
+  assert.equal(wav.toString('ascii',0,4),'RIFF');assert.equal(wav.readUInt16LE(20),1);
+  assert.equal(wav.readUInt16LE(22),2);assert.equal(sampleRate,44100);
+  assert.equal(wav.readUInt16LE(34),16);
+  assert.equal(wav.readUInt32LE(40),wav.length-44);
+  assert(Math.abs((wav.length-44)/(sampleRate*4)-4.35)<.02,'2 bars at 120 BPM + 0.35s tail');
+  let max=0;for(let j=44;j<wav.length;j+=460)max=Math.max(max,Math.abs(wav.readInt16LE(j&~1)));
+  assert(max>100,'WAV must contain audible PCM synthesis');
+  await page.locator('#wavRate').selectOption('48000');
+  const [videoDownload]=await Promise.all([page.waitForEvent('download',{timeout:60000}),page.locator('#exportWav').click()]);
+  const videoPath=path.join(process.cwd(),'beat-lab-video.wav');await videoDownload.saveAs(videoPath);
+  const video=fs.readFileSync(videoPath);
+  assert.equal(video.readUInt32LE(24),48000);
+  assert.equal(video.readUInt16LE(22),2);
+  assert.equal(video.readUInt32LE(40),video.length-44);
+  assert(Math.abs((video.length-44)/(48000*4)-4.35)<.02);
+  await page.locator('#stemTrack').selectOption('hat');
+  const [stemDownload]=await Promise.all([page.waitForEvent('download',{timeout:60000}),page.locator('#exportStem').click()]);
+  const stemPath=path.join(process.cwd(),'beat-lab-hat.wav');await stemDownload.saveAs(stemPath);
+  const stem=fs.readFileSync(stemPath);
+  assert.equal(stem.readUInt32LE(24),48000);
+  assert.equal(stem.readUInt16LE(22),2);
+  assert.equal(stem.length,video.length,'Stems stay aligned with full beat from 0:00');
+  let stemPeak=0,stemDifference=0;
+  for(let i=44;i<stem.length;i+=640){
+   stemPeak=Math.max(stemPeak,Math.abs(stem.readInt16LE(i)));
+   stemDifference+=Math.abs(stem.readInt16LE(i)-video.readInt16LE(i));
+  }
+  assert(stemPeak>20,'Hat stem must contain nonzero audio');
+  assert(stemDifference>100,'Hat stem must differ from complete beat');
+  await page.locator('#play').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Reproduciendo'),null,{timeout:15000});
+  await page.locator('#stop').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('detenida'));
+  assert.deepEqual(errors,[]);
+  console.log('PASS Beat Lab browser: accessible grid, edits, validated JSON, MIDI, audible WAV PCM16, aligned instrument stem at 48 kHz, preview and stop.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1);});

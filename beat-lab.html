@@ -1,0 +1,242 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Montana AI Studio 2.0 — Beat Lab</title>
+<style>
+:root{color-scheme:dark;font:15px/1.45 system-ui,Arial,sans-serif;background:#090e19;color:#f5f7fd;--gold:#f3c56f;--line:#43506b}
+*{box-sizing:border-box}body{margin:0 auto;padding:20px;max-width:1200px}a{color:var(--gold)}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.brand{font-weight:900;letter-spacing:.06em;color:var(--gold)}
+h1{font-size:clamp(1.6rem,3vw,2.45rem);margin:.8em 0 .2em}h2{font-size:1.12rem}p,small{color:#bdcadb}
+.panel{background:#151f30;border:1px solid #46526b;border-radius:13px;padding:18px;margin:16px 0}
+.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+label{display:block;font-weight:700;margin-bottom:5px}input,select{background:#0c1423;color:#fff;border:1px solid #63728b;border-radius:7px;padding:9px;width:100%;font:inherit}
+button{font:inherit;font-weight:700;padding:10px 14px;border-radius:8px;border:1px solid #74809b;color:#fff;background:#26354c;cursor:pointer}
+button.primary{background:var(--gold);border-color:var(--gold);color:#211707}button:disabled{opacity:.5;cursor:wait}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:13px 0}.status{color:#f4d9a7;min-height:1.6em}
+.board{overflow-x:auto;padding:6px 0;max-width:100%}.steps{display:grid;grid-template-columns:100px repeat(16,44px);gap:5px;width:max-content}
+.track-name{display:flex;align-items:center;font-weight:800}.step-label{text-align:center;color:#b8c8dc;font-size:.78rem;padding:9px 2px}
+.step{min-height:39px;min-width:41px;padding:0;border-color:#566780;background:#23344e}.step[aria-pressed=true]{background:var(--gold);color:#1a1309;border-color:#fce4b4}
+.step:nth-child(4n+1){border-color:#9d7b46}
+.note{min-width:44px;padding:5px 1px;font-size:.78rem;min-height:39px}
+.helper{border-left:3px solid var(--gold);padding-left:12px}input[type=range]{accent-color:var(--gold)}
+@media(max-width:760px){body{padding:12px}.controls{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:12px}}
+</style></head><body>
+<header><div class="brand">MONTANA MUSIC PRODUCTION · AI STUDIO 2.0</div><nav><a href="studio.html">Estudio</a> · <a href="mixer-8.html">Mezclador de 8 pistas</a></nav></header>
+<h1>🥁 Beat Lab — secuenciador de ritmos</h1>
+<p>Programa tus propios bombos, cajas, palmas, hi-hats y notas de bajo. Escucha el ritmo y exporta WAV estéreo o MIDI estándar. Síntesis local original: <strong>sin muestras de terceros y sin IA generativa</strong>. Laboratorio beta, no masterización profesional.</p>
+<section class="panel" aria-label="Configuración de ritmo"><div class="controls">
+<div><label for="preset">Patrón inicial</label><select id="preset"><option value="trap">Trap</option><option value="reggaeton">Reggaetón</option><option value="dembow">Dembow</option><option value="hiphop">Hip hop</option><option value="empty">Vacío</option></select></div>
+<div><label for="bpm">Tempo (60–200 BPM)</label><input id="bpm" type="number" min="60" max="200" step="1" value="140"></div>
+<div><label for="bars">Duración</label><select id="bars"><option value="1">1 compás</option><option value="2">2 compases</option><option selected value="4">4 compases</option><option value="8">8 compases</option></select></div>
+<div><label for="swing">Swing: <output id="swingValue">0%</output></label><input id="swing" type="range" min="0" max="40" step="5" value="0"></div>
+</div><small>Cada fila representa un compás de 16 semicorcheas que se repite durante la duración elegida. El swing retrasa los pasos impares; no estira la grabación.</small></section>
+<section class="panel"><h2>Cuadrícula de 16 pasos</h2><p>Toca los cuadros dorados para activar o apagar golpes. En la fila del bajo, elige la nota que sonará en cada paso.</p><div class="board"><div class="steps" id="steps" role="group" aria-label="Patrón musical editable"></div></div>
+<div class="actions"><button id="play" class="primary">▶ Escuchar patrón</button><button id="stop">■ Detener</button><label for="wavRate">Frecuencia WAV <select id="wavRate"><option value="44100">44.1 kHz</option><option value="48000">48 kHz (video)</option></select></label><button id="sendToMixer" class="primary">🎚️ Enviar ritmo al mezclador</button><button id="sendStemsToMixer">🎛️ Enviar 5 instrumentos separados</button><button id="exportWav">⬇ WAV estéreo PCM16</button><button id="exportMidi">⬇ MIDI</button></div>
+<div class="actions"><label for="stemTrack">Pista individual <select id="stemTrack"><option value="kick">Bombo</option><option value="snare">Caja</option><option value="clap">Palmas</option><option value="hat">Hi-hat</option><option value="bass">Bajo</option></select></label><button id="exportStem">⬇ Exportar stem WAV</button><button id="exportBundle" class="primary">⬇ Paquete completo ZIP</button></div>
+<p id="status" class="status" role="status" aria-live="polite">Patrón cargado. Edita, escucha o exporta.</p><small>Enviar guarda un WAV o cinco stems temporales en el navegador y abre el mezclador; allí debes confirmar la importación y seleccionar los canales. No modifica sesiones existentes automáticamente. Requiere el mismo origen HTTP(S), como localhost o tu sitio web.</small></section>
+<section class="panel"><h2>Guardar y recuperar</h2><div class="actions"><button id="saveJson">⬇ Guardar patrón JSON</button><label for="loadJson" style="display:inline-block">Importar patrón JSON <input id="loadJson" type="file" accept=".json,application/json"></label></div>
+<p class="helper">El proyecto se descarga al dispositivo. No se envían patrones ni audio a servidores. Para incluir el ritmo en una canción, exporta el WAV y luego impórtalo en la pista instrumental del mezclador. Mantén siempre copias de tus proyectos.</p></section>
+<script src="beat-engine.js"></script><script src="beat-archive.js"></script><script src="beat-bridge.js"></script><script>
+'use strict';
+const B=MontanaBeat,$=id=>document.getElementById(id);
+let pattern=B.preset('trap'),playing=null,busy=false;
+// A Stop, pattern edit or newer Play revokes earlier asynchronous resume().
+let transportEpoch=0,transportTimer=null;
+const labels={kick:'Bombo',snare:'Caja',clap:'Palmas',hat:'Hi-hat'};
+const notes=[[null,'—'],[36,'C2'],[38,'D2'],[39,'Eb2'],[41,'F2'],[43,'G2'],[46,'Bb2'],[48,'C3'],[50,'D3'],[51,'Eb3'],[53,'F3'],[55,'G3'],[58,'Bb3'],[60,'C4']];
+function status(message){$('status').textContent=message;}
+function draw(){
+ const board=$('steps');board.replaceChildren();
+ const cell=(type,value)=>{const el=document.createElement('div');el.className=type;el.textContent=value;board.append(el);};
+ cell('step-label','Pista');
+ for(let i=0;i<16;i++)cell('step-label',i+1);
+ for(const track of B.keys){
+  cell('track-name',labels[track]);
+  for(let step=0;step<16;step++){
+   const btn=document.createElement('button');btn.type='button';btn.className='step';
+   btn.dataset.track=track;btn.dataset.step=String(step);
+   btn.setAttribute('aria-label',labels[track]+' paso '+(step+1));
+   btn.setAttribute('aria-pressed',String(!!pattern.drums[track][step]));
+   btn.textContent=pattern.drums[track][step]?'●':'·';
+   btn.addEventListener('click',()=>{pattern.drums[track][step]^=1;btn.setAttribute('aria-pressed',String(!!pattern.drums[track][step]));btn.textContent=pattern.drums[track][step]?'●':'·';invalidateAudio();});
+   board.append(btn);
+  }
+ }
+ cell('track-name','Bajo');
+ for(let step=0;step<16;step++){
+  const select=document.createElement('select');select.className='note';
+  select.dataset.bass=String(step);select.setAttribute('aria-label','Bajo paso '+(step+1));
+  for(const [value,name] of notes){
+   const option=document.createElement('option');option.value=value===null?'':String(value);option.textContent=name;
+   select.append(option);
+  }
+  select.value=pattern.bass[step]===null?'':String(pattern.bass[step]);
+  select.addEventListener('change',()=>{pattern.bass[step]=select.value===''?null:Number(select.value);invalidateAudio();});
+  board.append(select);
+ }
+ $('bpm').value=pattern.bpm;$('bars').value=String(pattern.bars);
+ $('swing').value=String(pattern.swing);$('swingValue').textContent=pattern.swing+'%';
+}
+function invalidateAudio(){stopAudio();status('Patrón editado. Listo para reproducir o exportar.');}
+function current(){return B.validate(pattern);}
+async function stopAudio(){
+ transportEpoch++;
+ if(transportTimer!==null){clearTimeout(transportTimer);transportTimer=null;}
+ const context=playing;playing=null;
+ if(context){try{await context.close();}catch(e){}}
+}
+$('preset').addEventListener('change',()=>{try{pattern=B.preset($('preset').value);draw();invalidateAudio();}catch(e){status(e.message);}});
+$('bpm').addEventListener('change',()=>{
+ const number=Number($('bpm').value);if(Number.isInteger(number)&&number>=60&&number<=200){pattern.bpm=number;invalidateAudio();}
+ else{$('bpm').value=pattern.bpm;status('El BPM debe ser entero entre 60 y 200.');}
+});
+$('bars').addEventListener('change',()=>{pattern.bars=Number($('bars').value);invalidateAudio();});
+$('swing').addEventListener('input',()=>{pattern.swing=Number($('swing').value);$('swingValue').textContent=pattern.swing+'%';invalidateAudio();});
+$('stop').addEventListener('click',()=>{stopAudio();status('Reproducción detenida.');});
+$('play').addEventListener('click',async()=>{
+ let token=null;
+ try{
+  if(busy)return;
+  const closing=stopAudio();token=transportEpoch;
+  await closing;
+  if(token!==transportEpoch)return;
+  const context=new(window.AudioContext||window.webkitAudioContext)();playing=context;
+  await context.resume();
+  if(token!==transportEpoch||playing!==context)return;
+  const info=B.schedule(context,current(),context.currentTime+.04);
+  status('Reproduciendo '+info.notes+' eventos originales. Duración musical '+info.duration.toFixed(2)+' s.');
+  transportTimer=setTimeout(()=>{
+   if(token===transportEpoch&&playing===context){stopAudio();status('Reproducción completada.');}
+  },Math.ceil((info.duration+.4)*1000));
+ }catch(e){
+  if(token===transportEpoch){stopAudio();status('No se pudo reproducir: '+e.message);}
+ }
+});
+function save(bytes,name,type){
+ const blob=new Blob([bytes],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),20000);
+}
+$('sendToMixer').addEventListener('click',async()=>{
+ if(busy)return;busy=true;
+ const button=$('sendToMixer');button.disabled=true;
+ try{
+  const p=current(),rate=Number($('wavRate').value);
+  const audio=await B.render(p,rate);
+  const bytes=B.wav(audio.channels,audio.rate);
+  const filename='montana-beat-lab-'+Math.round(rate/1000)+'k.wav';
+  await MontanaBeatBridge.save({bytes,bpm:p.bpm,filename});
+  status('Ritmo guardado localmente. Abriendo mezclador para confirmar importación...');
+  window.location.assign('mixer-8.html#beat-transfer');
+ }catch(e){
+  status('No se pudo enviar el beat: '+e.message+'. Exporta el WAV como alternativa.');
+ }finally{busy=false;button.disabled=false;}
+});
+$('sendStemsToMixer').addEventListener('click',async()=>{
+ if(busy)return;busy=true;
+ const button=$('sendStemsToMixer');button.disabled=true;
+ try{
+  const p=current(),rate=Number($('wavRate').value);
+  if(rate!==44100&&rate!==48000)throw Error('Frecuencia inválida');
+  const frames=Math.ceil((p.bars*4*60/p.bpm+.35)*rate);
+  if(5*(44+frames*4)>MontanaBeatBridge.STEM_LIMIT)
+   throw Error('El proyecto supera el límite de envío local para stems. Usa ZIP como alternativa.');
+  const stems=[];
+  for(const kind of MontanaBeatBridge.STEMS){
+   status('Preparando envío local: '+kind+' ('+(stems.length+1)+'/5)...');
+   const rendered=await B.render(B.isolate(p,kind),rate);
+   stems.push({kind,bytes:B.wav(rendered.channels,rate),
+    filename:'montana-stem-'+kind+'-'+(rate/1000).toFixed(1)+'k.wav'});
+  }
+  await MontanaBeatBridge.saveStems({stems,bpm:p.bpm});
+  status('Cinco instrumentos guardados. El mezclador requerirá confirmar los canales.');
+  window.location.assign('mixer-8.html#beat-stems');
+ }catch(e){
+  status('No se pudieron enviar los stems: '+e.message+'. Usa ZIP como alternativa.');
+ }finally{busy=false;button.disabled=false;}
+});
+$('exportMidi').addEventListener('click',()=>{
+ try{save(B.midi(current()),'montana-beat-lab.mid','audio/midi');status('MIDI descargado. Los instrumentos dependen del programa que lo importe.');}
+ catch(e){status('No se pudo exportar MIDI: '+e.message);}
+});
+$('exportWav').addEventListener('click',async()=>{
+ if(busy)return;busy=true;
+ $('exportWav').disabled=true;$('exportWav').textContent='Renderizando…';
+ try{
+  const data=await B.render(current(),Number($('wavRate').value));
+  save(B.wav(data.channels,data.rate),'montana-beat-lab-'+(data.rate/1000).toFixed(1)+'k.wav','audio/wav');
+  status('WAV local exportado: '+data.rate+' Hz / PCM16 estéreo / '+data.duration.toFixed(2)+' s musicales.');
+ }catch(e){status('No se pudo exportar WAV: '+e.message);}
+ finally{busy=false;$('exportWav').disabled=false;$('exportWav').textContent='⬇ WAV estéreo PCM16';}
+});
+$('exportStem').addEventListener('click',async()=>{
+ if(busy)return;busy=true;
+ $('exportStem').disabled=true;
+ try{
+  const instrument=$('stemTrack').value,isolated=B.isolate(current(),instrument);
+  const data=await B.render(isolated,Number($('wavRate').value));
+  save(B.wav(data.channels,data.rate),'montana-stem-'+instrument+'-'+(data.rate/1000).toFixed(1)+'k.wav','audio/wav');
+  status('Stem '+instrument+' exportado y alineado desde 0:00: '+data.rate+' Hz, '+data.duration.toFixed(2)+' s musicales.');
+ }catch(e){status('No se pudo exportar stem: '+e.message);}
+ finally{busy=false;$('exportStem').disabled=false;}
+});
+$('exportBundle').addEventListener('click',async()=>{
+ if(busy)return;
+ busy=true;$('exportBundle').disabled=true;
+ const trackNames={kick:'Bombo',snare:'Caja',clap:'Palmas',hat:'Hi-hat',bass:'Bajo'};
+ try{
+  const p=current(),rate=Number($('wavRate').value);
+  if(rate!==44100&&rate!==48000)throw Error('Frecuencia de exportación inválida');
+  const frames=Math.ceil((p.bars*4*60/p.bpm+.35)*rate);
+  const projected=6*(44+frames*4)+2*1024*1024;
+  if(projected>MontanaBeatArchive.MAX_ARCHIVE)
+   throw Error('El paquete supera el límite de memoria de esta versión');
+  const files=[];
+  const all=await B.render(p,rate);
+  const expectedFrames=all.channels[0].length;
+  files.push({name:'00-RITMO-COMPLETO.wav',bytes:B.wav(all.channels,all.rate)});
+  for(let i=0;i<B.keys.length+1;i++){
+   const track=i<B.keys.length?B.keys[i]:'bass';
+   status('Preparando ZIP: '+trackNames[track]+' ('+(i+1)+'/5)...');
+   const isolated=await B.render(B.isolate(p,track),rate);
+   if(isolated.rate!==rate||isolated.channels[0].length!==expectedFrames)
+    throw Error('Stem con duración o frecuencia diferente');
+   const fileName=String(i+1).padStart(2,'0')+'-'+track+'.wav';
+   files.push({name:fileName,bytes:B.wav(isolated.channels,rate)});
+  }
+  files.push({name:'PATRON.mid',bytes:B.midi(p)});
+  files.push({name:'PATRON.json',bytes:new TextEncoder().encode(JSON.stringify(p,null,2))});
+  const readme=[
+   'Montana Music Production LLC — paquete original Beat Lab (BETA)',
+   'WAV PCM16 estéreo / '+rate+' Hz. 5 instrumentos + ritmo completo.',
+   'Todos los WAV comienzan en 0:00 y tienen igual duración, incluida la cola de 0.35 s.',
+   'Los stems se renderizan por separado y tienen compresión independiente.',
+   'Por eso la suma PCM de los stems NO tiene por qué reproducir el master idénticamente.',
+   'La mezcla completa y cada instrumento incluyen procesamiento y síntesis local.',
+   'El MIDI depende de los instrumentos que use el DAW de destino.',
+   'El patrón JSON puede reimportarse en beat-lab.html.',
+   'Importe los stems individualmente en el mezclador desde el comienzo.',
+   'No son pistas de IA generativa, ni mastering certificado.',
+   'Mantenga los archivos originales y revise los picos y la calidad antes de publicar.'
+  ].join('\n')+'\n';
+  files.push({name:'LEEME.txt',bytes:new TextEncoder().encode(readme)});
+  const zip=MontanaBeatArchive.makeZip(files);
+  save(zip,'montana-beat-lab-paquete-'+(rate/1000).toFixed(1)+'k.zip','application/zip');
+  status('ZIP generado: 6 WAV alineados, MIDI, patrón JSON y LEEME; '+(zip.length/1048576).toFixed(1)+' MiB.');
+ }catch(e){status('No se pudo exportar el paquete: '+e.message);}
+ finally{busy=false;$('exportBundle').disabled=false;}
+});
+$('saveJson').addEventListener('click',()=>{
+ try{save(new TextEncoder().encode(JSON.stringify(current(),null,2)),'montana-beat-pattern.json','application/json');status('Patrón JSON descargado.');}
+ catch(e){status('No se pudo guardar: '+e.message);}
+});
+$('loadJson').addEventListener('change',async event=>{
+ const file=event.target.files?.[0];if(!file)return;
+ try{
+  if(file.size>16000)throw Error('El archivo JSON supera el límite de 16 KB');
+  const replacement=B.validate(JSON.parse(await file.text()));
+  await stopAudio();pattern=replacement;
+  $('preset').value='empty';draw();status('Patrón restaurado correctamente.');
+ }catch(e){status('Patrón rechazado; el proyecto actual no cambió: '+e.message);}
+ finally{event.target.value='';}
+});
+draw();
+</script></body></html>

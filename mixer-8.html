@@ -1,0 +1,314 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Montana AI Studio — Mezclador de 8 pistas</title><style>
+:root{color-scheme:dark;font:16px system-ui;background:#090e19;color:#f7f8fb}*{box-sizing:border-box}body{max-width:1180px;margin:auto;padding:20px}h1,a{color:#efc36e}p,small{color:#b9c8d9}button,input{font:inherit}button{padding:10px 14px;border-radius:8px;border:1px solid #ae986d;background:#efc36e;color:#19120a;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:3px solid #ffe09b;outline-offset:3px}a.skip{position:absolute;left:16px;top:-200px;background:#172132;padding:10px;z-index:10}a.skip:focus{top:12px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px}.track,section{border:1px solid #45526a;border-radius:12px;background:#172132;padding:16px}label{display:block;margin:10px 0}input[type=file],input[type=range]{width:100%;max-width:100%}input[type=range]{accent-color:#efc36e}section{margin:20px 0}.status{white-space:pre-wrap}output{font-variant-numeric:tabular-nums}.muted{opacity:.65}</style></head><body>
+<a class="skip" href="#tracks">Saltar a los controles de las ocho pistas</a><a href="studio.html">← Volver al estudio</a> <a href="hardware-check.html" style="margin-left:16px">🎙️ Diagnóstico de interfaz (prueba final)</a> <a href="pitch-lab.html" style="margin-left:16px">🎙️ Afinación vocal experimental (nota sostenida)</a> <a href="time-lab.html" style="margin-left:16px">⏱️ Duración vocal (experimental)</a> <a href="beat-lab.html" style="margin-left:16px">🥁 Crear ritmos WAV/MIDI</a><h1>Montana AI Studio — Mezclador de 8 pistas</h1>
+<section id="beatTransferPanel" aria-label="Importación local de Beat Lab"><h2>🥁 Beat Lab → canal instrumental</h2><p id="beatTransferStatus" role="status" aria-live="polite">Buscando un ritmo enviado desde Beat Lab...</p>
+<label for="beatStemStart">Ubicación para cinco instrumentos separados</label>
+<select id="beatStemStart"><option value="0">Canales 1–5</option><option value="1">Canales 2–6</option><option value="2">Canales 3–7</option><option value="3">Canales 4–8</option></select>
+<small>Los canales no ocupados son preferibles. No se cambian automáticamente nombres o funciones de canales vocales; revisa dónde colocas los instrumentos.</small>
+<label><input id="beatTransferReplace" type="checkbox"> Autorizar sustitución de canales ocupados solo si selecciono Importar</label>
+<button type="button" id="beatTransferImport" disabled>Importar beat pendiente en canal 1</button>
+<button type="button" id="beatTransferDiscard">Descartar beat pendiente</button>
+<small>El ritmo viaja solo por almacenamiento local del navegador, caduca a las 24 horas y nunca reemplaza una pista automáticamente. Para conservarlo usa «Guardar sesión»; la entrega pendiente no es una copia de seguridad. El navegador debe mantener el mismo origen HTTP(S).</small></section>
+<p>Para instrumentales, voces, dobles, coros y efectos. Procesamiento local sin subir archivos. Los cambios no afectan tus archivos originales.</p><section aria-label="Línea de tiempo"><h2>🎼 Línea de tiempo</h2><button id="undoEdit" type="button" disabled>↶ Deshacer edición</button> <button id="redoEdit" type="button" disabled>↷ Rehacer edición</button><p>Vista visual de las pistas. Ajusta el inicio y los recortes en cada canal.</p><div id="timeline" role="img" aria-label="Distribución temporal de ocho pistas" style="display:grid;gap:5px"></div><div id="songMarkersPanel" aria-label="Marcadores de estructura musical"></div></section><main id="tracks" tabindex="-1"></main>
+<section><label for="recordTrack">Canal para grabar <select id="recordTrack"><option value="1">2. Voz principal</option><option value="2">3. Doble 1</option><option value="3">4. Doble 2</option><option value="4">5. Coro 1</option><option value="5">6. Coro 2</option><option value="6">7. Adlibs</option><option value="7">8. Efectos</option></select></label> <label for="micInput">Entrada de micrófono / interfaz</label><select id="micInput"><option value="">Predeterminada del sistema</option></select> <button id="scanMicInputs" type="button">Buscar entradas</button> <label for="recordFormat">Formato de toma</label><select id="recordFormat"><option value="wav" selected>WAV mono PCM24 — sin compresión adicional</option><option value="compressed">WebM / MP4 — compatibilidad</option></select><small>WAV PCM24 usa AudioWorklet y conserva la toma sin códec con pérdida, pero no garantiza captura bit-perfect del dispositivo ni calibración de latencia. El modo compatible utiliza MediaRecorder.</small> <span id="micInputStatus" role="status" style="display:block;color:#b9c8d9;font-size:.86rem">Selecciona una entrada si utilizas una interfaz externa; se solicitará permiso solo al grabar.</span> <button id="recordStart">● Grabar voz</button> <button id="recordStop" disabled>■ Terminar toma</button> <button id="downloadSource" type="button" disabled>⬇ Rescatar fuente del canal</button> <label for="masterGain">Volumen maestro <output id="masterValue">80%</output></label><input id="masterGain" type="range" min="0" max="100" value="80"><div style="display:flex;gap:8px;align-items:center;margin:6px 0"><meter id="masterMeter" min="0" max="100" value="0" style="flex:1" aria-label="Nivel de salida maestro"></meter><output id="masterDb" style="min-width:68px">−∞ dBFS</output></div> <fieldset style="border:1px solid #596681;border-radius:8px;padding:10px;margin:10px 0"><legend>📋 Auditoría del master WAV (beta)</legend><label><input id="auditOn" type="checkbox"> Crear informe de preentrega vinculado al WAV exacto</label><button id="downloadAudit" type="button" disabled>⬇ Descargar informe EBU (.json)</button><p id="auditStatus" role="status">Informe desactivado. No hay resultados de exportación.</p><small>Comprueba los bytes reales PCM16/24 del WAV: niveles, clipping, correlación L/R, pérdida potencial al sumar a mono, balance y offset DC. Enlaza el CRC32 del audio exacto. Lecturas de referencia, no certificación EBU R128 ni garantía de calidad.</small></fieldset> <fieldset style="border:1px solid #596681;border-radius:8px;padding:10px;margin:10px 0"><legend>🎚️ EBU R128 — medición de referencia (en validación)</legend><label><input type="checkbox" id="loudnessOn"> Medir LUFS I / M / S, LRA y true-peak estimado 4× al exportar WAV</label><p id="loudnessResults" role="status">Análisis desactivado. Requiere cálculo adicional; no modifica el audio.</p><small>Perfil de emisión EBU R128: −23 LUFS integrado (objetivo) y pico verdadero máximo de −1 dBTP. La lectura orienta, no certifica conformidad: faltan señales oficiales de homologación y contrastes externos de true-peak. LRA es provisional en material menor de 60 s.</small></fieldset> <fieldset style="border:1px solid #596681;border-radius:8px;padding:10px;margin:10px 0"><legend>📊 Nivel de exportación WAV</legend><label for="wavSampleRate">Frecuencia de muestreo del master WAV</label><select id="wavSampleRate"><option value="44100" selected>44.1 kHz — música y compatibilidad</option><option value="48000">48 kHz — audio para video</option></select><label for="wavBits">Profundidad del master WAV</label><select id="wavBits"><option value="16" selected>16 bits PCM — compatibilidad</option><option value="24">24 bits PCM — mayor resolución</option></select><label><input id="ditherOn" type="checkbox"> Dither TPDF al convertir a 16 bits (opcional)</label><small>Exportación local PCM a 44.1 o 48 kHz (resampleo mediante OfflineAudioContext del navegador). El dither solo se aplica en 16 bits y puede añadir ruido muy tenue; los stems tienen selector independiente de 44.1/48 kHz y PCM16/24. La auditoría admite PCM16/24 dentro de su límite de memoria.</small><label><input id="normalizeOn" type="checkbox"> Normalizar pico del WAV maestro</label><label for="normalizeTarget">Pico objetivo <output id="normalizeVal">-1 dBFS</output></label><input id="normalizeTarget" type="range" min="-6" max="-0.5" step="0.5" value="-1"><small>Solo WAV maestro, antes del limitador; máximo +12 dB de aumento para evitar exagerar ruido. RMS y picos de muestra no equivalen a LUFS ni true-peak.</small></fieldset> <fieldset style="border:1px solid #596681;border-radius:8px;padding:10px;margin:10px 0"><legend>🛡️ Limitador de exportación (pico de muestra)</legend><label><input id="limiterOn" type="checkbox"> Activar limitador estéreo al exportar WAV</label><label for="limiterCeiling">Techo <output id="limiterCeilingVal">-1 dBFS</output></label><input id="limiterCeiling" type="range" min="-6" max="-0.5" step="0.5" value="-1"><small>Solo exportación. No sustituye análisis true-peak, LUFS ni masterización profesional.</small></fieldset> <label for="bpm">Tempo (BPM, 40–240)</label><input id="bpm" type="number" min="40" max="240" step="1" value="100" style="width:100px"> <label><input id="gridSnapOn" type="checkbox"> Ajustar movimientos y pegado a cuadrícula musical</label> <label for="gridDivision">División</label><select id="gridDivision" disabled><option value="4">Negra (1/4)</option><option value="8">Corchea (1/8)</option><option value="16" selected>Semicorchea (1/16)</option></select><small id="gridStatus" role="status">Cuadrícula desactivada.</small> <label><input id="metronomeOn" type="checkbox"> Metrónomo de monitoreo (no se graba ni se exporta)</label> <button id="play">▶ Reproducir</button> <button id="stop">■ Detener</button> <button id="export">⬇ Descargar mezcla WAV</button> <label for="stemSampleRate">Frecuencia de muestreo de stems WAV</label><select id="stemSampleRate"><option value="44100" selected>44.1 kHz — música y proyectos anteriores</option><option value="48000">48 kHz — video y mezcla audiovisual</option></select><label for="stemBits">Profundidad de stems WAV</label><select id="stemBits"><option value="16" selected>16 bits PCM — compatibilidad</option><option value="24">24 bits PCM — mezcla de alta resolución</option></select><small>Los stems pueden exportarse a 44.1 o 48 kHz y PCM16/24, independientemente del formato del master. No se aplica dither a los stems.</small> <label for="stemTrack">Pista para exportar individualmente</label><select id="stemTrack"><option value="0">1. Instrumental</option><option value="1">2. Voz principal</option><option value="2">3. Doble 1</option><option value="3">4. Doble 2</option><option value="4">5. Coro 1</option><option value="5">6. Coro 2</option><option value="6">7. Adlibs</option><option value="7">8. Efectos</option></select> <button id="exportStem" type="button">⬇ Descargar pista WAV</button> <button id="exportStems" type="button">📦 Descargar todos los stems ZIP</button><fieldset style="border:1px solid #596681;border-radius:8px;padding:10px;margin:10px 0"><legend>🧮 Planificar exportación antes de renderizar</legend><button type="button" id="estimateExport">Estimar tamaño y recursos</button><p id="exportEstimateStatus" role="status">Consulta los tamaños previstos del master y los stems sin crear archivos.</p><small>Estimación mínima de buffers, no medición de RAM disponible. Los límites internos evitan renders innecesarios demasiado grandes; no garantizan estabilidad en todos los equipos.</small></fieldset><p><small>Stems alineados desde 0:00; incluyen efectos del canal. No aplican volumen ni limitador maestro ni mute/solo. ZIP máximo 145 MB; si excede, exporta individualmente.</small></p><fieldset style="border:1px solid #596681;border-radius:8px;padding:10px;margin:10px 0"><legend>💾 Recuperación de sesión local</legend><label><input type="checkbox" id="autosaveEnabled"> Activar autoguardado local (cada 45 s si hay cambios)</label><div><button id="autosaveNow" type="button">Guardar recuperación ahora</button> <button id="restoreRecovery" type="button" disabled>Restaurar última recuperación</button> <button id="clearRecovery" type="button" disabled>Eliminar recuperación</button></div><p id="recoveryStatus" role="status">Buscando recuperación local...</p><small>Se guarda solamente en este navegador mediante IndexedDB, con tu consentimiento. No se sube a internet, no restaura sin permiso y depende del espacio disponible. Descarga siempre un JSON para respaldo externo.</small></fieldset> <button id="saveSession" type="button">💾 Guardar sesión</button> <button id="loadSession" type="button">📂 Abrir sesión</button> <input id="sessionFile" type="file" accept=".json,application/json" hidden><p id="status" class="status" role="status" aria-live="polite">Importa una o más pistas para comenzar.</p><small>Versión de desarrollo: ajusta inicio y recortes en segundos (sin modificar archivos originales). Se admite hasta 5 minutos por pista y 50 MB por archivo. Exportación estéreo WAV PCM 16/24 bits a 44.1 o 48 kHz. Incluye una compresión básica, sin medidor de reducción; no ofrece todavía VST ni calibración automática de latencia. El desplazamiento manual no sustituye una medición con equipo real.</small></section>
+<script src="mixer-section-envelope.js"></script>
+<script>
+"use strict";
+const $=id=>document.getElementById(id),N=8,tracks=Array(N).fill(null),players=[],activeOutputs=[];let ctx=null;
+// Every Stop or replacement invalidates pending asynchronous AudioContext.resume().
+// A timer belongs to exactly one playback; never let a stale callback alter a new one.
+let playbackEpoch=0,playbackTimer=null;
+$("masterGain").addEventListener("input",()=>{$("masterValue").textContent=$("masterGain").value+"%"});
+function report(msg){$("status").textContent=msg}
+$("limiterCeiling").addEventListener("input",()=>{$("limiterCeilingVal").textContent=$("limiterCeiling").value+" dBFS"});
+$("normalizeTarget").addEventListener("input",()=>{$("normalizeVal").textContent=$("normalizeTarget").value+" dBFS"});
+$("wavBits").addEventListener("change",()=>{$("ditherOn").disabled=$("wavBits").value!=="16"});
+function audio(){return ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)())}
+function gain(i){return $("mute"+i).checked||isSoloed()&&!$("solo"+i).checked?0:Number($("vol"+i).value)/100}
+function isSoloed(){return tracks.some((t,i)=>t&&$("solo"+i).checked)}
+function pan(i){return Number($("pan"+i).value)/100}
+function addEq(ac,node,i){const low=ac.createBiquadFilter(),high=ac.createBiquadFilter();low.type="lowshelf";low.frequency.value=250;low.gain.value=Number($("lowEQ"+i).value);high.type="highshelf";high.frequency.value=4000;high.gain.value=Number($("highEQ"+i).value);node.connect(low).connect(high);return high}
+function addCompressor(ac,node,i){if(!$("compEnable"+i).checked)return node;const comp=ac.createDynamicsCompressor();comp.threshold.value=Number($("compThreshold"+i).value);comp.ratio.value=Number($("compRatio"+i).value);comp.knee.value=6;comp.attack.value=.005;comp.release.value=.22;node.connect(comp);return comp}
+// Consistent, deterministic synthetic room impulse in both live and offline rendering.
+const roomImpulses=new Map();
+function roomImpulse(ac){
+ const rate=ac.sampleRate;
+ if(roomImpulses.has(rate))return roomImpulses.get(rate);
+ const count=Math.ceil(rate*1.25),b=ac.createBuffer(2,count,rate);
+ for(let ch=0;ch<2;ch++){
+  const channel=b.getChannelData(ch);let seed=0x1985ab+(ch*7919);
+  for(let k=0;k<count;k++){
+   seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;
+   const t=k/rate;
+   channel[k]=t<.015?0:((seed>>>0)/4294967295*2-1)*.009*Math.exp(-t*4);
+  }
+ }
+ roomImpulses.set(rate,b);return b;
+}
+function effectTail(i){
+ const rev=Number($("reverb"+i).value)>0?1.25:0;
+ const delay=Number($("delayWet"+i).value)>0?Number($("delayMs"+i).value)/1000*7:0;
+ return Math.max(rev,delay);
+}
+function addSpace(ac,node,i){
+ const sum=ac.createGain();node.connect(sum);
+ const rv=Number($("reverb"+i).value)/100;
+ if(rv>0){
+  const conv=ac.createConvolver(),wet=ac.createGain(),damp=ac.createBiquadFilter();
+  conv.normalize=false;conv.buffer=roomImpulse(ac);
+  damp.type="lowpass";damp.frequency.value=5500;wet.gain.value=rv;
+  node.connect(conv).connect(damp).connect(wet).connect(sum);
+ }
+ const dw=Number($("delayWet"+i).value)/100;
+ if(dw>0){
+  const echo=ac.createDelay(1),feedback=ac.createGain(),wet=ac.createGain();
+  echo.delayTime.value=Number($("delayMs"+i).value)/1000;
+  wet.gain.value=dw;feedback.gain.value=.35;
+  node.connect(echo);
+  echo.connect(wet).connect(sum);
+  echo.connect(feedback).connect(echo);
+ }
+ return sum;
+}
+function region(i,buffer){const read=id=>Number($(id+i).value),baseOffset=read("offset"),baseStart=read("trimStart"),rawEnd=read("trimEnd"),ms=i===0?0:read("alignMs");const end=rawEnd===0?buffer.duration:rawEnd;if(![baseOffset,baseStart,rawEnd,ms].every(Number.isFinite)||baseOffset<0||baseStart<0||rawEnd<0||baseOffset>300||ms< -250||ms>250||end>buffer.duration+.001||end<=baseStart)throw Error("Tiempo inválido en pista "+(i+1));const desired=baseOffset+ms/1000,offset=Math.max(0,desired),start=baseStart+Math.max(0,-desired);if(start>=end||offset>300.25)throw Error("La sincronización deja el recorte vacío en pista "+(i+1));const repeat=read("repeat");if(!Number.isInteger(repeat)||repeat<1||repeat>8)throw Error("Repeticiones inválidas en pista "+(i+1));const singleDuration=end-start;return {offset,start,duration:singleDuration*repeat,singleDuration,repeat}}
+const defaultLabels=["Instrumental","Voz principal","Doble 1","Doble 2","Coro 1","Coro 2","Adlibs","Efectos"];
+const labels=defaultLabels.slice();
+function validateMixerTrackLabel(name){
+ if(typeof name!=="string"||name!==name.trim()||name.length<1||name.length>40||
+    [...name].some(ch=>ch.charCodeAt(0)<32||ch.charCodeAt(0)===127||ch==="<"||ch===">"))
+  throw Error("Nombre de canal inválido: usa 1 a 40 caracteres, sin saltos de línea ni etiquetas");
+ return name;
+}
+function setMixerTrackLabel(i,name){
+ if(!Number.isInteger(i)||i<0||i>=N)throw Error("Canal inválido");
+ const value=validateMixerTrackLabel(name);
+ labels[i]=value;
+ $("trackTitle"+i).textContent=(i+1)+". "+value;
+ $("trackName"+i).value=value;
+ return value;
+}
+window.setMixerTrackLabel=setMixerTrackLabel;
+window.validateMixerTrackLabel=validateMixerTrackLabel;
+window.montanaDefaultTrackLabels=defaultLabels.slice();
+$("tracks").innerHTML=labels.map((name,i)=>`<article class="track"><h2 id="trackTitle${i}">${i+1}. ${name}</h2><label for="trackName${i}">Nombre del canal</label><input type="text" id="trackName${i}" maxlength="40" value="${name}" aria-label="Nombre del canal ${i+1}"><label for="file${i}">Importar audio</label><input id="file${i}" type="file" accept="audio/*"><p id="label${i}">Sin audio</p><div style="display:flex;gap:8px;align-items:center;margin:6px 0"><meter id="meter${i}" min="0" max="100" value="0" style="flex:1" aria-label="Nivel de salida del canal ${i+1}"></meter><output id="meterDb${i}" style="font-size:12px;min-width:68px">−∞ dBFS</output></div><label for="inputTrim${i}">Ganancia de entrada (antes de efectos) <output id="inputTrimVal${i}">0 dB</output></label><input id="inputTrim${i}" type="range" min="-24" max="12" step="0.5" value="0"><small>−24 a +12 dB; nivel anterior al fader/EQ/compresor. No modifica el WAV original. Puede producir clipping si se sube demasiado.</small><details id="autoDetails${i}"><summary>🎚️ Automatización de volumen (durante canción)</summary><label><input id="autoEnable${i}" type="checkbox"> Activar curva de volumen</label><label for="autoPoints${i}">Puntos: segundos:nivel (%), separados por comas</label><textarea id="autoPoints${i}" rows="2" maxlength="180" style="width:100%;background:#111b2c;color:white;border:1px solid #8493a9;border-radius:6px;padding:8px">0:100</textarea><div id="autoGraph${i}" style="margin-top:10px" aria-label="Editor gráfico de automatización del canal ${i+1}"></div><small>Gráfico: clic para crear un punto, arrastra para moverlo, usa las flechas para ajustes finos y Supr para borrar. El primer punto siempre está en 0 segundos. Puedes seguir escribiendo los valores manualmente.</small><small>Ejemplo: 0:100, 10:60, 15:60, 20:100. Hasta 8 puntos, 0–300 s y 0–150 %. El nivel cambia linealmente entre puntos y permanece en el último valor después. Efecto en el tiempo de canción; no altera el audio fuente. Para escuchar cambios pulsa Detener y Reproducir.</small><p id="autoPreview${i}" role="status">Desactivada: ganancia uniforme 100 % durante toda la canción</p></details><label for="vol${i}">Volumen <output id="val${i}">100%</output></label><input id="vol${i}" type="range" min="0" max="150" value="100"><label for="pan${i}">Panorama <output id="panval${i}">Centro</output></label><input id="pan${i}" type="range" min="-100" max="100" value="0"><details id="panAutoDetails${i}"><summary>↔️ Automatización estéreo izquierda/derecha</summary><label><input id="panAutoEnable${i}" type="checkbox"> Activar panorama variable durante la canción</label><label for="panAutoPoints${i}">Puntos: segundo:posición (−100 izquierda, 0 centro, +100 derecha)</label><textarea id="panAutoPoints${i}" rows="2" maxlength="200" style="width:100%;background:#111b2c;color:white;border:1px solid #8493a9;border-radius:6px;padding:8px">0:0</textarea><div id="panGraph${i}" style="margin-top:10px" aria-label="Gráfico de automatización estéreo del canal ${i+1}"></div><small>Gráfico: clic para añadir, arrastra para mover izquierda/derecha, flechas para ajustes finos y Supr para borrar. El primer punto permanece en 0 s. El editor numérico sigue disponible.</small><small>Ejemplo: 0:-100, 0.5:-100, 1.5:100, 2:100. Hasta 8 puntos con tiempos de 0 a 300 segundos. Si está activada, esta curva sustituye el panorama fijo del canal. La exportación WAV y los stems contienen el mismo recorrido. Detén y reproduce para escuchar los cambios.</small><p id="panAutoStatus${i}" role="status">Desactivada · se utiliza el panorama fijo del canal</p></details><label for="lowEQ${i}">Graves (250 Hz) <output id="lowVal${i}">0 dB</output></label><input id="lowEQ${i}" type="range" min="-12" max="12" step="1" value="0"><label for="highEQ${i}">Agudos (4 kHz) <output id="highVal${i}">0 dB</output></label><input id="highEQ${i}" type="range" min="-12" max="12" step="1" value="0"><details id="compDetails${i}"><summary>🎚 Compresor de dinámica</summary><label><input id="compEnable${i}" type="checkbox"> Activar compresor</label><label for="compThreshold${i}">Umbral <output id="compThresholdVal${i}">-18 dB</output></label><input id="compThreshold${i}" type="range" min="-36" max="-6" step="1" value="-18"><label for="compRatio${i}">Relación <output id="compRatioVal${i}">4:1</output></label><input id="compRatio${i}" type="range" min="2" max="12" step="1" value="4"><small>Compresión básica. El audio original no se modifica.</small></details><details id="spaceDetails${i}"><summary>🌌 Reverb y delay</summary><label for="reverb${i}">Reverb <output id="reverbVal${i}">0%</output></label><input id="reverb${i}" type="range" min="0" max="50" step="5" value="0"><label for="delayWet${i}">Delay <output id="delayWetVal${i}">0%</output></label><input id="delayWet${i}" type="range" min="0" max="50" step="5" value="0"><label for="delayMs${i}">Tiempo del delay <output id="delayMsVal${i}">300 ms</output></label><input id="delayMs${i}" type="range" min="100" max="750" step="50" value="300"><small>Efectos locales no destructivos; se incluyen las colas en el WAV.</small></details>${i>0?`<label for="alignMs${i}">Sincronización fina (ms; negativo = adelantar) <output id="alignVal${i}">0 ms</output></label><input id="alignMs${i}" type="number" min="-250" max="250" step="1" value="0" style="width:100%">`:""}<label for="offset${i}">Inicio (segundos)</label><input id="offset${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="trimStart${i}">Recorte inicial (segundos)</label><input id="trimStart${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label for="repeat${i}">Repetir región (1–8 veces)</label><input id="repeat${i}" type="number" min="1" max="8" step="1" value="1" style="width:100%"><label for="fadeIn${i}">Fundido de entrada (segundos; 0–5)</label><input id="fadeIn${i}" type="number" min="0" max="5" step="0.05" value="0" style="width:100%"><label for="fadeOut${i}">Fundido de salida (segundos; 0–5)</label><input id="fadeOut${i}" type="number" min="0" max="5" step="0.05" value="0" style="width:100%"><label for="trimEnd${i}">Recorte final (segundos; 0 = completo)</label><input id="trimEnd${i}" type="number" min="0" max="300" step="0.01" value="0" style="width:100%"><label><input id="mute${i}" type="checkbox"> Silenciar</label><label><input id="solo${i}" type="checkbox"> Solo</label></article>`).join("");
+function releaseOutput(node){try{node.disconnect()}catch(e){}const k=activeOutputs.indexOf(node);if(k>=0)activeOutputs.splice(k,1)}
+function stop(){
+ playbackEpoch++;
+ if(playbackTimer!==null){clearTimeout(playbackTimer);playbackTimer=null}
+ window.stopSectionPreview?.();
+ window.stopMetronome?.();
+ for(const s of players){try{s.stop()}catch(e){}try{s.disconnect()}catch(e){}}
+ players.length=0;
+ for(const node of [...activeOutputs])releaseOutput(node);
+ window.resetMeters?.();
+}
+function applyMixerDecodedTrack(i,file,decoded){
+ stop();tracks[i]=decoded;originalFiles[i]=file;
+ window.resetVolumeAutomation?.(i);
+ window.resetPanAutomation?.(i);
+ window.resetPitch?.(i);window.resetClean?.(i);window.resetVocalPreflight?.(i);
+ window.resetSplit?.(i);window.resetCrossfade?.(i);window.resetCopies?.(i);
+ $("fadeIn"+i).value=0;$("fadeOut"+i).value=0;$("repeat"+i).value=1;
+ window.resetEditHistory?.();
+ if(i>0){$("alignMs"+i).value=0;$("alignVal"+i).textContent="0 ms"}
+ $("trimStart"+i).value=0;$("trimEnd"+i).value=0;
+ $("file"+i).value="";
+ $("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
+ window.updateSourceDownload?.();
+ report("Pista "+(i+1)+" importada");
+}
+async function decodeMixerFile(file){
+ if(!(file instanceof Blob)||file.size>50e6||file.size<44)
+  throw Error("Archivo WAV incompatible o mayor de 50 MB");
+ const decoded=await audio().decodeAudioData(await file.arrayBuffer());
+ if(decoded.duration>300||!Number.isFinite(decoded.duration)||decoded.duration<=0)
+  throw Error("Duración fuera del límite permitido");
+ return decoded;
+}
+async function loadMixerTrackFile(i,file){
+ if(!Number.isInteger(i)||i<0||i>=N)throw Error("Canal inválido");
+ const decoded=await decodeMixerFile(file);
+ applyMixerDecodedTrack(i,file,decoded);
+ return decoded;
+}
+// Decode ALL files before touching any mixer channel. The caller checks
+// occupied lanes and explicit replacement consent before and after decoding.
+window.montanaPrepareTrackBatch=async assignments=>{
+ if(!Array.isArray(assignments)||assignments.length!==5)throw Error("Se requieren cinco instrumentos");
+ const seen=new Set(),out=[];
+ for(const a of assignments){
+  if(!a||!Number.isInteger(a.channel)||a.channel<0||a.channel>=N||
+     seen.has(a.channel))throw Error("Canales de stems inválidos o repetidos");
+  seen.add(a.channel);
+  out.push({channel:a.channel,file:a.file,decoded:await decodeMixerFile(a.file)});
+ }
+ return out;
+};
+window.montanaCommitTrackBatch=prepared=>{
+ if(!Array.isArray(prepared)||prepared.length!==5)throw Error("Lote de stems inválido");
+ for(const a of prepared)applyMixerDecodedTrack(a.channel,a.file,a.decoded);
+};
+window.montanaLoadTrackFile=loadMixerTrackFile;
+for(let i=0;i<N;i++){
+ $("inputTrim"+i).addEventListener("input",()=>{
+  const db=Number($("inputTrim"+i).value);
+  $("inputTrimVal"+i).textContent=(db%1===0?db.toFixed(0):db.toFixed(1))+" dB";
+ });
+ $("trackName"+i).addEventListener("change",()=>{
+  const input=$("trackName"+i);
+  try{setMixerTrackLabel(i,input.value.trim());report("Canal "+(i+1)+" renombrado a "+labels[i]+". Los archivos originales no cambian.");}
+  catch(e){input.value=labels[i];report(e.message);}
+ });
+ $("vol"+i).addEventListener("input",()=>{$("val"+i).textContent=$("vol"+i).value+"%"});
+ $("pan"+i).addEventListener("input",()=>{const v=Number($("pan"+i).value);$("panval"+i).textContent=v===0?"Centro":(v<0?"Izq ":"Der ")+Math.abs(v)});
+ for(const eq of ["lowEQ","highEQ"]){$(eq+i).addEventListener("input",()=>{$(eq==="lowEQ"?"lowVal"+i:"highVal"+i).textContent=$(eq+i).value+" dB"});}
+ for(const param of ["compThreshold","compRatio"]){$(param+i).addEventListener("input",()=>{$(param+"Val"+i).textContent=$(param+i).value+(param==="compRatio"?":1":" dB")})}
+ for(const param of ["reverb","delayWet","delayMs"]){$(param+i).addEventListener("input",()=>{$(param+"Val"+i).textContent=$(param+i).value+(param==="delayMs"?" ms":"%")})}
+ if(i>0)for(const eventName of ["input","change"])$("alignMs"+i).addEventListener(eventName,()=>{$("alignVal"+i).textContent=$("alignMs"+i).value+" ms"});
+ $("file"+i).addEventListener("change",async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  report("Decodificando "+file.name+"...");
+  try{await loadMixerTrackFile(i,file)}
+  catch(err){e.target.value="";report("No se pudo importar: "+err.message+". La pista anterior sigue intacta.")}
+ });
+}
+$("stop").onclick=()=>{stop();report("Reproducción detenida")};
+$("play").onclick=async()=>{
+ let token=null;
+ try{
+  if(!tracks.some(Boolean))throw Error("Primero importa audio");
+  window.validateMetronome();
+  const clips=tracks.map((b,i)=>b?(window.validateFades(i),window.getTrackSegments(i,b)):[]);const crossfadePlans=clips.map((seg,i)=>window.prepareCrossfadePlan(i,seg));const mixBuffers=tracks.map((b,i)=>b?window.getMixBuffer(i):null);stop();token=playbackEpoch;const ac=audio();await ac.resume();
+  if(token!==playbackEpoch)return; // Stop/import/new Play occurred during device resume.
+  const at=ac.currentTime+.06;const master=ac.createGain();master.gain.value=Number($("masterGain").value)/100;window.attachMasterMeter(ac,master).connect(ac.destination);activeOutputs.push(master);
+  tracks.forEach((buf,i)=>{
+   if(!buf)return;const vol=ac.createGain(),stereo=ac.createStereoPanner(),eqIn=ac.createGain();
+   const automated=MontanaVolumeAutomation.attach(ac,eqIn,window.volumeAutomationState(i),at);
+   vol.connect(automated);
+   const pre=MontanaInputTrim.attach(ac,vol,Number($("inputTrim"+i).value));
+   vol.gain.value=gain(i);MontanaPanAutomation.schedule(stereo,window.panAutomationState(i),pan(i),at);
+   window.attachTrackMeter(ac,addSpace(ac,addCompressor(ac,addEq(ac,eqIn,i),i),i),i).connect(stereo).connect(master);
+   for(const [clipIndex,clip] of clips[i].entries()){
+    const src=ac.createBufferSource();src.buffer=mixBuffers[i];
+    if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
+    window.connectClipCrossfade(ac,src,pre,i,clip,at+clip.offset,clipIndex,crossfadePlans[i]);
+    src.start(at+clip.offset,clip.start,clip.duration);players.push(src);
+    src.onended=()=>{const idx=players.indexOf(src);if(idx>=0)players.splice(idx,1);src.disconnect()};
+   }
+  });
+  const maxEnd=Math.max(0,...clips.flatMap((items,i)=>items.map(clip=>clip.offset+clip.duration+effectTail(i))));
+  const clickToken=window.startMetronome(ac,at);
+  playbackTimer=setTimeout(()=>{
+   if(token!==playbackEpoch)return;
+   playbackTimer=null;releaseOutput(master);
+   if(clickToken)window.stopMetronome(clickToken);
+   if(!activeOutputs.length)window.resetMeters?.();
+  },Math.ceil((maxEnd+.3)*1000));
+  report("Mezcla reproduciéndose. Para aplicar cambios, pulsa Detener y Reproducir.");
+ }catch(err){
+  if(token===null)report(err.message); // Invalid parameters have not changed transport.
+  else if(token===playbackEpoch){stop();report(err.message)} // Undo partially built audio graph.
+ }
+};
+function wav(a,b,rate){return MontanaWavExport.encode(a,b,rate)}
+// Cancel only optional measurement, not rendering or downloading the WAV.
+let activeMeterController=null;
+let cancelMeterForExport=false;
+const cancelMeterButton=document.createElement("button");
+cancelMeterButton.id="cancelMeterAnalysis";cancelMeterButton.type="button";
+cancelMeterButton.textContent="Cancelar medición (el WAV se descargará)";
+cancelMeterButton.disabled=true;
+$("loudnessResults").after(cancelMeterButton);
+cancelMeterButton.onclick=()=>{if(activeMeterController){cancelMeterForExport=true;activeMeterController.abort();cancelMeterButton.disabled=true}};
+async function runOptionalMeasurement(task){
+ const controller=new AbortController();activeMeterController=controller;cancelMeterButton.disabled=false;
+ try{return await task(controller.signal)}
+ finally{if(activeMeterController===controller){activeMeterController=null;cancelMeterButton.disabled=true}}
+}
+$("export").onclick=async()=>{
+ const btn=$("export");btn.disabled=true;cancelMeterForExport=false;window.montanaLastAudit=null;$("downloadAudit").disabled=true;$("auditStatus").textContent="Informe pendiente de nueva exportación.";
+ try{
+  if(!tracks.some(Boolean))throw Error("Primero importa audio");
+  report("Planificando mezcla WAV...");const rate=Number($("wavSampleRate").value),clipSets=tracks.map((b,i)=>b?window.getTrackSegments(i,b):[]),crossfadePlans=clipSets.map((seg,i)=>window.prepareCrossfadePlan(i,seg)),frames=Math.ceil(Math.max(0,...clipSets.flatMap((items,i)=>items.map(t=>t.offset+t.duration+effectTail(i))))*rate);
+  // Reject unsupported/oversized sessions before creating processed vocal buffers
+  // or OfflineAudioContext. The rendered output must retain its original format.
+  const plan=MontanaExportPreflight.estimate({frames,rate,bits:Number($("wavBits").value),kind:"master",audit:$("auditOn").checked});
+  if(plan.warnings.length)report("Aviso previo: "+plan.warnings.join("; ")+". Exportando...");
+  else report("Creando mezcla WAV...");
+  const mixBuffers=tracks.map((b,i)=>b?window.getMixBuffer(i):null);
+  const offline=new OfflineAudioContext(2,frames,rate);const master=offline.createGain();master.gain.value=Number($("masterGain").value)/100;master.connect(offline.destination);
+  tracks.forEach((buf,i)=>{
+   if(!buf)return;const vol=offline.createGain(),stereo=offline.createStereoPanner(),eqIn=offline.createGain();
+   const automated=MontanaVolumeAutomation.attach(offline,eqIn,window.volumeAutomationState(i),0);
+   vol.connect(automated);
+   const pre=MontanaInputTrim.attach(offline,vol,Number($("inputTrim"+i).value));
+   vol.gain.value=gain(i);MontanaPanAutomation.schedule(stereo,window.panAutomationState(i),pan(i),0);
+   addSpace(offline,addCompressor(offline,addEq(offline,eqIn,i),i),i).connect(stereo).connect(master);
+   for(const [clipIndex,clip] of clipSets[i].entries()){
+    const src=offline.createBufferSource();src.buffer=mixBuffers[i];
+    if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
+    window.connectClipCrossfade(offline,src,pre,i,clip,clip.offset,clipIndex,crossfadePlans[i]);
+    src.start(clip.offset,clip.start,clip.duration);
+   }
+  });
+  const rendered=await offline.startRendering();
+  const left=rendered.getChannelData(0),right=rendered.getChannelData(1);
+  const normalization=$("normalizeOn").checked?MontanaExportLevels.normalize(left,right,Number($("normalizeTarget").value)):null;
+  let limiter=null,peak=0;
+  if($("limiterOn").checked){
+   limiter=MontanaLimiter.limitStereo(left,right,rate,Number($("limiterCeiling").value));
+   peak=limiter.peakOut;
+  }else{
+   for(let j=0;j<left.length;j++)peak=Math.max(peak,Math.abs(left[j]),Math.abs(right[j]));
+  }
+  let loudness=null,analysisError=null;
+  if($("loudnessOn").checked){
+   $("loudnessResults").textContent="Analizando loudness y picos entre muestras...";
+   try{
+    loudness=await runOptionalMeasurement(signal=>MontanaLoudness.measure(left,right,rate,{
+     yieldToBrowser:true,signal,
+     onProgress:fraction=>{$("loudnessResults").textContent="Analizando LUFS y picos entre muestras: "+Math.round(fraction*100)+" % · Puedes cancelar esta medición."}
+    }));
+    const format=v=>Number.isFinite(v)?v.toFixed(1):"−∞";
+    const lra=Number.isFinite(loudness.loudnessRangeLu)?format(loudness.loudnessRangeLu)+(loudness.lraStable?" LU":" LU, provisional"):"N/D";
+    const delta=Number.isFinite(loudness.integratedLufs)?(loudness.integratedLufs+23).toFixed(1)+" LU":"N/D";
+    const tpAlert=loudness.truePeakDbtp> -1?"ATENCIÓN: supera −1 dBTP":"dentro del objetivo −1 dBTP";
+    $("loudnessResults").textContent="LUFS integrado: "+format(loudness.integratedLufs)+" LUFS (estimado) · True-peak: "+format(loudness.truePeakDbtp)+" dBTP (4× aprox.) · Picos de muestra: "+format(loudness.samplePeakDbfs)+" dBFS."
+     +"\nMomentáneo M (0.4 s): "+format(loudness.momentaryLufs)+" LUFS, máximo "+format(loudness.maxMomentaryLufs)
+     +" · Corto S (3 s): "+format(loudness.shortTermLufs)+" LUFS, máximo "+format(loudness.maxShortTermLufs)
+     +"\nRango de loudness LRA: "+lra+" · Desviación objetivo EBU −23: "+delta+" · "+tpAlert
+     +"\nLecturas aproximadas; no son certificación EBU Mode.";
+   }catch(e){analysisError=e.message;$("loudnessResults").textContent="No se pudo medir: "+e.message+". El WAV se exportará de todos modos."}
+  }else $("loudnessResults").textContent="Análisis desactivado. No se modificó el audio.";
+  const exportBits=Number($("wavBits").value),exportDither=exportBits===16&&$("ditherOn").checked;
+  const blob=MontanaWavExport.encode(left,right,rate,{bits:exportBits,dither:exportDither});
+  if($("auditOn").checked&&!cancelMeterForExport){
+   $("auditStatus").textContent="Midiendo PCM exacto del master exportado...";
+   try{
+    const audit=await runOptionalMeasurement(signal=>MontanaMasterAudit.analyzeWav(blob,MontanaLoudness.measure,{
+      normalizationApplied:!!normalization,limiterApplied:!!limiter,ditherApplied:exportDither,yieldToBrowser:true,signal,
+      onProgress:fraction=>{$("auditStatus").textContent="Auditando PCM exacto del WAV: "+Math.round(fraction*100)+" % · Puedes cancelar esta medición."}
+    }));
+    window.montanaLastAudit=audit;
+    $("downloadAudit").disabled=false;
+    const m=audit.metrics,metric=v=>v===null?"N/D":v.toFixed(2);
+    const notes=audit.checks.filter(x=>["warning","outside-internal-range","unknown","provisional"].includes(x.status));
+    $("auditStatus").textContent="Informe del último WAV listo · CRC32: "+audit.file.crc32+
+     " · LUFS: "+metric(m.integratedLufs)+" · TP 4×: "+metric(m.truePeakDbtpEstimated)+
+     " dBTP · Correlación L/R: "+(m.stereoCorrelation===null?"N/D":m.stereoCorrelation.toFixed(3))+
+     " · Caída al sumar mono: "+(m.monoFoldDownDeltaDb===null?"N/D":m.monoFoldDownDeltaDb.toFixed(1)+" dB")+
+     (m.monoFoldDownSilent?" (mono prácticamente silencioso)":"")+
+     " · Alertas/avisos: "+notes.length+". Descarga el informe para revisar cada criterio.";
+
+   }catch(e){
+    $("auditStatus").textContent="No se generó el informe: "+e.message+". El WAV aún se puede descargar.";
+   }
+  }else $("auditStatus").textContent=cancelMeterForExport?"Auditoría omitida por cancelación. El WAV se descarga sin informe.":"Auditoría desactivada. Solo se descarga el WAV.";
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-ai-studio-mezcla.wav";
+  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  const measured=MontanaExportLevels.analyze(left,right);
+
+  report((analysisError?"Advertencia: medidor EBU no disponible ("+analysisError+"). ":"")+"Archivo WAV PCM"+exportBits+" a "+(rate/1000).toFixed(1)+" kHz creado"+(exportDither?" con dither TPDF":"")+". Pico: "+measured.peakDb.toFixed(1)+" dBFS; RMS estéreo: "+measured.rmsDb.toFixed(1)+" dBFS; factor de cresta: "+measured.crestDb.toFixed(1)+" dB. "+(normalization?"Normalización aplicada ("+normalization.appliedGainDb.toFixed(1)+" dB). ":"")+(limiter?"Limitador aplicado. Reducción máxima: "+limiter.maximumReductionDb.toFixed(1)+" dB. Solo se garantiza techo de picos de muestra.":peak>1?"ADVERTENCIA: hay clipping; baja el volumen maestro y exporta otra vez.":"Sin clipping detectado en la mezcla renderizada.")+" Reproduce el archivo para comprobarlo.");
+ }catch(err){report("Error al exportar: "+err.message)}finally{btn.disabled=false}
+};
+</script><script src="mixer-pan-automation.js"></script><script src="mixer-pan-graph.js"></script><script src="mixer-volume-automation.js"></script><script src="mixer-volume-graph.js"></script><script src="mixer-input-trim.js"></script><script src="beat-bridge.js"></script><script src="mixer-beat-bridge.js"></script><script src="mixer-export-preflight.js"></script><script src="mixer-wav-export.js"></script><script src="mixer-master-audit.js"></script><script src="mixer-loudness.js"></script><script src="mixer-export-levels.js"></script><script src="mixer-limiter.js"></script><script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script src="pitch-note-audit.js"></script><script src="pitch-artifact-timeline.js"></script><script src="pitch-quality.js"></script><script src="pitch-blend.js"></script><script src="pitch-level-match.js"></script><script src="pitch-timbre-guard.js"></script><script src="mixer-vocal-audit.js"></script><script src="beat-archive.js"></script><script src="mixer-vocal-ab.js"></script><script src="mixer-pitch.js"></script><script src="mixer-vocal-audit-ui.js"></script><script src="mixer-vocal-ab-ui.js"></script><script src="mixer-vocal-blind.js"></script><script src="mixer-vocal-blind-ui.js"></script><script src="mixer-vocal-dsp.js"></script><script src="mixer-vocal-clean.js"></script><script src="mixer-vocal-preflight.js"></script><script src="mixer-vocal-preflight-ui.js"></script><script src="mixer-meter.js"></script><script src="mixer-volume-automation-ui.js"></script><script src="mixer-volume-graph-ui.js"></script><script src="mixer-pan-automation-ui.js"></script><script src="mixer-pan-graph-ui.js"></script><script src="mixer-session-integrity.js"></script><script src="mixer-song-markers.js"></script><script src="mixer-section-plan.js"></script><script src="mixer-song-markers-ui.js"></script><script src="mixer-session.js"></script><script src="mixer-pcm-record.js"></script><script src="mixer-record.js"></script><script src="mixer-split.js"></script><script src="mixer-crossfade.js"></script><script src="mixer-clipboard.js"></script><script src="mixer-grid.js"></script><script src="mixer-timeline.js"></script><script src="mixer-history.js"></script><script src="mixer-section-preview-ui.js"></script><script src="mixer-metronome.js"></script><script src="mixer-fades.js"></script><script src="mixer-stems.js"></script><script src="mixer-export-preflight-ui.js"></script><script src="mixer-recovery.js"></script><script>document.getElementById("downloadAudit").addEventListener("click",()=>{const audit=window.montanaLastAudit;if(!audit)return;const blob=new Blob([JSON.stringify(audit,null,2)+"\n"],{type:"application/json"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="montana-mezcla-auditoria-r128.json";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)});</script></body></html>

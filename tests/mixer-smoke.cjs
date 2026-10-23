@@ -1,0 +1,339 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ const page=await browser.newPage({acceptDownloads:true});
+ try{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://127.0.0.1:8765/mixer-8.html');
+  await assert.equal(await page.locator('article.track').count(),8);
+  await assert.equal(await page.locator('#timeline > div').count(),8);
+  // Synthesize a valid 1s mono WAV with silent PCM16 samples.
+  const wav=Buffer.alloc(44+44100*2);
+  wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVE',8);
+  wav.write('fmt ',12);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);
+  wav.writeUInt16LE(1,22);wav.writeUInt32LE(44100,24);
+  wav.writeUInt32LE(88200,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);
+  wav.write('data',36);wav.writeUInt32LE(88200,40);
+  // An audible 200 Hz reference tone exercises the low shelf filter.
+  for(let i=0;i<44100;i++)wav.writeInt16LE(Math.round(9500*Math.sin(2*Math.PI*200*i/44100)),44+2*i);
+  await page.locator('#file0').setInputFiles({name:'instrumental.wav',mimeType:'audio/wav',buffer:wav});
+  await page.waitForFunction(()=>document.querySelector('#label0')?.textContent?.includes('instrumental.wav'));
+  await page.locator('#file1').setInputFiles({name:'voz.wav',mimeType:'audio/wav',buffer:wav});
+  await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('voz.wav'));
+  await page.locator('#vol1').fill('60');
+  await assert.equal(await page.locator('#val1').innerText(),'60%');
+  await page.locator('#pan1').fill('-30');
+  await assert.equal(await page.locator('#panval1').innerText(),'Izq 30');
+  await page.locator('#mute1').check();
+  await page.locator('#solo0').check();
+  await page.locator('#offset1').fill('0.25');
+  await page.locator('#trimStart1').fill('0.1');
+  await page.locator('#trimEnd1').fill('0.9');
+  await page.locator('#lowEQ0').fill('6');
+  await page.locator('#highEQ0').fill('-3');
+  await page.locator('#masterGain').fill('70');
+  await page.locator('#offset1').dispatchEvent('change');
+  await page.waitForFunction(()=>document.querySelector('#timeline')?.textContent?.includes('1. Instrumental'));
+  assert((await page.locator('#timeline').innerText()).includes('2. Voz principal'));
+  assert.equal(await page.locator('#masterValue').innerText(),'70%');
+  // Use keyboard and pointer to move a visible clip on the timeline.
+  await page.waitForFunction(()=>document.querySelector('#timeline [data-track="1"]')?.getAttribute('aria-valuenow')==='0.25');
+  const clip=page.locator('#timeline [data-track="1"]');
+  await clip.focus();
+  await clip.press('ArrowRight');
+  assert.equal(await page.locator('#offset1').inputValue(),'0.35');
+  await page.waitForFunction(()=>document.querySelector('#timeline [data-track="1"]')?.getAttribute('aria-valuenow')==='0.35');
+  const rect=await page.locator('#timeline [data-track="1"]').boundingBox();
+  assert(rect,'Expected visible draggable timeline clip');
+  const dragX=rect.x+Math.min(10,rect.width/2),dragY=rect.y+rect.height/2;
+  await page.mouse.move(dragX,dragY);
+  await page.mouse.down();
+  await page.mouse.move(dragX+45,dragY,{steps:7});
+  await page.mouse.up();
+  const movedOffset=Number(await page.locator('#offset1').inputValue());
+  assert(movedOffset>0.35,'Dragging timeline clip must change track offset');
+  assert.equal(await page.locator('#undoEdit').isDisabled(),false,'Timeline edits enable undo');
+  await page.locator('#undoEdit').click();
+  assert.equal(await page.locator('#offset1').inputValue(),'0.35','Undo restores the pre-drag keyboard position');
+  await page.locator('#redoEdit').click();
+  assert.equal(await page.locator('#offset1').inputValue(),String(movedOffset),'Redo replays the drag');
+  await page.locator('#trimStart1').fill('0.15');
+  await page.locator('#undoEdit').click();
+  assert.equal(await page.locator('#trimStart1').inputValue(),'0.1','Undo must also restore clip trim');
+  await page.locator('#redoEdit').click();
+  assert.equal(await page.locator('#trimStart1').inputValue(),'0.15');
+  await page.locator('#undoEdit').click();
+  assert.equal(await page.locator('#trimStart1').inputValue(),'0.1');
+
+  await page.locator('#play').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('reproduciéndose'));
+  await page.waitForFunction(()=>document.querySelector('#meter0')?.value>10 && document.querySelector('#masterMeter')?.value>5,{},{timeout:3000});
+  assert((await page.locator('#meterDb0').innerText()).includes('dBFS'),'Track meter must show a real sample level');
+  assert.equal(await page.locator('#meter1').getAttribute('value'),'0','Muted voice track must show silence');
+  assert.equal(await page.evaluate(()=>activeOutputs.length),1,'Playback master is tracked');
+  await page.locator('#stop').click();
+  assert.equal(await page.evaluate(()=>activeOutputs.length),0,'Stop must disconnect effect tails');
+  assert.equal(await page.locator('#masterDb').innerText(),'−∞ dBFS');
+  assert.equal(await page.locator('#meterDb0').innerText(),'−∞ dBFS');
+  const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const dest=path.join(process.cwd(),'mixer-smoke-output.wav');await download.saveAs(dest);
+  const out=fs.readFileSync(dest);
+  assert.equal(out.toString('ascii',0,4),'RIFF');
+  assert.equal(out.toString('ascii',8,12),'WAVE');
+  assert.equal(out.readUInt16LE(22),2);
+  assert.equal(out.readUInt32LE(24),44100);
+  assert(out.length>100000,'Expected exported audio data');
+  assert((await page.locator('#status').innerText()).includes('Sin clipping detectado'));
+  // Compare EQ-on and EQ-bypassed PCM samples to verify actual DSP processing.
+  await page.locator('#lowEQ0').fill('0');
+  await page.locator('#highEQ0').fill('0');
+  const [flatDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const flatPath=path.join(process.cwd(),'mixer-flat-output.wav');await flatDownload.saveAs(flatPath);
+  const flat=fs.readFileSync(flatPath);
+  assert.notDeepEqual(out.subarray(44,4044),flat.subarray(44,4044),'Shelf EQ must change rendered audio samples');
+  await page.locator('#lowEQ0').fill('6');
+  await page.locator('#highEQ0').fill('-3');
+
+  // A real compressor must reduce a loud 200 Hz WAV, not just update labels.
+  await page.locator('#compDetails0 summary').click();
+  await page.locator('#compEnable0').check();
+  await page.locator('#compThreshold0').fill('-36');
+  await page.locator('#compRatio0').fill('12');
+  assert.equal(await page.locator('#compThresholdVal0').innerText(),'-36 dB');
+  assert.equal(await page.locator('#compRatioVal0').innerText(),'12:1');
+  const [compDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const compPath=path.join(process.cwd(),'mixer-compressed-output.wav');await compDownload.saveAs(compPath);
+  const compressed=fs.readFileSync(compPath);
+  const rmsPCM=buf=>{
+    let sum=0,n=0;
+    for(let i=10000;i<32000;i++){const v=buf.readInt16LE(44+i*4)/32768;sum+=v*v;n++}
+    return Math.sqrt(sum/n);
+  };
+  assert(rmsPCM(compressed)<rmsPCM(out)*0.8,'Compressor must attenuate strong audio in the rendered WAV');
+
+  // Verify real reverb and delay audio rather than decorative controls.
+  await page.locator('#compEnable0').uncheck();
+  await page.locator('#lowEQ0').fill('0');await page.locator('#highEQ0').fill('0');
+  await page.locator('#spaceDetails0 summary').click();
+  await page.locator('#reverb0').fill('40');
+  const [roomDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const roomPath=path.join(process.cwd(),'mixer-room-output.wav');await roomDownload.saveAs(roomPath);
+  const room=fs.readFileSync(roomPath);
+  assert(room.length>flat.length+Math.floor(44100*4*.3),'Reverb must extend export to include tail');
+  assert.notDeepEqual(room.subarray(44,8044),flat.subarray(44,8044),'Room convolution must alter PCM waveform');
+  await page.locator('#reverb0').fill('0');
+  await page.locator('#delayWet0').fill('35');
+  await page.locator('#delayMs0').fill('350');
+  const [echoDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const echoPath=path.join(process.cwd(),'mixer-echo-output.wav');await echoDownload.saveAs(echoPath);
+  const echo=fs.readFileSync(echoPath);
+  assert(echo.length>flat.length+44100*4,'Echo must extend WAV to preserve tail');
+  let echoEnergy=0;
+  for(let j=47000;j<55000;j++){const sample=echo.readInt16LE(44+j*4)/32768;echoEnergy+=sample*sample}
+  assert(echoEnergy>1,'Delay tail must contain audible signal after source ends');
+  await page.locator('#lowEQ0').fill('6');await page.locator('#highEQ0').fill('-3');
+  await page.locator('#compEnable0').check();
+  await page.locator('#reverb0').fill('30');
+  await page.locator('#delayWet0').fill('25');
+
+  // Save and restore a session with embedded audio and complete channel state.
+  const [sessionDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const sessionPath=path.join(process.cwd(),'test-mixer-session.json');
+  await sessionDownload.saveAs(sessionPath);
+  const session=JSON.parse(fs.readFileSync(sessionPath,'utf8'));
+  assert.equal(session.format,'montana-mixer-session');
+  assert.equal(session.tracks.length,8);
+  assert.equal(session.masterGain,70);
+  assert.equal(session.tracks[0].lowEQ,6);
+  assert.equal(session.tracks[0].highEQ,-3);
+  assert.equal(session.tracks[0].compEnabled,true);
+  assert.equal(session.tracks[0].compThreshold,-36);
+  assert.equal(session.tracks[0].compRatio,12);
+  assert.equal(session.tracks[0].reverb,30);
+  assert.equal(session.tracks[0].delayWet,25);
+  assert.equal(session.tracks[0].delayMs,350);
+  assert.equal(session.tracks[1].offset,movedOffset);
+  assert.equal(session.tracks[1].trimStart,0.1);
+  assert.equal(session.tracks[1].trimEnd,0.9);
+  assert.equal(session.tracks[1].volume,60);
+  assert.equal(session.tracks[1].pan,-30);
+  assert.equal(session.tracks[1].mute,true);
+  assert.equal(session.tracks[0].solo,true);
+  assert(session.tracks[0].data.length>10000);
+  await page.reload();
+  await page.locator('#sessionFile').setInputFiles(sessionPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  assert.equal(await page.locator('#val1').innerText(),'60%');
+  assert.equal(await page.locator('#masterValue').innerText(),'70%');
+  assert.equal(await page.locator('#lowVal0').innerText(),'6 dB');
+  assert.equal(await page.locator('#highVal0').innerText(),'-3 dB');
+  assert.equal(await page.locator('#compEnable0').isChecked(),true);
+  assert.equal(await page.locator('#compThreshold0').inputValue(),'-36');
+  assert.equal(await page.locator('#compRatio0').inputValue(),'12');
+  assert.equal(await page.locator('#reverb0').inputValue(),'30');
+  assert.equal(await page.locator('#delayWet0').inputValue(),'25');
+  assert.equal(await page.locator('#delayMs0').inputValue(),'350');
+  assert.equal(await page.locator('#panval1').innerText(),'Izq 30');
+  assert.equal(await page.locator('#offset1').inputValue(),String(movedOffset));
+  assert.equal(await page.locator('#trimStart1').inputValue(),'0.1');
+  assert.equal(await page.locator('#trimEnd1').inputValue(),'0.9');
+  assert.equal(await page.locator('#mute1').isChecked(),true);
+  assert.equal(await page.locator('#solo0').isChecked(),true);
+  assert((await page.locator('#label0').innerText()).includes('instrumental.wav'));
+  const [again]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const againPath=path.join(process.cwd(),'test-mixer-restored.json');await again.saveAs(againPath);
+  const restored=JSON.parse(fs.readFileSync(againPath,'utf8'));
+  assert.equal(restored.tracks[0].data,session.tracks[0].data,'Source bytes survive another save');
+  assert.equal(restored.tracks[1].data,session.tracks[1].data,'Vocal bytes survive another save');
+  // Portable-session integrity: check BOTH embedded audio and pre-restoration atomicity.
+  const audit=require('../mixer-master-audit.js');
+  for(const index of [0,1]){
+   const bytes=Buffer.from(session.tracks[index].data,'base64');
+   assert.equal(session.tracks[index].sourceCrc32,
+    audit.crc32(bytes).toString(16).padStart(8,'0'),
+    'Saved audio checksum must match the exact original bytes');
+   assert.equal(restored.tracks[index].sourceCrc32,session.tracks[index].sourceCrc32);
+  }
+  const corrupted=JSON.parse(JSON.stringify(session));
+  const damaged=Buffer.from(corrupted.tracks[0].data,'base64');
+  damaged[96]^=1; // Valid audio still decodes; the checksum must catch a silent byte change.
+  corrupted.tracks[0].data=damaged.toString('base64');
+  const damagedPath=path.join(process.cwd(),'test-mixer-corrupt-audio.json');
+  fs.writeFileSync(damagedPath,JSON.stringify(corrupted));
+  await page.locator('#sessionFile').setInputFiles(damagedPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Integridad del audio'));
+  assert((await page.locator('#label0').innerText()).includes('instrumental.wav'),
+   'Bad checksum must not overwrite the active project');
+  const legacy=JSON.parse(JSON.stringify(session));
+  delete legacy.manifestSha256;
+   for(const track of legacy.tracks){delete track.sourceCrc32;delete track.sourceSha256;}
+  const legacyPath=path.join(process.cwd(),'test-mixer-legacy-no-checksum.json');
+  fs.writeFileSync(legacyPath,JSON.stringify(legacy));
+  await page.locator('#sessionFile').setInputFiles(legacyPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  assert((await page.locator('#label1').innerText()).includes('voz.wav'),
+   'Existing sessions without CRC metadata must still load');
+  // Regression: a rejected audio import must NEVER corrupt the next session backup.
+  await page.locator('#file0').setInputFiles({name:'broken.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('not audio')});
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se pudo importar'));
+  assert.equal(await page.locator('#file0').inputValue(),'','Rejected file input should clear');
+  assert((await page.locator('#label0').innerText()).includes('instrumental.wav'));
+  const [safeSession]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const safePath=path.join(process.cwd(),'test-mixer-safe-session.json');
+  await safeSession.saveAs(safePath);
+  const safe=JSON.parse(fs.readFileSync(safePath,'utf8'));
+  assert.equal(safe.tracks[0].name,'instrumental.wav');
+  assert.equal(safe.tracks[0].data,session.tracks[0].data,'Rejected imports must preserve previous audio bytes');
+  await page.reload();
+  await page.locator('#sessionFile').setInputFiles(safePath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  // Regression: impossible trims must block playback and prevent unusable backups.
+  await page.locator('#trimStart1').fill('2');
+  await page.locator('#play').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Tiempo inválido'));
+  assert.equal(await page.evaluate(()=>players.length),0,'No partial playback on invalid clip');
+  await page.locator('#saveSession').click();
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se guardó'));
+  assert((await page.locator('#status').innerText()).includes('Tiempo inválido'));
+  await page.locator('#file1').setInputFiles({name:'new-take.wav',mimeType:'audio/wav',buffer:wav});
+  await page.waitForFunction(()=>document.querySelector('#label1')?.textContent?.includes('new-take.wav'));
+  assert.equal(await page.locator('#trimStart1').inputValue(),'0','Replacing audio resets unusable trims');
+  const [validReplacement]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const replacementPath=path.join(process.cwd(),'test-mixer-new-take.json');
+  await validReplacement.saveAs(replacementPath);
+  assert.equal(JSON.parse(fs.readFileSync(replacementPath,'utf8')).tracks[1].name,'new-take.wav');
+  // Real browser AudioContext oscillator scheduling, and transport separation from WAV export.
+  await page.locator('#bpm').fill('120');
+  await page.locator('#metronomeOn').check();
+  await page.locator('#play').click();
+  await page.waitForFunction(()=>window.metronomeScheduledBeats?.()>=2,null,{timeout:4000});
+  assert.equal(await page.evaluate(()=>metronomeIsRunning()),true,'Metronome should run during monitored playback');
+  await page.locator('#stop').click();
+  assert.equal(await page.evaluate(()=>metronomeIsRunning()),false,'Stop must stop clicks');
+  const [metroExport]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const metroPath=path.join(process.cwd(),'mixer-metro-on.wav');await metroExport.saveAs(metroPath);
+  await page.locator('#metronomeOn').uncheck();
+  const [cleanExport]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const cleanPath=path.join(process.cwd(),'mixer-metro-off.wav');await cleanExport.saveAs(cleanPath);
+  const withClicksEnabled=fs.readFileSync(metroPath),withoutClicksEnabled=fs.readFileSync(cleanPath);
+  assert.equal(withClicksEnabled.length,withoutClicksEnabled.length,'Monitoring cannot change render length');
+  let sumDelta=0,maxDelta=0,countDelta=0;
+  for(let i=44;i<withClicksEnabled.length;i+=2){
+    const delta=Math.abs(withClicksEnabled.readInt16LE(i)-withoutClicksEnabled.readInt16LE(i));
+    maxDelta=Math.max(maxDelta,delta);sumDelta+=delta*delta;countDelta++;
+  }
+  assert(Math.sqrt(sumDelta/countDelta)<3 && maxDelta<64,
+    'Metronome clicks leaked to WAV export (PCM delta RMS '+Math.sqrt(sumDelta/countDelta).toFixed(2)+', max '+maxDelta+')');
+  await page.locator('#metronomeOn').check();
+  const [tempoSession]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const tempoPath=path.join(process.cwd(),'mixer-tempo-session.json');await tempoSession.saveAs(tempoPath);
+  const tempoJSON=JSON.parse(fs.readFileSync(tempoPath,'utf8'));
+  assert.equal(tempoJSON.bpm,120);assert.equal(tempoJSON.metronomeOn,true);
+  await page.reload();await page.locator('#sessionFile').setInputFiles(tempoPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  assert.equal(await page.locator('#bpm').inputValue(),'120');
+  assert.equal(await page.locator('#metronomeOn').isChecked(),true);
+
+
+  // Loud overlapping stereo test: limiter is optional and affects only WAV output.
+  await page.locator('#solo0').uncheck();
+  await page.locator('#mute1').uncheck();
+  await page.locator('#vol0').fill('150');
+  await page.locator('#vol1').fill('150');
+  await page.locator('#pan1').fill('0');
+  await page.locator('#masterGain').fill('100');
+  await page.locator('#offset1').fill('0');
+  await page.locator('#trimStart1').fill('0');
+  await page.locator('#trimEnd1').fill('0');
+  await page.locator('#lowEQ0').fill('12');
+  await page.locator('#lowEQ1').fill('12');
+  await page.locator('#highEQ0').fill('0');
+  await page.locator('#compDetails0 summary').click();
+  await page.locator('#spaceDetails0 summary').click();
+  await page.locator('#compEnable0').uncheck();
+  await page.locator('#reverb0').fill('0');
+  await page.locator('#delayWet0').fill('0');
+  await page.locator('#limiterOn').uncheck();
+  const [bypassLoud]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const rawPath=path.join(process.cwd(),'mixer-limiter-off.wav');await bypassLoud.saveAs(rawPath);
+  const raw=fs.readFileSync(rawPath);
+  assert((await page.locator('#status').innerText()).includes('ADVERTENCIA: hay clipping'));
+  await page.locator('#limiterOn').check();
+  await page.locator('#limiterCeiling').fill('-3');
+  assert.equal(await page.locator('#limiterCeilingVal').innerText(),'-3 dBFS');
+  const [limitedDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#export').click()]);
+  const limitedPath=path.join(process.cwd(),'mixer-limited-3db.wav');await limitedDownload.saveAs(limitedPath);
+  const limited=fs.readFileSync(limitedPath);
+  assert.equal(limited.length,raw.length);
+  assert((await page.locator('#status').innerText()).includes('Limitador aplicado'));
+  let maxRaw=0,maxLimited=0;
+  for(let j=44;j<raw.length;j+=2){
+   maxRaw=Math.max(maxRaw,Math.abs(raw.readInt16LE(j)));
+   maxLimited=Math.max(maxLimited,Math.abs(limited.readInt16LE(j)));
+  }
+  assert(maxRaw>=32000,'Unprotected test mix should reach PCM ceiling');
+  assert(maxLimited<=Math.pow(10,-3/20)*32768+2,'Enabled limiter must enforce -3 dBFS sample ceiling');
+  assert(maxLimited>10000&&maxLimited<maxRaw,'Limiter must attenuate actual audio');
+  const [limitedSession]=await Promise.all([page.waitForEvent('download'),page.locator('#saveSession').click()]);
+  const limitedSessionPath=path.join(process.cwd(),'mixer-limiter-settings.json');await limitedSession.saveAs(limitedSessionPath);
+  const limitedData=JSON.parse(fs.readFileSync(limitedSessionPath,'utf8'));
+  assert.equal(limitedData.limiterOn,true);
+  assert.equal(limitedData.limiterCeiling,-3);
+  await page.reload();await page.locator('#sessionFile').setInputFiles(limitedSessionPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('Sesión restaurada'));
+  assert.equal(await page.locator('#limiterOn').isChecked(),true);
+  assert.equal(await page.locator('#limiterCeiling').inputValue(),'-3');
+  limitedData.limiterCeiling=0;
+  const invalidLimitPath=path.join(process.cwd(),'mixer-invalid-limiter-session.json');
+  fs.writeFileSync(invalidLimitPath,JSON.stringify(limitedData));
+  await page.locator('#sessionFile').setInputFiles(invalidLimitPath);
+  await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('No se restauró'));
+  assert.equal(await page.locator('#limiterCeiling').inputValue(),'-3','Invalid limiter sessions must not overwrite active project');
+
+  assert.deepEqual(errors,[]);
+  console.log('PASS: 8 tracks, import, sessions, non-destructive editing, shelf EQ, compression, convolution reverb, delay and real PCM tails, WAV export, invalid-file regressions.');
+ }finally{await browser.close()}
+})().catch(e=>{console.error(e);process.exit(1)});

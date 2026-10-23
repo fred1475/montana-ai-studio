@@ -1,0 +1,118 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Montana AI Studio — Laboratorio de afinación experimental</title>
+<style>
+:root{color-scheme:dark;font:16px system-ui;background:#0b101a;color:#f3f7ff}*{box-sizing:border-box}body{max-width:850px;margin:auto;padding:20px;line-height:1.5}h1,a{color:#efc36e}h2{font-size:1.15rem}p,small{color:#becee2}.pane{background:#172132;border:1px solid #435067;padding:18px;border-radius:14px;margin:16px 0}label{display:block;margin:10px 0 5px}input,select,button{font:inherit}input[type=file],input[type=range],select{width:100%;max-width:100%}button{border:0;border-radius:8px;padding:11px 16px;font-weight:700;background:#efc36e;color:#231a0b;margin:8px 6px 8px 0;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}output{font-variant-numeric:tabular-nums}#results{white-space:pre-wrap;color:#dcf5e9}.alert{border-left:4px solid #efc36e;padding:8px 14px;background:#281f17}select{padding:8px}a{display:inline-block;margin-bottom:8px}
+</style></head><body>
+<a href="mixer-8.html">← Volver al mezclador de ocho pistas</a> <a href="time-lab.html" style="margin-left:16px">⏱️ Laboratorio de duración</a>
+<h1>🎙️ Laboratorio de afinación — experimental</h1>
+<p>Montana Music Production LLC</p>
+<p class="alert"><strong>ESTO NO ES AUTO-TUNE PROFESIONAL.</strong> El modo sostenido admite una nota (0.2–15 segundos); el nuevo modo experimental permite frases de 2–12 notas claras (0.65–10 segundos). No es adecuado todavía para glides, vibrato complejo, notas muy rápidas, voces superpuestas ni instrumentales. No ofrece retune en tiempo real ni compensación de latencia. Conserva siempre tus originales.</p>
+<section class="pane">
+<h2>1. Carga un fragmento vocal corto</h2>
+<label for="file">Audio vocal monofónico (máx. 20 MB)</label><input id="file" type="file" accept="audio/*,.wav">
+<label for="mode">Tipo de afinación</label><select id="mode"><option value="sustain">Una nota sostenida (modo probado)</option><option value="melody">Frase de varias notas (experimental)</option></select>
+<label for="key">Tonalidad</label><select id="key"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select>
+<label for="scale">Escala</label><select id="scale"><option value="chromatic">Cromática (nota más cercana)</option><option value="major">Mayor</option><option value="minor">Menor</option></select>
+<label for="strength">Fuerza de corrección: <output id="strengthValue">100%</output></label><input id="strength" type="range" min="0" max="100" step="10" value="100">
+<label for="wet">Mezcla de voz procesada: <output id="wetValue">100%</output></label><input id="wet" type="range" min="0" max="100" step="10" value="100">
+<button type="button" id="process">🎼 Analizar y corregir</button>
+<p id="status" role="status" aria-live="polite">Selecciona un audio vocal.</p>
+</section>
+<section class="pane">
+<h2>2. Resultado</h2>
+<output id="results">Todavía no hay un análisis.</output><p id="pitchQuality" role="status">El control de calidad aparece después de procesar la voz.</p>
+<div><button id="original" type="button" disabled>▶ Original</button><button id="corrected" type="button" disabled>▶ Corregido</button><button id="stop" type="button">■ Detener</button></div>
+<button id="download" type="button" disabled>⬇ Descargar WAV corregido</button>
+<small>El procesamiento ocurre localmente en el navegador. Las frases cambiantes aún son experimentales. Los resultados pueden contener artefactos: escucha antes de utilizarlos.</small>
+</section>
+<script src="pitch-engine.js"></script><script src="pitch-melody.js"></script><script src="pitch-quality.js"></script><script src="pitch-blend.js"></script><script>
+'use strict';
+const $=id=>document.getElementById(id);
+let raw=null,processed=null,ctx=null,source=null;
+// Parameter edits cannot leave the old WAV downloadable under new settings.
+function invalidateOutput(){
+ stop();processed=null;$('corrected').disabled=true;$('download').disabled=true;
+ $('pitchQuality').textContent='Ajustes modificados: vuelve a procesar antes de exportar.';
+}
+$('strength').addEventListener('input',()=>{
+ $('strengthValue').textContent=$('strength').value+'%';invalidateOutput();
+});
+$('wet').addEventListener('input',()=>{
+ $('wetValue').textContent=$('wet').value+'%';invalidateOutput();
+});
+for(const id of ['mode','key','scale'])$(id).addEventListener('change',invalidateOutput);
+function stop(){if(source){try{source.stop()}catch(e){}try{source.disconnect()}catch(e){}source=null}}
+function status(s){$('status').textContent=s}
+$('file').addEventListener('change',()=>{
+ stop();raw=null;processed=null;
+ $('original').disabled=true;$('corrected').disabled=true;$('download').disabled=true;
+ $('results').textContent='Todavía no hay un análisis.';
+ $('pitchQuality').textContent='El control de calidad aparece después de procesar la voz.';
+ const file=$('file').files?.[0];status(file?'Listo para analizar: '+file.name:'Selecciona un audio vocal.');
+});
+function encodeWav(channels,rate){
+ const count=channels[0].length,n=channels.length,size=44+count*n*2;
+ if(size>25000000)throw Error('WAV demasiado grande');
+ const buffer=new ArrayBuffer(size),view=new DataView(buffer);
+ function str(pos,text){for(let i=0;i<text.length;i++)view.setUint8(pos+i,text.charCodeAt(i))}
+ str(0,'RIFF');view.setUint32(4,size-8,true);str(8,'WAVE');str(12,'fmt ');view.setUint32(16,16,true);
+ view.setUint16(20,1,true);view.setUint16(22,n,true);view.setUint32(24,rate,true);view.setUint32(28,rate*n*2,true);view.setUint16(32,n*2,true);view.setUint16(34,16,true);
+ str(36,'data');view.setUint32(40,count*n*2,true);
+ for(let i=0;i<count;i++)for(let c=0;c<n;c++){
+  const val=Math.max(-1,Math.min(1,channels[c][i]));view.setInt16(44+(i*n+c)*2,val<0?val*32768:val*32767,true);
+ }
+ return new Blob([buffer],{type:'audio/wav'});
+}
+$('process').addEventListener('click',async()=>{
+ const btn=$('process');btn.disabled=true;processed=null;raw=null;$('download').disabled=true;$('corrected').disabled=true;
+ $('pitchQuality').textContent='Control de calidad pendiente de la nueva toma.';
+ try{
+  const file=$('file').files?.[0];if(!file)throw Error('Primero selecciona un archivo de voz.');
+  if(file.size>20e6)throw Error('El audio supera 20 MB.');
+  status('Analizando nota y generando la toma de prueba...');
+  ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();
+  const audio=await ctx.decodeAudioData(await file.arrayBuffer());
+  const mode=$('mode').value;
+  if(audio.duration>(mode==='melody'?10:15)||audio.duration<(mode==='melody'?.65:.2))throw Error('Duración fuera del rango permitido para el modo elegido.');
+  const channels=Array.from({length:audio.numberOfChannels},(_,i)=>audio.getChannelData(i).slice());
+  const options={key:$('key').value,scale:$('scale').value,strength:Number($('strength').value)};
+  const result=mode==='melody'?MontanaMelody.processMelody(channels,audio.sampleRate,options):MontanaPitch.process(channels,audio.sampleRate,options);
+  const wet=Number($('wet').value);
+  const mixed=MontanaPitchBlend.blend(channels,result.channels,wet);
+  const qa=MontanaPitchQA.analyze(channels,mixed,audio.sampleRate);
+  const format=v=>v===null?'N/D':v.toFixed(1);
+  $('pitchQuality').textContent='QA orientativo: RMS original '+format(qa.metrics.sourceRmsDbfs)+
+   ' dBFS → corregido '+format(qa.metrics.outputRmsDbfs)+' dBFS; cambio '+
+   format(qa.metrics.rmsDeltaDb)+' dB; pico final '+format(qa.metrics.outputPeakDbfs)+
+   ' dBFS; saltos nuevos '+qa.metrics.newLargeSteps+'. '+
+   'Ventanas de posible microcorte: '+qa.metrics.dropoutWindowCount+
+    (qa.metrics.firstDropoutSeconds===null?'.':', primera en '+qa.metrics.firstDropoutSeconds.toFixed(2)+
+     ' s (canal '+qa.metrics.firstDropoutChannel+').')+' '+
+   'Cambio relativo de altas (aprox. 2.5 kHz) '+format(qa.metrics.highBandDeltaDb)+' dB. '+
+   (qa.stereo?'Estéreo: correlación '+format(qa.stereo.source.correlation)+
+    ' → '+format(qa.stereo.output.correlation)+'; balance L/R '+
+    format(qa.stereo.source.balanceDb)+' → '+format(qa.stereo.output.balanceDb)+' dB. ':'')+
+   (qa.warnings.length?'Avisos: '+qa.warnings.map(w=>w.message).join(' '):
+    'Sin alarmas de PCM en estos criterios; falta escucha de artefactos y formantes.');
+  processed={channels:mixed,rate:audio.sampleRate};raw={channels,rate:audio.sampleRate};
+  if(mode==='melody'){
+   $('results').textContent='Modo frase experimental. Notas: '+result.segments.map(s=>s.targetNote).join(' → ')+'\n'
+    +result.segments.map(s=>s.startSeconds.toFixed(2)+'–'+s.endSeconds.toFixed(2)+' s: '+s.inputHz.toFixed(1)+' Hz → '+s.targetNote+', '+s.correctionCents.toFixed(1)+' cents').join('\n')
+    +'\nDuración conservada: '+result.duration.toFixed(2)+' s. Escucha para detectar artefactos.';
+  }else{
+   const correctedPitch=MontanaPitch.analyze(result.channels[0],audio.sampleRate);
+   $('results').textContent='Entrada: '+result.analysis.frequency.toFixed(2)+' Hz\nObjetivo: '+result.target.note+' ('+result.target.frequency.toFixed(2)+' Hz)\nCorrección solicitada: '+result.correctionCents.toFixed(1)+' cents\nNota afinada al 100% (antes de mezclar): '+correctedPitch.frequency.toFixed(2)+' Hz\nDuración original: '+audio.duration.toFixed(2)+' s; salida: '+result.duration.toFixed(2)+' s.';
+  }
+  $('original').disabled=false;$('corrected').disabled=false;$('download').disabled=false;
+  status('Fragmento procesado. Mezcla procesada '+wet+'%. Escucha ambas versiones antes de utilizarlo.');
+ }catch(e){$('results').textContent='Sin salida válida.';$('pitchQuality').textContent='Sin diagnóstico válido de afinación.';status('No se pudo corregir: '+e.message)}finally{btn.disabled=false}
+});
+async function play(value){if(!value)return;stop();ctx=ctx||new AudioContext();await ctx.resume();const b=ctx.createBuffer(value.channels.length,value.channels[0].length,value.rate);value.channels.forEach((ch,i)=>b.copyToChannel(ch,i));source=ctx.createBufferSource();source.buffer=b;source.connect(ctx.destination);source.onended=()=>{source=null};source.start()}
+$('original').addEventListener('click',()=>play(raw).catch(e=>status('Error: '+e.message)));
+$('corrected').addEventListener('click',()=>play(processed).catch(e=>status('Error: '+e.message)));
+$('stop').addEventListener('click',stop);
+$('download').addEventListener('click',()=>{
+ if(!processed)return;
+ try{const blob=encodeWav(processed.channels,processed.rate),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='montana-nota-afinada-experimental.wav';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}catch(e){status('Error al exportar: '+e.message)}
+});
+window.addEventListener('pagehide',()=>{stop();ctx?.close()});
+</script></body></html>

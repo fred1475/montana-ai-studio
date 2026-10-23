@@ -1,0 +1,163 @@
+"use strict";
+// Local microphone overdubs: no automatic latency compensation or professional
+// synchronization claim. Each completed recording remains downloadable raw.
+// Unexpected capture errors leave an existing channel's original intact.
+let recording=null;
+function recordingSupported(){return !!(navigator.mediaDevices?.getUserMedia&&(window.MediaRecorder||window.MontanaPcmRecord?.supported()))}
+function updateSourceDownload(){
+ const i=Number($("recordTrack").value);
+ $("downloadSource").disabled=!originalFiles[i]||!!recording;
+}
+window.updateSourceDownload=updateSourceDownload;
+async function scanMicInputs(){
+ if(!navigator.mediaDevices?.enumerateDevices)throw Error("La lista de micrófonos requiere HTTPS/localhost y un navegador compatible");
+ const menu=$("micInput"),previous=menu.value,
+  devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
+ menu.replaceChildren(new Option("Predeterminada del sistema",""));
+ devices.forEach((d,i)=>menu.add(new Option(d.label||"Entrada "+(i+1),d.deviceId)));
+ if([...menu.options].some(o=>o.value===previous))menu.value=previous;
+ else if(previous)$("micInputStatus").textContent="La entrada seleccionada ya no está disponible. Se usará la predeterminada.";
+ return devices.length;
+}
+$("scanMicInputs").addEventListener("click",async()=>{
+ const btn=$("scanMicInputs");btn.disabled=true;
+ try{
+  const n=await scanMicInputs();
+  $("micInputStatus").textContent=n+" entrada(s) detectadas. Selecciona la de tu interfaz. Los nombres pueden requerir permiso.";
+ }catch(e){$("micInputStatus").textContent="No se pudieron enumerar entradas: "+e.message}
+ finally{btn.disabled=false}
+});
+$("micInput").addEventListener("change",()=>{
+ const menu=$("micInput");
+ $("micInputStatus").textContent="Entrada elegida: "+menu.selectedOptions[0].textContent+
+  ". La selección es local a esta sesión y puede cambiar al desconectar la interfaz.";
+});
+
+$("recordTrack").addEventListener("change",updateSourceDownload);
+$("downloadSource").addEventListener("click",()=>{
+ const i=Number($("recordTrack").value),file=originalFiles[i];
+ if(!file){report("No hay audio original en este canal.");return}
+ const url=URL.createObjectURL(file),a=document.createElement("a");
+ a.href=url;a.download=file.name||"montana-fuente-canal-"+(i+1);
+ document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),30000);
+ report("Descarga solicitada del audio original del canal "+(i+1)+". Guarda también la sesión completa.");
+});
+$("recordStart").addEventListener("click",async()=>{
+ if(recording)return;
+ if(!recordingSupported()){report("Grabación no disponible: requiere HTTPS o localhost y un navegador compatible.");return}
+ const i=Number($("recordTrack").value);
+ try{window.validateMetronome()}catch(err){report(err.message);return}
+ if(tracks[i]&&!confirm("El canal seleccionado ya tiene audio. ¿Reemplazarlo cuando termine la nueva toma?"))return;
+ let guides;
+ try{
+  guides=tracks.map((buffer,index)=>buffer&&index!==i?
+   {index,buffer:window.getMixBuffer(index),segments:(window.validateFades(index),window.getTrackSegments(index,buffer))}:null).filter(Boolean);
+  guides.forEach(guide=>window.prepareCrossfadePlan(guide.index,guide.segments));
+ }catch(err){report("Corrige las pistas de acompañamiento antes de grabar: "+err.message);return}
+ let stream=null,recorder=null,started=false;
+ try{
+  const selected=$("micInput").value;
+  stream=await navigator.mediaDevices.getUserMedia({audio:{...(selected?{deviceId:{exact:selected}}:{}),channelCount:{ideal:1},echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+  const actual=stream.getAudioTracks()[0];
+  $("micInputStatus").textContent="Grabando desde: "+(actual?.label||"entrada sin nombre")+". Revisa el nivel de señal de la interfaz.";
+  const format=$("recordFormat").value;
+  if(format==="wav"){
+   if(!window.MontanaPcmRecord?.supported())throw Error("WAV PCM24 requiere AudioWorklet en HTTPS/localhost");
+   recorder=await window.MontanaPcmRecord.create(stream);
+  }else{
+   if(!window.MediaRecorder)throw Error("Grabación WebM no disponible");
+   const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"].find(x=>MediaRecorder.isTypeSupported(x));
+   recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
+  }
+  const chunks=[],state={recorder,stream,index:i,failed:false};
+  recording=state;updateSourceDownload();
+  recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+  recorder.onerror=()=>{
+   state.failed=true;
+   report("Error en la grabación. Se conservará la pista anterior.");
+   try{if(recorder.state==="recording")recorder.stop()}catch(e){}
+  };
+  recorder.onstop=async()=>{
+   // Keep the start button disabled until saving/decoding is done.
+   stop();
+   stream.getTracks().forEach(t=>t.stop());
+   $("recordStop").disabled=true;
+   try{
+    if(state.failed)throw Error("Captura fallida; toma descartada y pista anterior intacta");
+    const blob=new Blob(chunks,{type:recorder.mimeType||"audio/webm"});
+    if(!blob.size)throw Error("No se capturó audio");
+    if(blob.size>50e6)throw Error("La toma supera 50 MB");
+    const bytes=await blob.arrayBuffer(),decoded=await audio().decodeAudioData(bytes.slice(0));
+    if(decoded.duration>300)throw Error("La toma supera cinco minutos");
+    const ext=blob.type.includes("wav")?"wav":blob.type.includes("mp4")?"m4a":"webm";
+    const file=new File([blob],"toma-canal-"+(i+1)+"."+ext,{type:blob.type});
+    // Atomic replacement happens only after a full successful decode.
+    tracks[i]=decoded;originalFiles[i]=file;
+    window.resetPitch?.(i);window.resetClean?.(i);window.resetVocalPreflight?.(i);window.resetSplit?.(i);window.resetCrossfade?.(i);window.resetCopies?.(i);
+    $("file"+i).value="";$("trimStart"+i).value=0;$("trimEnd"+i).value=0;$("fadeIn"+i).value=0;$("fadeOut"+i).value=0;$("repeat"+i).value=1;
+    $("offset"+i).value=0;
+    if(i>0){$("alignMs"+i).value=0;$("alignVal"+i).textContent="0 ms"}
+    $("label"+i).textContent=file.name+" — "+decoded.duration.toFixed(1)+" s";
+    window.resetEditHistory?.();
+    report("Toma guardada en canal "+(i+1)+". Usa «Rescatar fuente del canal» para descargar el audio original; guarda también tu sesión.");
+   }catch(err){report("No se reemplazó la pista: "+err.message+". Tu audio anterior sigue intacto.");}
+   finally{
+    recording=null;$("recordStart").disabled=false;updateSourceDownload();
+   }
+  };
+  // Begin recording just before starting the guide. Offset isn't calibrated.
+  recorder.start(1000);started=true;
+  $("recordStart").disabled=true;$("recordStop").disabled=false;
+  if(guides.length){
+   await audio().resume();stop();
+   const at=audio().currentTime+.08,m=audio().createGain();
+   m.gain.value=Number($("masterGain").value)/100;
+   window.attachMasterMeter(audio(),m).connect(audio().destination);activeOutputs.push(m);
+   for(const guide of guides){
+    const index=guide.index,g=audio().createGain(),p=audio().createStereoPanner();
+    g.gain.value=gain(index);p.pan.value=pan(index);
+    const eq=addEq(audio(),g,index),comp=addCompressor(audio(),eq,index),fx=addSpace(audio(),comp,index);
+    window.attachTrackMeter(audio(),fx,index).connect(p).connect(m);
+    const crossfadePlan=window.prepareCrossfadePlan(index,guide.segments);
+    for(const [clipIndex,clip] of guide.segments.entries()){
+     const src=audio().createBufferSource();src.buffer=guide.buffer;
+     if(clip.repeat>1){src.loop=true;src.loopStart=clip.start;src.loopEnd=clip.start+clip.singleDuration}
+     window.connectClipCrossfade(audio(),src,g,index,clip,at+clip.offset,clipIndex,crossfadePlan);
+     src.start(at+clip.offset,clip.start,clip.duration);players.push(src);
+    }
+   }
+   if($("metronomeOn").checked)window.startMetronome(audio(),at);
+  }else if($("metronomeOn").checked){
+   await audio().resume();window.startMetronome(audio(),audio().currentTime+.08);
+  }
+  report("Grabando canal "+(i+1)+" en "+($("recordFormat").value==="wav"?"WAV PCM24 (sin compresión adicional)":"modo compatible")+". Usa audífonos. Si hay retraso, alinea manualmente la voz en ms al terminar.");
+ }catch(err){
+  if(recording&&recorder===recording.recorder){
+   recording.failed=true;
+   try{if(recorder.state!=="inactive")recorder.stop()}catch(e){}
+  }else{
+   stream?.getTracks().forEach(t=>t.stop());
+   $("recordStart").disabled=false;recording=null;updateSourceDownload();
+  }
+  if(!started)stream?.getTracks().forEach(t=>t.stop());
+  report("Error al iniciar la grabación: "+err.message+". La pista anterior se conserva.");
+ }
+});
+$("recordStop").addEventListener("click",()=>{
+ if(recording?.recorder?.state==="recording"){
+  $("recordStop").disabled=true;
+  recording.recorder.stop();
+ }
+});
+window.addEventListener("beforeunload",e=>{
+ if(recording){e.preventDefault();e.returnValue="";}
+});
+window.addEventListener("pagehide",()=>{
+ if(recording){
+  recording.failed=true;
+  recording.stream.getTracks().forEach(t=>t.stop());
+  try{if(recording.recorder.state!=="inactive")recording.recorder.stop()}catch(e){}
+ }
+});
+updateSourceDownload();
