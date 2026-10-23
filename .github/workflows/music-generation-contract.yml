@@ -23,6 +23,7 @@ on:
       - 'tests/worker-runtime.cjs'
       - 'tests/private-music-import.cjs'
       - 'tests/private-music-generation.cjs'
+      - 'tests/ai-music-ui-offline.cjs'
       - 'docs/AI-MUSIC-SERVER-CONTRACT.md'
       - 'docs/PRIVATE-GATEWAY-STAGING.md'
       - 'docs/100-PERCENT-ACCEPTANCE.md'
@@ -60,5 +61,6 @@ jobs:
           node --check tests/worker-runtime.cjs
           node --check tests/private-music-import.cjs
           node --check tests/private-music-generation.cjs
+          node --check tests/ai-music-ui-offline.cjs
       - name: Test safe access, idempotency, quotas and failure behavior
-        run: node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs tests/d1-quota.cjs tests/worker-api.cjs tests/r2-audio-store.cjs tests/worker-runtime.cjs tests/private-music-import.cjs tests/private-music-generation.cjs
+        run: node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs tests/d1-quota.cjs tests/worker-api.cjs tests/r2-audio-store.cjs tests/worker-runtime.cjs tests/private-music-import.cjs tests/private-music-generation.cjs tests/ai-music-ui-offline.cjs
