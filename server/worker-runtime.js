@@ -5,11 +5,20 @@
 const { createPrivateMusicGateway } = require('./worker-api');
 const { createPrivateR2AudioStore } = require('./r2-audio-store');
 const { createLyriaProvider } = require('./lyria-provider');
+const { createDecodedMp3Inspector } = require('./mp3-inspection');
 
 function createCloudflareMusicRuntime({
-  screen, inspectMp3, fetchImpl = globalThis.fetch, quotaFactory
+  screen, inspectMp3, decodeMp3, fetchImpl = globalThis.fetch, quotaFactory
 } = {}) {
-  if (typeof screen !== 'function' || typeof inspectMp3 !== 'function' ||
+  // Production should provide decodeMp3: the inspector then measures duration
+  // from complete PCM rather than trusting provider metadata. inspectMp3 is
+  // retained for isolated contract tests only.
+  if (decodeMp3 !== undefined && inspectMp3 !== undefined) {
+    throw new TypeError('Supply one trusted decoder pathway only');
+  }
+  const inspector = typeof decodeMp3 === 'function' ?
+    createDecodedMp3Inspector({ decodeMp3 }) : inspectMp3;
+  if (typeof screen !== 'function' || typeof inspector !== 'function' ||
       typeof fetchImpl !== 'function') {
     throw new TypeError('Reviewed screening, actual MP3 decoding and fetch are mandatory');
   }
@@ -19,7 +28,7 @@ function createCloudflareMusicRuntime({
         typeof env.R2.get !== 'function') {
       throw new Error('PRIVATE_STORAGE_NOT_CONFIGURED');
     }
-    return createPrivateR2AudioStore({ bucket: env.R2, inspectMp3 });
+    return createPrivateR2AudioStore({ bucket: env.R2, inspectMp3: inspector });
   };
 
   return createPrivateMusicGateway({
