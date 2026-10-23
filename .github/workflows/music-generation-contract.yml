@@ -9,6 +9,10 @@ on:
       - 'server/r2-audio-store.js'
       - 'server/worker-runtime.js'
       - 'private-music-import.js'
+      - 'private-music-generation.js'
+      - 'ai-music-lab.js'
+      - 'ai-music-lab.html'
+      - 'studio.html'
       - 'mixer-8.html'
       - 'server/schema/d1-quota.sql'
       - 'tests/music-generation-contract.cjs'
@@ -18,6 +22,7 @@ on:
       - 'tests/r2-audio-store.cjs'
       - 'tests/worker-runtime.cjs'
       - 'tests/private-music-import.cjs'
+      - 'tests/private-music-generation.cjs'
       - 'docs/AI-MUSIC-SERVER-CONTRACT.md'
       - 'docs/PRIVATE-GATEWAY-STAGING.md'
       - 'docs/100-PERCENT-ACCEPTANCE.md'
@@ -45,6 +50,8 @@ jobs:
           node --check server/r2-audio-store.js
           node --check server/worker-runtime.js
           node --check private-music-import.js
+          node --check private-music-generation.js
+          node --check ai-music-lab.js
           node --check tests/music-generation-contract.cjs
           node --check tests/lyria-provider.cjs
           node --check tests/d1-quota.cjs
@@ -52,5 +59,6 @@ jobs:
           node --check tests/r2-audio-store.cjs
           node --check tests/worker-runtime.cjs
           node --check tests/private-music-import.cjs
+          node --check tests/private-music-generation.cjs
       - name: Test safe access, idempotency, quotas and failure behavior
-        run: node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs tests/d1-quota.cjs tests/worker-api.cjs tests/r2-audio-store.cjs tests/worker-runtime.cjs tests/private-music-import.cjs
+        run: node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs tests/d1-quota.cjs tests/worker-api.cjs tests/r2-audio-store.cjs tests/worker-runtime.cjs tests/private-music-import.cjs tests/private-music-generation.cjs
