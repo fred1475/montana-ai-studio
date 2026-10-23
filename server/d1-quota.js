@@ -5,6 +5,7 @@
 const RESERVATION_ID = /^[A-Za-z0-9_-]{8,128}$/;
 const FINGERPRINT = /^[0-9a-f]{64}$/i;
 const ASSET_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/;
+const EVIDENCE_REF = /^[A-Za-z0-9_-]{8,128}$/;
 const MIME_TYPES = new Set(['audio/mpeg', 'audio/wav', 'audio/flac']);
 
 function createD1Quota({
@@ -78,7 +79,8 @@ function createD1Quota({
         }
         return { status: 'denied' };
       }
-      if (row.fingerprint !== fingerprint.toLowerCase() || row.state === 'released') {
+      if (row.fingerprint !== fingerprint.toLowerCase() ||
+          row.state === 'released' || row.state === 'charged_without_asset') {
         return { status: 'denied' };
       }
       if (row.state === 'committed') {
@@ -107,6 +109,29 @@ function createD1Quota({
       ]);
       if (result[0]?.meta?.changes !== 1 || result[1]?.meta?.changes !== 1) {
         throw new Error('COMMIT_REQUIRES_RECONCILIATION');
+      }
+    },
+
+    async settleChargedWithoutAsset(reservationId, verification) {
+      // OPERATOR-ONLY maintenance method, deliberately not exposed by HTTP.
+      // Use only AFTER external invoice confirms a charge AND R2 has no
+      // recoverable asset. Keep an opaque ticket reference, never a receipt
+      // containing PII. This consumes budget but clears single-flight lock.
+      if (typeof reservationId !== 'string' || !RESERVATION_ID.test(reservationId) ||
+          !verification || verification.providerCharged !== true ||
+          verification.assetUnavailable !== true ||
+          typeof verification.evidenceRef !== 'string' ||
+          !EVIDENCE_REF.test(verification.evidenceRef)) {
+        throw new Error('EXTERNAL_CHARGE_PROOF_REQUIRED');
+      }
+      const result = await db.batch([
+        prepare("UPDATE monthly_budgets SET reserved_cents=reserved_cents-(SELECT cost_cents FROM reservations WHERE reservation_id=? AND state='reserved'), spent_cents=spent_cents+(SELECT cost_cents FROM reservations WHERE reservation_id=? AND state='reserved') WHERE month=(SELECT month FROM reservations WHERE reservation_id=? AND state='reserved')",
+          reservationId, reservationId, reservationId),
+        prepare("UPDATE reservations SET state='charged_without_asset',reconciliation_reference=? WHERE reservation_id=? AND state='reserved'",
+          verification.evidenceRef, reservationId)
+      ]);
+      if (result[0]?.meta?.changes !== 1 || result[1]?.meta?.changes !== 1) {
+        throw new Error('CHARGE_SETTLEMENT_REQUIRES_RECONCILIATION');
       }
     },
 
