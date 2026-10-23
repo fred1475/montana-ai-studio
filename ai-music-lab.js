@@ -31,6 +31,7 @@
     SALDO_PRIVADO_NO_DISPONIBLE: 'No se pudo verificar el presupuesto privado. No se enviará una generación.',
     SALDO_PRIVADO_INVALIDO: 'El servidor devolvió un presupuesto incoherente. Generación bloqueada.',
     PRESUPUESTO_AGOTADO: 'Presupuesto insuficiente. No se ha hecho solicitud pagada.',
+    CONCILIACION_PENDIENTE: 'Hay una generación reservada todavía sin conciliar (incluso de otro mes). No se enviará otra solicitud de pago.',
     GENERATION_NOT_ENABLED: 'La generación de pago sigue cerrada en el servidor.',
     QUOTA_EXCEEDED: 'La cuota está agotada. No se enviará otra generación.',
     POLICY_DENIED: 'La solicitud fue rechazada por el control de contenido.',
@@ -101,7 +102,11 @@
         (quota.spentCents / 100).toFixed(2) + ' · Reservado: $' +
         (quota.reservedCents / 100).toFixed(2) + ' · Disponible: $' +
         (quota.remainingCents / 100).toFixed(2) +
-        '. La cuota interna no equivale a un límite de factura externa.';
+        ' · Solicitudes sin conciliar (todos los meses): ' +
+        quota.pendingReservations +
+        '. La cuota interna no equivale a un límite de factura externa.' +
+        (quota.pendingReservations ?
+          ' GENERACIÓN BLOQUEADA hasta verificar la factura y cerrar la reserva.' : '');
     } catch (error) {
       usageOutput.textContent = message(error) + ' No hagas solicitudes pagadas.';
     } finally { usageButton.disabled = false; }
