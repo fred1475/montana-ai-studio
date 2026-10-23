@@ -14,6 +14,12 @@
 
 El **interruptor financiero está apagado por defecto**. Incluso con autentificación aprobada, la petición de generación devuelve `GENERATION_NOT_ENABLED` salvo que exista la bandera explícita `PRIVATE_GENERATION_ENABLED=YES_I_APPROVE_REAL_GENERATION_COSTS` y se hayan inyectado adaptadores reales, seguros y revisados de políticas y proveedor. Esta bandera no constituye por sí sola autorización para gastar.
 
+## Integración simulada de componentes
+
+`server/worker-runtime.js` prepara la composición de `worker-api.js`, `d1-quota.js`, `lyria-provider.js` y `r2-audio-store.js`. La suite `tests/worker-runtime.cjs` simula un ciclo completo de petición, autorización, reserva, respuesta del proveedor, inspección de bytes, guardado privado y liquidación; verifica también rechazos de contenido, errores de proveedor, MP3 no decodificable y falta de R2. **Los MP3 del test son bytes ficticios y el inspector es un doble de prueba; no constituye una decodificación ni un archivo musical real.**
+
+El adaptador R2 usa claves derivadas de SHA-256 de la identidad, no permite devolver un objeto sin fila D1 confirmada para el propietario y requiere `inspectMp3` confiable (con decodificación y duración real). No está implementado el decodificador real ni existe punto de entrada desplegable. No se publican URL de R2.
+
 ## Dependencias todavía ausentes
 
 Este archivo **no es un Worker desplegable por sí solo**. El operador tendrá que:
@@ -47,7 +53,11 @@ Este archivo **no es un Worker desplegable por sí solo**. El operador tendrá q
 ```sh
 node --check server/worker-api.js
 node --check tests/worker-api.cjs
-node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs tests/d1-quota.cjs tests/worker-api.cjs
+node --check server/r2-audio-store.js
+node --check tests/r2-audio-store.cjs
+node --check server/worker-runtime.js
+node --check tests/worker-runtime.cjs
+node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs tests/d1-quota.cjs tests/worker-api.cjs tests/r2-audio-store.cjs tests/worker-runtime.cjs
 ```
 
 Las pruebas utilizan objetos simulados, sin credenciales ni llamadas al proveedor. Revisar el SHA de la rama y GitHub Actions. Aprobar CI **no certifica** confidencialidad de un entorno real, derechos comerciales, música generada, mastering, latencia física, ni el 100 % del proyecto.
