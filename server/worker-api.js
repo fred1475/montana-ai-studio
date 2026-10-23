@@ -138,7 +138,8 @@ function createPrivateMusicGateway({
           liveGeneration: false }, 200, origin, requestOrigin);
       }
       const audioMatch = AUDIO_PATH.exec(path);
-      if (path !== '/v1/usage' && path !== '/v1/generate' && !audioMatch) {
+      if (path !== '/v1/usage' && path !== '/v1/generate' &&
+          path !== '/v1/pending' && !audioMatch) {
         return json({ error: 'NOT_FOUND' }, 404, origin, requestOrigin);
       }
       if (!origin) return json({ error: 'SERVICE_NOT_CONFIGURED' }, 503, origin, requestOrigin);
@@ -149,6 +150,7 @@ function createPrivateMusicGateway({
         return new Response(null, { status: 204, headers: headers(origin, requestOrigin) });
       }
       if ((path === '/v1/usage' && request.method !== 'GET') ||
+          (path === '/v1/pending' && request.method !== 'GET') ||
           (path === '/v1/generate' && request.method !== 'POST') ||
           (audioMatch && request.method !== 'GET')) {
         return json({ error: 'METHOD_NOT_ALLOWED' }, 405, origin, requestOrigin);
@@ -184,6 +186,24 @@ function createPrivateMusicGateway({
             remainingCents: usage.limitCents - usage.spentCents - usage.reservedCents,
             pendingReservations
           }, 200, origin, requestOrigin);
+        } catch (_) {
+          return json({ error: 'QUOTA_UNAVAILABLE' }, 503, origin, requestOrigin);
+        }
+      }
+
+      // Read-only reserved charges for manual reconciliation; never a
+      // release/commit endpoint. Require the verified browser Origin as well.
+      if (path === '/v1/pending') {
+        if (requestOrigin !== origin) {
+          return json({ error: 'ORIGIN_REQUIRED' }, 403, origin, requestOrigin);
+        }
+        try {
+          if (typeof quota.pending !== 'function') throw new Error('PENDING_LIST_REQUIRED');
+          const pending = await quota.pending();
+          if (!Array.isArray(pending) || pending.length > 8) {
+            throw new Error('PENDING_LIST_INVALID');
+          }
+          return json({ pending }, 200, origin, requestOrigin);
         } catch (_) {
           return json({ error: 'QUOTA_UNAVAILABLE' }, 503, origin, requestOrigin);
         }
