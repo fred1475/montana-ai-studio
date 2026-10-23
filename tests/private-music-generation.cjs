@@ -15,7 +15,8 @@ const valid = {
   confirmsRights: true, consentToSendPrompt: true, confirmsCost: true
 };
 const quota = {
-  limitCents: 1000, spentCents: 16, reservedCents: 8, remainingCents: 976
+  limitCents: 1000, spentCents: 16, reservedCents: 8,
+  remainingCents: 976, pendingReservations: 0
 };
 function reply(payload, status = 200, sizeOverride) {
   const body = JSON.stringify(payload);
@@ -100,7 +101,8 @@ test('a depleted or inconsistent budget blocks generation before the paid POST',
   const depleted = client(async () => {
     calls++;
     return reply({
-      limitCents: 1000, spentCents: 993, reservedCents: 0, remainingCents: 7
+      limitCents: 1000, spentCents: 993, reservedCents: 0,
+      remainingCents: 7, pendingReservations: 0
     });
   });
   await assert.rejects(depleted.generate(valid), /PRESUPUESTO_AGOTADO/);
@@ -109,11 +111,33 @@ test('a depleted or inconsistent budget blocks generation before the paid POST',
   const inconsistent = client(async () => {
     calls++;
     return reply({
-      limitCents: 1000, spentCents: 2, reservedCents: 0, remainingCents: 1000
+      limitCents: 1000, spentCents: 2, reservedCents: 0,
+      remainingCents: 1000, pendingReservations: 0
     });
   });
   await assert.rejects(inconsistent.generate(valid), /SALDO_PRIVADO_INVALIDO/);
   assert.equal(calls, 2);
+});
+
+test('an unresolved previous-month charge blocks a new paid POST', async () => {
+  const endpoints = [];
+  const app = client(async url => {
+    endpoints.push(url);
+    return reply({
+      limitCents: 1000, spentCents: 0, reservedCents: 0,
+      remainingCents: 1000, pendingReservations: 1
+    });
+  });
+  await assert.rejects(app.generate(valid), /CONCILIACION_PENDIENTE/);
+  assert.deepEqual(endpoints, [apiOrigin + '/v1/usage']);
+});
+
+test('missing global pending status is not mistaken for permission to spend', async () => {
+  const app = client(async () => reply({
+    limitCents: 1000, spentCents: 0, reservedCents: 0,
+    remainingCents: 1000
+  }));
+  await assert.rejects(app.generate(valid), /SALDO_PRIVADO_INVALIDO/);
 });
 
 test('server is disabled by default; no automatic paid retries follow 503', async () => {
