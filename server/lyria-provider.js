@@ -2,7 +2,7 @@
 
 // Private Node.js adapter: this module does not start a server or spend money.
 // It must only be installed behind the authenticated music-generation service.
-const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/lyria-3.5:generateContent';
+const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 
@@ -53,20 +53,34 @@ async function readJsonLimited(response) {
 }
 
 function extractMp3(result) {
-  const parts = result?.candidates?.[0]?.content?.parts;
-  if (!Array.isArray(parts)) throw new Error('LYRIA_NO_AUDIO');
-  const audioParts = parts.filter(part => part?.inlineData?.data);
-  if (audioParts.length !== 1) throw new Error('LYRIA_NO_AUDIO');
-  const { data, mimeType } = audioParts[0].inlineData;
-  if (mimeType !== undefined && mimeType !== 'audio/mpeg') throw new Error('LYRIA_UNEXPECTED_FORMAT');
+  // Official Interactions REST response: model_output steps contain typed
+  // content blocks, including base64 audio. Never accept a user-supplied URL.
+  const steps = result?.steps;
+  if (!Array.isArray(steps)) throw new Error('LYRIA_NO_AUDIO');
+  const audioParts = [];
+  for (const step of steps) {
+    if (step?.type !== 'model_output' || !Array.isArray(step.content)) continue;
+    for (const part of step.content) {
+      if (part?.type === 'audio') audioParts.push(part);
+    }
+  }
+  // Reject ambiguous multi-audio output until the library supports multiple
+  // safely and the billing/storage semantics are independently reviewed.
+  if (audioParts.length !== 1) throw new Error('LYRIA_AUDIO_COUNT');
+  const audio = audioParts[0];
+  const data = audio.data;
+  const mimeType = audio.mime_type ?? audio.mimeType;
+  if (mimeType !== undefined && mimeType !== 'audio/mpeg') {
+    throw new Error('LYRIA_UNEXPECTED_FORMAT');
+  }
   if (typeof data !== 'string' || data.length === 0 || data.length % 4 !== 0 ||
       data.length > Math.ceil(MAX_AUDIO_BYTES / 3) * 4 ||
       !/^[A-Za-z0-9+/]*={0,2}$/.test(data)) throw new Error('LYRIA_INVALID_AUDIO');
   const bytes = Buffer.from(data, 'base64');
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_AUDIO_BYTES ||
       bytes.toString('base64') !== data) throw new Error('LYRIA_INVALID_AUDIO');
-  // A trusted store must decode/inspect audio, measure real duration, and persist
-  // bytes durably before returning an opaque asset descriptor.
+  // A trusted store must decode and inspect the actual audio, measure
+  // duration, and persist bytes durably before returning any descriptor.
   return bytes;
 }
 
@@ -95,7 +109,7 @@ function createLyriaProvider({ apiKey, storeAudio, fetchImpl = globalThis.fetch,
         const response = await fetchImpl(ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-          body: JSON.stringify({ contents: [{ parts: [{ text: buildLyriaPrompt(request) }] }] }),
+          body: JSON.stringify({ model: 'lyria-3.5', input: buildLyriaPrompt(request) }),
           signal: controller.signal
         });
         // After any provider request, billing status is uncertain: never mark
