@@ -82,10 +82,17 @@ function arrange(overrides = {}) {
       trace.screening++;
       return { allowed: overrides.policyDenied !== true };
     },
-    inspectMp3: async () => {
+    // Test PCM is fake, but it must pass through the REAL validation boundary.
+    // Production has no direct `inspectMp3` bypass anymore.
+    decodeMp3: async compressed => {
       trace.inspected++;
-      return overrides.badAudio ? { decodable: false } :
-        { decodable: true, mimeType: 'audio/mpeg', durationSeconds: 168.8 };
+      assert.deepEqual(Buffer.from(compressed), sampleBytes);
+      return {
+        complete: !overrides.badAudio,
+        sampleRate: 44100,
+        errors: [],
+        channelData: [new Float32Array(88200), new Float32Array(88200)]
+      };
     },
     quotaFactory: () => quota,
     fetchImpl
@@ -106,7 +113,7 @@ test('all private adapters can compose without contacting a real paid provider',
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     asset: { assetId: 'reservation123456789', mimeType: 'audio/mpeg',
-      durationSeconds: 168.8 }
+      durationSeconds: 2 }
   });
   assert.equal(trace.screening, 1);
   assert.equal(trace.reserved, 1);
@@ -258,11 +265,15 @@ test('runtime can require complete decoded PCM instead of trusting MP3 metadata'
   assert.equal(uploaded, 1);
 });
 
-test('multiple PCM inspector mechanisms cannot accidentally override each other', () => {
+test('direct inspectMp3 injection is forbidden even alongside a decoder', () => {
   assert.throws(() => createCloudflareMusicRuntime({
     screen: async () => ({ allowed: true }),
     inspectMp3: async () => ({ decodable: true }),
     decodeMp3: async () => ({ complete: true })
+  }), TypeError);
+  assert.throws(() => createCloudflareMusicRuntime({
+    screen: async () => ({ allowed: true }),
+    inspectMp3: async () => ({ decodable: true })
   }), TypeError);
 });
 
@@ -317,7 +328,7 @@ test('streaming decoder is wired into the complete private provider → R2 path'
   assert.equal(uploads, 1);
 });
 
-test('runtime refuses ambiguous combinations of streaming, full PCM and mock inspectors', () => {
+test('runtime refuses ambiguous combinations of full and streaming PCM decoders', () => {
   assert.throws(() => createCloudflareMusicRuntime({
     screen: async () => ({ allowed: true }),
     decodeMp3: async () => ({}),

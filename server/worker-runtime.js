@@ -13,15 +13,17 @@ function createCloudflareMusicRuntime({
 } = {}) {
   // Production should prefer decodeMp3Chunks for bounded PCM validation.
   // The chunk producer must attest full compressed-byte consumption.
-  // inspectMp3 remains for isolated contract tests only.
-  const options = [inspectMp3, decodeMp3, decodeMp3Chunks];
-  if (options.filter(item => item !== undefined).length !== 1) {
-    throw new TypeError('Supply exactly one trusted decoder pathway');
+  // A caller-supplied `inspectMp3` can claim that arbitrary bytes were decoded.
+  // Never allow this testing shortcut in a paid provider runtime.
+  if (inspectMp3 !== undefined) {
+    throw new TypeError('Direct MP3-inspection injection is forbidden');
+  }
+  if ((decodeMp3 === undefined) === (decodeMp3Chunks === undefined)) {
+    throw new TypeError('Supply exactly one genuine MP3 decoder pathway');
   }
   const inspector = decodeMp3Chunks !== undefined ?
     createStreamingMp3Inspector({ decodeMp3Chunks }) :
-    decodeMp3 !== undefined ? createDecodedMp3Inspector({ decodeMp3 }) :
-      inspectMp3;
+    createDecodedMp3Inspector({ decodeMp3 });
   if (typeof screen !== 'function' || typeof inspector !== 'function' ||
       typeof fetchImpl !== 'function') {
     throw new TypeError('Reviewed screening, actual MP3 decoding and fetch are mandatory');
