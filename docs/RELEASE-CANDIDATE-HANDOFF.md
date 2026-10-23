@@ -39,6 +39,15 @@
 7. Ejecutar stress tests, restores, exportaciones extensas y pruebas de accesibilidad en modo sin facturación.
 8. Crear un candidato RC con SHA fijado y resumen de fallos cero en todas las suites. Mantener rollback a la beta pública anterior.
 
+## Advertencia del costo TOTAL
+
+- Google publica **USD 0.08 por canción Lyria 3.5** en nivel pagado; la cuota interna D1 propuesta permite hasta USD 10 por mes de solicitudes, sin garantizar límite de facturación externo.
+- Cloudflare Workers Paid tiene un cargo **mínimo USD 5/mes**. El Free tiene un límite de CPU que no podemos asumir compatible con decodificación MP3 completa; R2 Standard dispone de cuota gratuita con condiciones.
+- Si se usan ambos, USD 10 de generación + USD 5 de Worker = **aproximadamente USD 15 mensuales de base** antes de cualquier exceso, impuestos o cargos extra. Ese total **NO ESTÁ APROBADO** por el propietario y no será contratado automáticamente.
+- Decisión pendiente: autorizar explícitamente presupuesto combinado, reducir generación para ajustar el límite total, o elegir arquitectura alternativa demostrablemente más económica tras ensayar límites.
+
+Fuentes: https://ai.google.dev/gemini-api/docs/pricing · https://developers.cloudflare.com/workers/platform/pricing/ · https://developers.cloudflare.com/workers/platform/limits/ · https://developers.cloudflare.com/r2/pricing/
+
 ## Pasos externos que requieren datos/acceso del propietario
 
 - Confirmar si dispone de Cloudflare y Google AI Studio/Gemini API y si el modelo está habilitado para su cuenta. No solicitaremos contraseña en el chat.
