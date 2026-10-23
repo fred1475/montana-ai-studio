@@ -72,7 +72,7 @@ function createD1Quota({
         // The global single-flight limit is also a financial safety latch:
         // ambiguous provider failures retain a reservation, so no additional
         // paid requests can be issued until a trusted operator reconciles it.
-        const active = await db.prepare("SELECT COUNT(*) AS total FROM reservations WHERE state='reserved'").first();
+        const active = await db.prepare("SELECT COUNT(*) AS total FROM reservations WHERE state='reserved'").bind().first();
         if (Number(active?.total) >= maxConcurrentReservations) {
           return { status: 'pending' };
         }
