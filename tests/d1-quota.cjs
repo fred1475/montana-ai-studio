@@ -173,6 +173,20 @@ test('unreconciled reservation blocks fresh month until operator resolves it', a
   assert.equal((await quota.reserve(req(id(29)))).status, 'reserved');
 });
 
+test('pending count spans calendar months, even when new-month balance appears full', async () => {
+  const { quota, setTime } = harness({ maxConcurrentReservations: 1 });
+  assert.equal(await quota.pendingCount(), 0);
+  const first = await quota.reserve(req(id(30)));
+  assert.equal(await quota.pendingCount(), 1);
+  setTime('2026-11-01T00:01:00Z');
+  assert.deepEqual(await quota.usage(), {
+    limitCents: 16, reservedCents: 0, spentCents: 0
+  });
+  assert.equal(await quota.pendingCount(), 1);
+  await quota.commit(first.reservationId, asset);
+  assert.equal(await quota.pendingCount(), 0);
+});
+
 test('invalid single-flight settings fail before any transaction', () => {
   const { db } = harness();
   assert.throws(() => createD1Quota({
