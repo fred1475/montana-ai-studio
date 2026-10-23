@@ -205,3 +205,62 @@ test('unauthorized or uncommitted MP3 requests do not read private R2 objects', 
   assert.equal((await app.fetch(req, env, ctx)).status, 404);
   assert.equal(reads, 0);
 });
+
+test('runtime can require complete decoded PCM instead of trusting MP3 metadata', async () => {
+  const bytes = Buffer.alloc(2048, 42);
+  let decoded = 0, uploaded = 0;
+  const gateway = createCloudflareMusicRuntime({
+    screen: async () => ({ allowed: true }),
+    decodeMp3: async compressed => {
+      decoded++;
+      assert.deepEqual(Buffer.from(compressed), bytes);
+      return {
+        complete: true, sampleRate: 44100, errors: [],
+        channelData: [new Float32Array(88200), new Float32Array(88200)]
+      };
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      steps: [{ type: 'model_output', content: [{
+        type: 'audio', data: bytes.toString('base64')
+      }] }]
+    }), { status: 200 }),
+    quotaFactory: () => ({
+      reserve: async () => ({
+        status: 'reserved', reservationId: 'reservation123456789'
+      }),
+      commit: async (_, asset) => {
+        assert.equal(asset.durationSeconds, 2);
+      },
+      release: async () => {},
+      usage: async () => ({
+        limitCents: 1000, spentCents: 0, reservedCents: 0
+      })
+    })
+  });
+  const env = {
+    STUDIO_ORIGIN: origin, ACCESS_AUD: 'access-aud',
+    OWNER_EMAIL: 'owner@example.test',
+    PRIVATE_GENERATION_ENABLED: LIVE_FLAG,
+    LYRIA_API_KEY: 'not-a-real-key-for-tests', DB: {},
+    R2: {
+      put: async () => { uploaded++; return { version: 'test' }; },
+      get: async () => null
+    }
+  };
+  const ctx = { access: {
+    aud: 'access-aud', getIdentity: async () => ({ email: 'owner@example.test' })
+  } };
+  const response = await gateway.fetch(request(), env, ctx);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).asset.durationSeconds, 2);
+  assert.equal(decoded, 1);
+  assert.equal(uploaded, 1);
+});
+
+test('multiple PCM inspector mechanisms cannot accidentally override each other', () => {
+  assert.throws(() => createCloudflareMusicRuntime({
+    screen: async () => ({ allowed: true }),
+    inspectMp3: async () => ({ decodable: true }),
+    decodeMp3: async () => ({ complete: true })
+  }), TypeError);
+});
