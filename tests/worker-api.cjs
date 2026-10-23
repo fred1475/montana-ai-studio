@@ -38,6 +38,7 @@ function services(overrides = {}) {
   const trace = { providerCalls: 0, screens: 0, reservations: 0 };
   const quota = {
     usage: async () => ({ limitCents: 1000, reservedCents: 8, spentCents: 16 }),
+    pendingCount: async () => 1,
     reserve: async () => {
       trace.reservations++;
       return { status: 'reserved', reservationId: 'reservation0123456789' };
@@ -96,9 +97,17 @@ test('usage is private and excludes credentials and provider details', async () 
   const response = await app.fetch(use(), env, ctx);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
-    limitCents: 1000, spentCents: 16, reservedCents: 8, remainingCents: 976
+    limitCents: 1000, spentCents: 16, reservedCents: 8,
+    remainingCents: 976, pendingReservations: 1
   });
   assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('private balance fails closed when cross-month pending status is unavailable', async () => {
+  const { app } = services({ quota: { pendingCount: async () => { throw new Error('D1 down'); } } });
+  const response = await app.fetch(use(), env, ctx);
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: 'QUOTA_UNAVAILABLE' });
 });
 
 test('generation is disabled by default even if adapters are provided', async () => {
