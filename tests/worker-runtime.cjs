@@ -264,3 +264,62 @@ test('multiple PCM inspector mechanisms cannot accidentally override each other'
     decodeMp3: async () => ({ complete: true })
   }), TypeError);
 });
+
+test('streaming decoder is wired into the complete private provider → R2 path', async () => {
+  const bytes = Buffer.alloc(2048, 42);
+  let chunksDecoded = 0, uploads = 0;
+  const gateway = createCloudflareMusicRuntime({
+    screen: async () => ({ allowed: true }),
+    decodeMp3Chunks: async function* (input) {
+      assert.deepEqual(Buffer.from(input), bytes);
+      for (let i = 0; i < 2; i++) {
+        chunksDecoded++;
+        yield { sampleRate: 44100, errors: [], channelData: [
+          new Float32Array(44100), new Float32Array(44100)
+        ] };
+      }
+      return { complete: true, consumedBytes: input.byteLength, errors: 0 };
+    },
+    fetchImpl: async () => new Response(JSON.stringify({
+      steps: [{ type: 'model_output', content: [{
+        type: 'audio', data: bytes.toString('base64')
+      }] }]
+    }), { status: 200 }),
+    quotaFactory: () => ({
+      reserve: async () => ({
+        status: 'reserved', reservationId: 'reservation123456789'
+      }),
+      commit: async (_, asset) => assert.equal(asset.durationSeconds, 2),
+      release: async () => {},
+      pendingCount: async () => 0,
+      usage: async () => ({
+        limitCents: 1000, spentCents: 0, reservedCents: 0
+      })
+    })
+  });
+  const response = await gateway.fetch(request(), {
+    STUDIO_ORIGIN: origin, ACCESS_AUD: 'access-aud',
+    OWNER_EMAIL: 'owner@example.test',
+    PRIVATE_GENERATION_ENABLED: LIVE_FLAG,
+    LYRIA_API_KEY: 'not-a-real-key-for-tests', DB: {},
+    R2: {
+      put: async () => { uploads++; return { version: 'test' }; },
+      get: async () => null
+    }
+  }, {
+    access: { aud: 'access-aud',
+      getIdentity: async () => ({ email: 'owner@example.test' }) }
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).asset.durationSeconds, 2);
+  assert.equal(chunksDecoded, 2);
+  assert.equal(uploads, 1);
+});
+
+test('runtime refuses ambiguous combinations of streaming, full PCM and mock inspectors', () => {
+  assert.throws(() => createCloudflareMusicRuntime({
+    screen: async () => ({ allowed: true }),
+    decodeMp3: async () => ({}),
+    decodeMp3Chunks: async function* () {}
+  }), TypeError);
+});
