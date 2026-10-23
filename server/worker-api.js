@@ -10,6 +10,8 @@ const MAX_JSON_BYTES = 32 * 1024;
 const LIVE_FLAG = 'YES_I_APPROVE_REAL_GENERATION_COSTS';
 const COST_LIMIT_CENTS = 1000;
 const COST_PER_SONG_CENTS = 8;
+const MAX_SERVED_MP3_BYTES = 20 * 1024 * 1024;
+const AUDIO_PATH = /^\/v1\/audio\/([A-Za-z0-9][A-Za-z0-9_-]{7,127})$/;
 const ERROR_STATUS = Object.freeze({
   UNAUTHORIZED: 401,
   INVALID_REQUEST: 400,
@@ -117,7 +119,8 @@ function createPrivateMusicGateway({
     db, monthlyLimitCents: COST_LIMIT_CENTS, requestCostCents: COST_PER_SONG_CENTS
   }),
   policyScreen,
-  providerFactory
+  providerFactory,
+  audioStoreFactory
 } = {}) {
   if (typeof quotaFactory !== 'function') throw new TypeError('quotaFactory required');
 
@@ -133,7 +136,8 @@ function createPrivateMusicGateway({
         return json({ service: 'montana-ai-studio-private-gateway',
           liveGeneration: false }, 200, origin, requestOrigin);
       }
-      if (path !== '/v1/usage' && path !== '/v1/generate') {
+      const audioMatch = AUDIO_PATH.exec(path);
+      if (path !== '/v1/usage' && path !== '/v1/generate' && !audioMatch) {
         return json({ error: 'NOT_FOUND' }, 404, origin, requestOrigin);
       }
       if (!origin) return json({ error: 'SERVICE_NOT_CONFIGURED' }, 503, origin, requestOrigin);
@@ -144,7 +148,8 @@ function createPrivateMusicGateway({
         return new Response(null, { status: 204, headers: headers(origin, requestOrigin) });
       }
       if ((path === '/v1/usage' && request.method !== 'GET') ||
-          (path === '/v1/generate' && request.method !== 'POST')) {
+          (path === '/v1/generate' && request.method !== 'POST') ||
+          (audioMatch && request.method !== 'GET')) {
         return json({ error: 'METHOD_NOT_ALLOWED' }, 405, origin, requestOrigin);
       }
 
@@ -165,6 +170,46 @@ function createPrivateMusicGateway({
           }, 200, origin, requestOrigin);
         } catch (_) {
           return json({ error: 'QUOTA_UNAVAILABLE' }, 503, origin, requestOrigin);
+        }
+      }
+
+      // Private playback/download by owner only; generation can remain disabled.
+      // Require a browser fetch with credentials and exact Origin (not a public
+      // <audio src> or a shareable R2 URL). Deliberately serve only whole MP3s.
+      if (audioMatch) {
+        if (requestOrigin !== origin) {
+          return json({ error: 'ORIGIN_REQUIRED' }, 403, origin, requestOrigin);
+        }
+        if (request.headers.has('range')) {
+          return json({ error: 'RANGE_NOT_SUPPORTED' }, 416, origin, requestOrigin);
+        }
+        if (typeof audioStoreFactory !== 'function') {
+          return json({ error: 'AUDIO_NOT_CONFIGURED' }, 503, origin, requestOrigin);
+        }
+        try {
+          const storage = audioStoreFactory(env);
+          if (!storage || typeof storage.getOwnedAudio !== 'function') {
+            throw new Error('AUDIO_STORE_UNAVAILABLE');
+          }
+          const object = await storage.getOwnedAudio({
+            db: env.DB, userId: principal.userId, assetId: audioMatch[1]
+          });
+          if (!object) {
+            return json({ error: 'AUDIO_NOT_FOUND' }, 404, origin, requestOrigin);
+          }
+          if (!Number.isSafeInteger(object.size) || object.size < 1024 ||
+              object.size > MAX_SERVED_MP3_BYTES ||
+              object.httpMetadata?.contentType !== 'audio/mpeg' ||
+              !object.body || typeof object.body.getReader !== 'function') {
+            throw new Error('AUDIO_OBJECT_INVALID');
+          }
+          const responseHeaders = headers(origin, requestOrigin);
+          responseHeaders.set('Content-Type', 'audio/mpeg');
+          responseHeaders.set('Content-Length', String(object.size));
+          responseHeaders.set('Content-Disposition', 'inline; filename="montana-ai-studio.mp3"');
+          return new Response(object.body, { status: 200, headers: responseHeaders });
+        } catch (_) {
+          return json({ error: 'AUDIO_UNAVAILABLE' }, 503, origin, requestOrigin);
         }
       }
 
