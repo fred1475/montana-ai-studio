@@ -16,6 +16,7 @@ on:
       - 'tests/r2-audio-store.cjs'
       - 'tests/worker-runtime.cjs'
       - 'docs/AI-MUSIC-SERVER-CONTRACT.md'
+      - 'docs/PRIVATE-GATEWAY-STAGING.md'
       - 'docs/100-PERCENT-ACCEPTANCE.md'
       - '.github/workflows/music-generation-contract.yml'
   workflow_dispatch:
