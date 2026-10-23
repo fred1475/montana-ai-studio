@@ -107,7 +107,7 @@
         remainingCents, pendingReservations } = data;
       if (![limitCents, spentCents, reservedCents, remainingCents,
         pendingReservations].every(Number.isSafeInteger) ||
-        limitCents < 1 || limitCents > 1000 || spentCents < 0 ||
+        limitCents < 1 || limitCents > 300 || spentCents < 0 ||
         reservedCents < 0 || remainingCents < 0 || pendingReservations < 0 ||
         pendingReservations > 1000000 ||
         spentCents + reservedCents + remainingCents !== limitCents) {
