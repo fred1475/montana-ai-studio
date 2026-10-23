@@ -1,7 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createDecodedMp3Inspector } = require('../server/mp3-inspection');
+const { createDecodedMp3Inspector, createStreamingMp3Inspector } =
+  require('../server/mp3-inspection');
 
 const compressed = new Uint8Array(2048).fill(42);
 function pcm(overrides = {}) {
@@ -72,4 +73,66 @@ test('bad compressed responses and rejected decoding fail closed', async () => {
     decodeMp3: async () => { throw new Error('raw decoder stack/private details'); }
   });
   await assert.rejects(failing(compressed), /MP3_DECODING_FAILED/);
+});
+
+function streamWith(receipt = {
+  complete: true, consumedBytes: compressed.byteLength, errors: 0
+}, chunkFactory = () => ({
+  sampleRate: 44100,
+  channelData: [new Float32Array(44100), new Float32Array(44100)],
+  errors: []
+})) {
+  return async function* () {
+    yield chunkFactory();
+    yield chunkFactory();
+    return receipt;
+  };
+}
+
+test('bounded streaming PCM proves full byte consumption without a full-song PCM allocation', async () => {
+  assert.throws(() => createStreamingMp3Inspector(), TypeError);
+  const inspect = createStreamingMp3Inspector({
+    decodeMp3Chunks: bytes => {
+      assert.equal(bytes, compressed);
+      return streamWith()();
+    }
+  });
+  assert.deepEqual(await inspect(compressed), {
+    decodable: true, mimeType: 'audio/mpeg', durationSeconds: 2
+  });
+});
+
+test('streaming inspection rejects incomplete compressed input and decode errors', async () => {
+  const rejected = [
+    streamWith({ complete: false, consumedBytes: compressed.byteLength, errors: 0 }),
+    streamWith({ complete: true, consumedBytes: compressed.byteLength - 1, errors: 0 }),
+    streamWith({ complete: true, consumedBytes: compressed.byteLength, errors: 1 }),
+    streamWith(undefined, () => ({
+      sampleRate: 44100, channelData: [
+        new Float32Array(44100).fill(NaN), new Float32Array(44100)
+      ], errors: []
+    })),
+    streamWith(undefined, () => ({
+      sampleRate: 44100, channelData: [new Float32Array(97000)]
+    }))
+  ];
+  for (const decodeMp3Chunks of rejected) {
+    await assert.rejects(createStreamingMp3Inspector({
+      decodeMp3Chunks: () => decodeMp3Chunks()
+    })(compressed), /MP3_STREAM_VALIDATION_FAILED/);
+  }
+});
+
+test('streaming inspection requires a real iterator and a valid completion receipt', async () => {
+  const invalid = createStreamingMp3Inspector({
+    decodeMp3Chunks: () => []
+  });
+  await assert.rejects(invalid(compressed), /MP3_STREAM_VALIDATION_FAILED/);
+  const notEnough = createStreamingMp3Inspector({
+    decodeMp3Chunks: async function* () {
+      yield { sampleRate: 44100, channelData: [new Float32Array(100)] };
+      return { complete: true, consumedBytes: compressed.byteLength, errors: 0 };
+    }
+  });
+  await assert.rejects(notEnough(compressed), /MP3_STREAM_VALIDATION_FAILED/);
 });
