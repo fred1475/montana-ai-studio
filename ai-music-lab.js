@@ -15,6 +15,8 @@
   const assetId = byId('assetId');
   const usageButton = byId('usageButton');
   const usageOutput = byId('usageOutput');
+  const pendingButton = byId('pendingButton');
+  const pendingOutput = byId('pendingOutput');
   const listenButton = byId('listenButton');
   const downloadButton = byId('downloadButton');
   const copyButton = byId('copyButton');
@@ -32,6 +34,7 @@
     SALDO_PRIVADO_INVALIDO: 'El servidor devolvió un presupuesto incoherente. Generación bloqueada.',
     PRESUPUESTO_AGOTADO: 'Presupuesto insuficiente. No se ha hecho solicitud pagada.',
     CONCILIACION_PENDIENTE: 'Hay una generación reservada todavía sin conciliar (incluso de otro mes). No se enviará otra solicitud de pago.',
+    CONCILIACION_NO_DISPONIBLE: 'No se pudo leer el estado de las reservas. Mantén la generación bloqueada.',
     GENERATION_NOT_ENABLED: 'La generación de pago sigue cerrada en el servidor.',
     QUOTA_EXCEEDED: 'La cuota está agotada. No se enviará otra generación.',
     POLICY_DENIED: 'La solicitud fue rechazada por el control de contenido.',
@@ -86,6 +89,7 @@
     });
     connection.textContent = 'Origen HTTPS privado preparado. El servidor todavía debe autenticarte y autorizar cualquier generación.';
     usageButton.disabled = false;
+    pendingButton.disabled = false;
     status.textContent = 'Consulta primero el presupuesto real. Generar solo será posible con las tres autorizaciones y una solicitud manual.';
   } catch (_) {
     connection.textContent = 'Servidor privado sin configurar: generación apagada. Puedes preparar letras y estilo sin enviar información ni gastar.';
@@ -110,6 +114,102 @@
     } catch (error) {
       usageOutput.textContent = message(error) + ' No hagas solicitudes pagadas.';
     } finally { usageButton.disabled = false; }
+  });
+
+  pendingButton.addEventListener('click', async () => {
+    if (!client || busy) return;
+    pendingButton.disabled = true;
+    try {
+      const rows = await client.pending();
+      pendingOutput.textContent = rows.length === 0 ?
+        'No hay reservas sin conciliar en ningún mes.' :
+        'Reservas pendientes (solo lectura; NO libera dinero):\\n' +
+        rows.map(row => row.month + ' · ' + row.reservationId +
+          ' · 
+    event.preventDefault();
+    if (!client || busy || generateButton.disabled) return;
+    busy = true;
+    refreshButton();
+    status.textContent = 'Verificando consentimiento y saldo. Se enviará solo una solicitud si la cuota permite el gasto...';
+    const input = {
+      prompt: fields.prompt.value,
+      style: fields.style.value,
+      lyrics: fields.mode.value === 'instrumental' ? '' : fields.lyrics.value,
+      mode: fields.mode.value, language: fields.language.value,
+      durationSeconds: Number(fields.duration.value),
+      confirmsRights: fields.rights.checked,
+      consentToSendPrompt: fields.privacy.checked,
+      confirmsCost: fields.cost.checked
+    };
+    fields.cost.checked = false; // Every further paid request needs fresh consent.
+    try {
+      const audio = await client.generate(input);
+      confirmedAsset = audio;
+      invalidatePlayback();
+      assetId.value = audio.assetId;
+      result.textContent = 'Canción confirmada: ' +
+        audio.durationSeconds.toFixed(1) + ' s. Identificador ' + audio.assetId +
+        '. Escúchala o impórtala al mezclador.';
+      listenButton.disabled = false;
+      copyButton.disabled = false;
+      status.textContent = 'Generación confirmada por el servidor. Revisa su factura real antes de generar otra.';
+    } catch (error) {
+      status.textContent = message(error) +
+        ' No hay reintentos automáticos. Una falla de red no demuestra ausencia de cobro.';
+    } finally {
+      busy = false;
+      refreshButton();
+    }
+  });
+
+  listenButton.addEventListener('click', async () => {
+    if (!client || !confirmedAsset || busy) return;
+    listenButton.disabled = true;
+    result.textContent = 'Descargando audio privado confirmado...';
+    try {
+      const bytes = await window.MontanaPrivateMusicImport.fetchPrivateMp3({
+        apiOrigin, assetId: confirmedAsset.assetId
+      });
+      invalidatePlayback();
+      localAudioUrl = URL.createObjectURL(new Blob([bytes], {
+        type: 'audio/mpeg'
+      }));
+      player.src = localAudioUrl;
+      player.load();
+      downloadButton.disabled = false;
+      result.textContent = 'MP3 privado listo en tu navegador. Pulsa Play en el reproductor o descárgalo.';
+    } catch (error) {
+      result.textContent = message(error);
+    } finally { listenButton.disabled = false; }
+  });
+
+  downloadButton.addEventListener('click', () => {
+    if (!localAudioUrl || !confirmedAsset) return;
+    const link = document.createElement('a');
+    link.href = localAudioUrl;
+    link.download = 'Montana-AI-Studio-' + confirmedAsset.assetId + '.mp3';
+    link.click();
+  });
+  copyButton.addEventListener('click', async () => {
+    if (!confirmedAsset) return;
+    try {
+      await navigator.clipboard.writeText(confirmedAsset.assetId);
+      result.textContent = 'ID copiado. Pégalo en «Música IA privada» del mezclador.';
+    } catch (_) {
+      assetId.focus();
+      assetId.select();
+      result.textContent = 'Seleccioné el ID; cópialo manualmente al mezclador.';
+    }
+  });
+  window.addEventListener('pagehide', invalidatePlayback, { once: true });
+})();
+ + (row.reservedCents / 100).toFixed(2)).join('\\n') +
+        '\\nVerifica la factura del proveedor antes de cualquier conciliación.';
+    } catch (error) {
+      pendingOutput.textContent = message(error);
+    } finally {
+      pendingButton.disabled = false;
+    }
   });
 
   byId('musicForm').addEventListener('submit', async event => {
