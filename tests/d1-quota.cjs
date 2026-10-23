@@ -220,10 +220,9 @@ test('verified paid generation with lost output consumes budget and opens single
   const row = db.sqlite.prepare(
     'SELECT state,asset_id,reconciliation_reference FROM reservations WHERE reservation_id=?'
   ).get(ticket.reservationId);
-  assert.deepEqual(row, {
-    state: 'charged_without_asset', asset_id: null,
-    reconciliation_reference: 'audit_ticket_0001'
-  });
+  assert.equal(row.state, 'charged_without_asset');
+  assert.equal(row.asset_id, null);
+  assert.equal(row.reconciliation_reference, 'audit_ticket_0001');
   assert.equal((await quota.reserve(original)).status, 'denied');
   assert.equal((await quota.reserve(req(id(33)))).status, 'reserved');
   await assert.rejects(quota.release(ticket.reservationId), /RECONCILIATION/);
