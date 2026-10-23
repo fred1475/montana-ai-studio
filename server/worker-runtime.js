@@ -14,18 +14,23 @@ function createCloudflareMusicRuntime({
     throw new TypeError('Reviewed screening, actual MP3 decoding and fetch are mandatory');
   }
 
+  const storageFor = env => {
+    if (!env?.R2 || typeof env.R2.put !== 'function' ||
+        typeof env.R2.get !== 'function') {
+      throw new Error('PRIVATE_STORAGE_NOT_CONFIGURED');
+    }
+    return createPrivateR2AudioStore({ bucket: env.R2, inspectMp3 });
+  };
+
   return createPrivateMusicGateway({
     quotaFactory,
     policyScreen: screen,
+    audioStoreFactory: storageFor,
     providerFactory: env => {
-      if (!env?.R2 || typeof env.R2.put !== 'function' ||
-          typeof env.R2.get !== 'function' ||
-          typeof env?.LYRIA_API_KEY !== 'string' || env.LYRIA_API_KEY.length < 10) {
+      if (typeof env?.LYRIA_API_KEY !== 'string' || env.LYRIA_API_KEY.length < 10) {
         throw new Error('PRIVATE_PROVIDER_NOT_CONFIGURED');
       }
-      const storage = createPrivateR2AudioStore({
-        bucket: env.R2, inspectMp3
-      });
+      const storage = storageFor(env);
       return createLyriaProvider({
         apiKey: env.LYRIA_API_KEY,
         storeAudio: storage.storeAudio,
