@@ -7,7 +7,7 @@
 
 - PR #2: mezclador de ocho pistas y edición local, pruebas de navegador.
 - PR #3: contrato de música original y adaptador privado Google Lyria.
-- PR #4: presupuesto global USD 10/mes en D1, reservas e idempotencia.
+- PR #4: ledger D1, reservas e idempotencia (techo inicial USD 10/mes). PR #5 reduce la asignación de IA a USD 3/mes para un objetivo TOTAL de USD 10/mes.
 - PR #5: entrada HTTP para acceso privado, integración D1/R2/Lyria con modelos simulados, transmisión de MP3 por propietario, cliente de importación al mezclador y laboratorio de generación con consentimiento.
 - `studio.html`, `mixer-8.html` y `ai-music-lab.html` permanecen en ramas de desarrollo; sus paneles de IA **no generan música** sin origen privado configurado.
 - Toda prueba de integración con proveedor usa bytes y respuestas simulados. No hay música real, clave, cuenta de proveedor, Worker desplegado ni cargos en esta etapa.
@@ -41,10 +41,10 @@
 
 ## Advertencia del costo TOTAL
 
-- Google publica **USD 0.08 por canción Lyria 3.5** en nivel pagado; la cuota interna D1 propuesta permite hasta USD 10 por mes de solicitudes, sin garantizar límite de facturación externo.
+- Google publica **USD 0.08 por canción Lyria 3.5** en nivel pagado. La cuota interna D1 propuesta para este piloto es **USD 3/mes en canciones**, hasta 37 solicitudes de USD 0.08 (USD 2.96), sin garantizar límite externo de facturación.
 - Cloudflare Workers Paid tiene un cargo **mínimo USD 5/mes**. El Free tiene un límite de CPU que no podemos asumir compatible con decodificación MP3 completa; R2 Standard dispone de cuota gratuita con condiciones.
-- Si se usan ambos, USD 10 de generación + USD 5 de Worker = **aproximadamente USD 15 mensuales de base** antes de cualquier exceso, impuestos o cargos extra. Ese total **NO ESTÁ APROBADO** por el propietario y no será contratado automáticamente.
-- Decisión pendiente: autorizar explícitamente presupuesto combinado, reducir generación para ajustar el límite total, o elegir arquitectura alternativa demostrablemente más económica tras ensayar límites.
+- Propuesta conservadora bajo autorización interpretada de USD 10 **TOTALES/mes**: USD 5 mínimos de Cloudflare Workers Paid + hasta USD 3 de Lyria + USD 2 de colchón para impuestos/operaciones/imprevistos. Esta suma es una planificación, **no un límite externo garantizado**. Si no se pueden configurar topes y alertas verificables, no contratar ni activar.
+- Falta confirmar con el propietario que USD 10 es efectivamente el límite total (su «aprobados» se ha interpretado provisionalmente por la alternativa prudente). **No se ha aprobado ningún cargo concreto ni habilitado facturación.** Si los gastos fijos/impuestos no caben en el objetivo, elegir arquitectura alternativa o pedir nueva autorización explícita.
 
 Fuentes: https://ai.google.dev/gemini-api/docs/pricing · https://developers.cloudflare.com/workers/platform/pricing/ · https://developers.cloudflare.com/workers/platform/limits/ · https://developers.cloudflare.com/r2/pricing/
 
