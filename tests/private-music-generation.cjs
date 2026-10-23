@@ -140,6 +140,27 @@ test('missing global pending status is not mistaken for permission to spend', as
   await assert.rejects(app.generate(valid), /SALDO_PRIVADO_INVALIDO/);
 });
 
+test('owner can inspect pending reservations without a generation POST', async () => {
+  const endpoints = [];
+  const app = client(async url => {
+    endpoints.push(url);
+    return reply({ pending: [{
+      reservationId: 'reservation0123456789',
+      month: '2026-09', reservedCents: 8
+    }] });
+  });
+  assert.deepEqual(await app.pending(), [{
+    reservationId: 'reservation0123456789',
+    month: '2026-09', reservedCents: 8
+  }]);
+  assert.deepEqual(endpoints, [apiOrigin + '/v1/pending']);
+  const broken = client(async () => reply({ pending: [{
+    reservationId: 'https://public.invalid/bad',
+    month: '2026-09', reservedCents: 8
+  }] }));
+  await assert.rejects(broken.pending(), /CONCILIACION_NO_DISPONIBLE/);
+});
+
 test('server is disabled by default; no automatic paid retries follow 503', async () => {
   const endpoints = [];
   const app = client(async (url) => {
