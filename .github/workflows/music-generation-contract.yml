@@ -3,7 +3,9 @@ on:
   pull_request:
     paths:
       - 'server/music-generation.js'
+      - 'server/lyria-provider.js'
       - 'tests/music-generation-contract.cjs'
+      - 'tests/lyria-provider.cjs'
       - 'docs/AI-MUSIC-SERVER-CONTRACT.md'
       - 'docs/100-PERCENT-ACCEPTANCE.md'
       - '.github/workflows/music-generation-contract.yml'
@@ -24,6 +26,8 @@ jobs:
       - name: Validate server-only contract syntax
         run: |
           node --check server/music-generation.js
+          node --check server/lyria-provider.js
           node --check tests/music-generation-contract.cjs
+          node --check tests/lyria-provider.cjs
       - name: Test safe access, idempotency, quotas and failure behavior
-        run: node --test tests/music-generation-contract.cjs
+        run: node --test tests/music-generation-contract.cjs tests/lyria-provider.cjs
