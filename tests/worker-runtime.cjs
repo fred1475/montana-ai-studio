@@ -28,9 +28,9 @@ function arrange(overrides = {}) {
   };
   const sampleBytes = Buffer.alloc(2048, 42);
   const responsePayload = {
-    candidates: [{ content: { parts: [{
-      inlineData: { mimeType: 'audio/mpeg', data: sampleBytes.toString('base64') }
-    }] } }]
+    steps: [{ type: 'model_output', content: [{
+      type: 'audio', data: sampleBytes.toString('base64')
+    }] }]
   };
   const fetchImpl = async (_, args) => {
     trace.providerCalls++;
@@ -113,7 +113,7 @@ test('all private adapters can compose without contacting a real paid provider',
   assert.equal(trace.inspected, 1);
   assert.equal(trace.stored, 1);
   assert.equal(trace.committed, 1);
-  assert.match(trace.responseBody.contents[0].parts[0].text, /instrumental boricua/);
+  assert.match(trace.responseBody.input, /instrumental boricua/);
 });
 
 test('a policy denial prevents a billed request even when private adapters exist', async () => {
