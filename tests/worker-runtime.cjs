@@ -12,7 +12,8 @@ const validRequest = {
   mode: 'instrumental',
   durationSeconds: 170,
   confirmsRights: true,
-  consentToSendPrompt: true
+  consentToSendPrompt: true,
+  confirmsCost: true
 };
 function request() {
   return new Request('https://private.example.test/v1/generate', {
