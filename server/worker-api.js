@@ -116,7 +116,8 @@ async function accessPrincipal(ctx, env) {
 
 function createPrivateMusicGateway({
   quotaFactory = db => createD1Quota({
-    db, monthlyLimitCents: COST_LIMIT_CENTS, requestCostCents: COST_PER_SONG_CENTS
+    db, monthlyLimitCents: COST_LIMIT_CENTS, requestCostCents: COST_PER_SONG_CENTS,
+    maxConcurrentReservations: 1
   }),
   policyScreen,
   providerFactory,
