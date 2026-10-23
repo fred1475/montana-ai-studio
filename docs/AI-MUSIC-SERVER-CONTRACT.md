@@ -58,7 +58,7 @@ mismo usuario, UUID y huella del contenido.
 
 ## Adaptador Lyria preparado en rama experimental
 
-El adaptador Node.js usa el endpoint oficial POST /v1beta/models/lyria-3.5:generateContent.
+El adaptador Node.js en la rama de integración #5 usa el endpoint oficial POST /v1beta/interactions con `model: lyria-3.5` y `input` como texto. La respuesta REST se lee desde los bloques de tipo `audio` en los pasos `model_output`; el formato antiguo `generateContent` **no es válido para esta integración**.
 Prepara el prompt a partir de la entrada validada por el contrato del servidor. Recibe una
 clave exclusivamente mediante inyección en backend, nunca desde HTML ni GitHub Pages.
 El resultado MP3 se entrega como bytes a una función privada storeAudio, que deberá
@@ -97,3 +97,11 @@ cuota, reintento concurrente, idempotencia, respuesta insegura y fallas con
 coste ambiguo. Todos los adaptadores de pruebas son **simulados**; ninguno
 hace solicitudes externas ni genera audio real. Esta fase **no cierra** la
 puerta 8 del documento de aceptación.
+
+
+### Actualización de integración (23 octubre 2026)
+
+La documentación oficial vigente indica **Interactions API** en lugar de `generateContent`; la suite de pruebas en PR #5 ahora exige `POST /v1beta/interactions`, `model=lyria-3.5` y salida `steps[].content[]` con bloques `audio`.
+Fuente oficial: https://ai.google.dev/gemini-api/docs/music-generation
+
+Estas pruebas siguen siendo simuladas. **No se invocó Google** ni se validó la elegibilidad de la cuenta, precio cobrado o calidad del audio real.
