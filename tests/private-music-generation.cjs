@@ -15,8 +15,8 @@ const valid = {
   confirmsRights: true, consentToSendPrompt: true, confirmsCost: true
 };
 const quota = {
-  limitCents: 1000, spentCents: 16, reservedCents: 8,
-  remainingCents: 976, pendingReservations: 0
+  limitCents: 300, spentCents: 16, reservedCents: 8,
+  remainingCents: 276, pendingReservations: 0
 };
 function reply(payload, status = 200, sizeOverride) {
   const body = JSON.stringify(payload);
@@ -51,6 +51,14 @@ test('invalid private host and invalid consent fail before all network traffic',
   await assert.rejects(app.generate({ ...valid, mode: 'instrumental' }),
     /SOLICITUD_INVALIDA/);
   assert.equal(calls, 0);
+});
+
+test('client rejects unexpectedly large generation allocation under total ten-dollar cap', async () => {
+  const app = client(async () => reply({
+    limitCents: 1000, spentCents: 0, reservedCents: 0,
+    remainingCents: 1000, pendingReservations: 0
+  }));
+  await assert.rejects(app.generate(valid), /SALDO_PRIVADO_INVALIDO/);
 });
 
 test('limits match the lyric/style contract and reject malformed client identifiers', () => {
@@ -101,7 +109,7 @@ test('a depleted or inconsistent budget blocks generation before the paid POST',
   const depleted = client(async () => {
     calls++;
     return reply({
-      limitCents: 1000, spentCents: 993, reservedCents: 0,
+      limitCents: 300, spentCents: 293, reservedCents: 0,
       remainingCents: 7, pendingReservations: 0
     });
   });
@@ -111,8 +119,8 @@ test('a depleted or inconsistent budget blocks generation before the paid POST',
   const inconsistent = client(async () => {
     calls++;
     return reply({
-      limitCents: 1000, spentCents: 2, reservedCents: 0,
-      remainingCents: 1000, pendingReservations: 0
+      limitCents: 300, spentCents: 2, reservedCents: 0,
+      remainingCents: 300, pendingReservations: 0
     });
   });
   await assert.rejects(inconsistent.generate(valid), /SALDO_PRIVADO_INVALIDO/);
@@ -124,8 +132,8 @@ test('an unresolved previous-month charge blocks a new paid POST', async () => {
   const app = client(async url => {
     endpoints.push(url);
     return reply({
-      limitCents: 1000, spentCents: 0, reservedCents: 0,
-      remainingCents: 1000, pendingReservations: 1
+      limitCents: 300, spentCents: 0, reservedCents: 0,
+      remainingCents: 300, pendingReservations: 1
     });
   });
   await assert.rejects(app.generate(valid), /CONCILIACION_PENDIENTE/);
@@ -134,8 +142,8 @@ test('an unresolved previous-month charge blocks a new paid POST', async () => {
 
 test('missing global pending status is not mistaken for permission to spend', async () => {
   const app = client(async () => reply({
-    limitCents: 1000, spentCents: 0, reservedCents: 0,
-    remainingCents: 1000
+    limitCents: 300, spentCents: 0, reservedCents: 0,
+    remainingCents: 300
   }));
   await assert.rejects(app.generate(valid), /SALDO_PRIVADO_INVALIDO/);
 });
