@@ -7,7 +7,7 @@ const { createDecodedMp3Inspector, createStreamingMp3Inspector } =
 const compressed = new Uint8Array(2048).fill(42);
 function pcm(overrides = {}) {
   return {
-    complete: true, sampleRate: 44100, errors: [],
+    complete: true, consumedBytes: compressed.byteLength, sampleRate: 44100, errors: [],
     channelData: [
       new Float32Array(88200).fill(0.1),
       new Float32Array(88200).fill(-0.1)
@@ -42,6 +42,8 @@ test('false complete attestations, partial frames and decoder errors are rejecte
   for (const output of [
     pcm({ complete: false }),
     pcm({ complete: undefined }),
+    pcm({ consumedBytes: undefined }),
+    pcm({ consumedBytes: compressed.byteLength - 1 }),
     pcm({ errors: ['unexpected end of stream'] }),
     pcm({ channelData: [new Float32Array(3000)] }),
     pcm({ sampleRate: 0 }),
