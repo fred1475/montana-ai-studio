@@ -24,6 +24,7 @@ function createDecodedMp3Inspector({ decodeMp3, maxSeconds = 190 } = {}) {
       throw new Error('MP3_DECODING_FAILED');
     }
     if (!decoded || decoded.complete !== true ||
+        decoded.consumedBytes !== bytes.byteLength ||
         !Number.isInteger(decoded.sampleRate) ||
         decoded.sampleRate < 8000 || decoded.sampleRate > 96000 ||
         !Array.isArray(decoded.channelData) ||
