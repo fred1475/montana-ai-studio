@@ -136,3 +136,35 @@ test('streaming inspection requires a real iterator and a valid completion recei
   });
   await assert.rejects(notEnough(compressed), /MP3_STREAM_VALIDATION_FAILED/);
 });
+
+
+test('streaming decoder has a bounded chunk count and closes failed streams', async () => {
+  for (const badMax of [0, -1, 1.5, 65537, Infinity, NaN]) {
+    assert.throws(() => createStreamingMp3Inspector({
+      decodeMp3Chunks: streamWith(), maxChunks: badMax
+    }), TypeError);
+  }
+  const boundary = createStreamingMp3Inspector({
+    decodeMp3Chunks: () => streamWith()(), maxChunks: 2
+  });
+  assert.equal((await boundary(compressed)).durationSeconds, 2);
+
+  let closed = false;
+  const tooMany = createStreamingMp3Inspector({
+    maxChunks: 2,
+    decodeMp3Chunks: async function* () {
+      try {
+        for (let i = 0; i < 3; i++) {
+          yield {
+            sampleRate: 44100,
+            channelData: [new Float32Array(44100)],
+            errors: []
+          };
+        }
+        return { complete: true, consumedBytes: compressed.byteLength, errors: 0 };
+      } finally { closed = true; }
+    }
+  });
+  await assert.rejects(tooMany(compressed), /MP3_STREAM_VALIDATION_FAILED/);
+  assert.equal(closed, true);
+});
