@@ -22,6 +22,10 @@ const { chromium } = require('playwright');
     assert.equal(focus.style, 'solid', 'Focused controls have a visible outline');
     assert.equal(focus.width, '3px');
     await page.keyboard.press('Enter');
+    // Same-document anchor navigation can settle on a later browser task.
+    // Assert actual navigation with a bounded wait instead of a timing race.
+    await page.waitForFunction(() => window.location.hash === '#tracks', null,
+      { timeout: 5000 });
     assert.equal(new URL(page.url()).hash, '#tracks');
 
     // Core controls must expose accessible names without mouse-only gestures.

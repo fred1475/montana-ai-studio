@@ -5,12 +5,14 @@
 const RESERVATION_ID = /^[A-Za-z0-9_-]{8,128}$/;
 const FINGERPRINT = /^[0-9a-f]{64}$/i;
 const ASSET_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/;
+const EVIDENCE_REF = /^[A-Za-z0-9_-]{8,128}$/;
 const MIME_TYPES = new Set(['audio/mpeg', 'audio/wav', 'audio/flac']);
 
 function createD1Quota({
   db,
-  monthlyLimitCents = 1000,
+  monthlyLimitCents = 300,
   requestCostCents = 8,
+  maxConcurrentReservations = 32,
   now = () => new Date(),
   makeId = () => globalThis.crypto.randomUUID()
 } = {}) {
@@ -18,6 +20,8 @@ function createD1Quota({
       !Number.isSafeInteger(monthlyLimitCents) || monthlyLimitCents < 1 ||
       !Number.isSafeInteger(requestCostCents) || requestCostCents < 1 ||
       requestCostCents > monthlyLimitCents ||
+      !Number.isSafeInteger(maxConcurrentReservations) ||
+      maxConcurrentReservations < 1 || maxConcurrentReservations > 1024 ||
       typeof now !== 'function' || typeof makeId !== 'function') {
     throw new TypeError('Durable D1 transaction interface and server cost settings required');
   }
@@ -52,8 +56,8 @@ function createD1Quota({
       // duplicate costs for retries. Each attempt has a fresh opaque ID.
       const result = await db.batch([
         prepare('INSERT INTO monthly_budgets (month,limit_cents,reserved_cents,spent_cents) VALUES(?,?,0,0) ON CONFLICT(month) DO UPDATE SET limit_cents=MIN(limit_cents,excluded.limit_cents)', period, monthlyLimitCents),
-        prepare("INSERT INTO reservations (reservation_id,user_id,request_id,fingerprint,month,cost_cents,state) SELECT ?,?,?,?,?,?,'reserved' FROM monthly_budgets WHERE month=? AND (spent_cents+reserved_cents+?)<=limit_cents ON CONFLICT(user_id,request_id) DO NOTHING",
-          id, userId, requestId, fingerprint.toLowerCase(), period, requestCostCents, period, requestCostCents),
+        prepare("INSERT INTO reservations (reservation_id,user_id,request_id,fingerprint,month,cost_cents,state) SELECT ?,?,?,?,?,?,'reserved' FROM monthly_budgets WHERE month=? AND (spent_cents+reserved_cents+?)<=limit_cents AND (SELECT COUNT(*) FROM reservations WHERE state='reserved')<? ON CONFLICT(user_id,request_id) DO NOTHING",
+          id, userId, requestId, fingerprint.toLowerCase(), period, requestCostCents, period, requestCostCents, maxConcurrentReservations),
         prepare("UPDATE monthly_budgets SET reserved_cents=reserved_cents+? WHERE month=? AND EXISTS(SELECT 1 FROM reservations WHERE reservation_id=? AND state='reserved')",
           requestCostCents, period, id)
       ]);
@@ -65,7 +69,18 @@ function createD1Quota({
       }
 
       const row = await existing(userId, requestId);
-      if (!row || row.fingerprint !== fingerprint.toLowerCase() || row.state === 'released') {
+      if (!row) {
+        // The global single-flight limit is also a financial safety latch:
+        // ambiguous provider failures retain a reservation, so no additional
+        // paid requests can be issued until a trusted operator reconciles it.
+        const active = await db.prepare("SELECT COUNT(*) AS total FROM reservations WHERE state='reserved'").bind().first();
+        if (Number(active?.total) >= maxConcurrentReservations) {
+          return { status: 'pending' };
+        }
+        return { status: 'denied' };
+      }
+      if (row.fingerprint !== fingerprint.toLowerCase() ||
+          row.state === 'released' || row.state === 'charged_without_asset') {
         return { status: 'denied' };
       }
       if (row.state === 'committed') {
@@ -97,6 +112,29 @@ function createD1Quota({
       }
     },
 
+    async settleChargedWithoutAsset(reservationId, verification) {
+      // OPERATOR-ONLY maintenance method, deliberately not exposed by HTTP.
+      // Use only AFTER external invoice confirms a charge AND R2 has no
+      // recoverable asset. Keep an opaque ticket reference, never a receipt
+      // containing PII. This consumes budget but clears single-flight lock.
+      if (typeof reservationId !== 'string' || !RESERVATION_ID.test(reservationId) ||
+          !verification || verification.providerCharged !== true ||
+          verification.assetUnavailable !== true ||
+          typeof verification.evidenceRef !== 'string' ||
+          !EVIDENCE_REF.test(verification.evidenceRef)) {
+        throw new Error('EXTERNAL_CHARGE_PROOF_REQUIRED');
+      }
+      const result = await db.batch([
+        prepare("UPDATE monthly_budgets SET reserved_cents=reserved_cents-(SELECT cost_cents FROM reservations WHERE reservation_id=? AND state='reserved'), spent_cents=spent_cents+(SELECT cost_cents FROM reservations WHERE reservation_id=? AND state='reserved') WHERE month=(SELECT month FROM reservations WHERE reservation_id=? AND state='reserved')",
+          reservationId, reservationId, reservationId),
+        prepare("UPDATE reservations SET state='charged_without_asset',reconciliation_reference=? WHERE reservation_id=? AND state='reserved'",
+          verification.evidenceRef, reservationId)
+      ]);
+      if (result[0]?.meta?.changes !== 1 || result[1]?.meta?.changes !== 1) {
+        throw new Error('CHARGE_SETTLEMENT_REQUIRES_RECONCILIATION');
+      }
+    },
+
     async release(reservationId) {
       if (typeof reservationId !== 'string' || !RESERVATION_ID.test(reservationId)) {
         throw new Error('INVALID_RELEASE');
@@ -110,6 +148,43 @@ function createD1Quota({
       if (result[0]?.meta?.changes !== 1 || result[1]?.meta?.changes !== 1) {
         throw new Error('RELEASE_REQUIRES_RECONCILIATION');
       }
+    },
+
+    async pending() {
+      // Read-only reconciliation inventory for the Access-authenticated owner.
+      // Never expose user identifiers, prompt text or provider credentials.
+      const result = await db.prepare(
+        "SELECT reservation_id,month,cost_cents FROM reservations WHERE state='reserved' ORDER BY month ASC,reservation_id ASC LIMIT 8"
+      ).bind().all();
+      if (!result || !Array.isArray(result.results)) {
+        throw new Error('PENDING_RESERVATIONS_UNAVAILABLE');
+      }
+      return result.results.map(row => {
+        if (!row || !RESERVATION_ID.test(row.reservation_id || '') ||
+            typeof row.month !== 'string' ||
+            !/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(row.month) ||
+            !Number.isSafeInteger(row.cost_cents) ||
+            row.cost_cents < 1 || row.cost_cents > monthlyLimitCents) {
+          throw new Error('PENDING_RESERVATIONS_INVALID');
+        }
+        return {
+          reservationId: row.reservation_id,
+          month: row.month,
+          reservedCents: row.cost_cents
+        };
+      });
+    },
+
+    async pendingCount() {
+      // Global across UTC months: an unresolved prior-month provider call
+      // must be visible even when the new month's balance is untouched.
+      const row = await db.prepare("SELECT COUNT(*) AS total FROM reservations WHERE state='reserved'")
+        .bind().first();
+      const total = Number(row?.total);
+      if (!Number.isSafeInteger(total) || total < 0) {
+        throw new Error('PENDING_RESERVATIONS_UNAVAILABLE');
+      }
+      return total;
     },
 
     async usage() {

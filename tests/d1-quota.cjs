@@ -19,6 +19,9 @@ function database() {
             args,
             async first() {
               return sqlite.prepare(sql).get(...args) || null;
+            },
+            async all() {
+              return { results: sqlite.prepare(sql).all(...args) };
             }
           };
         }
@@ -144,4 +147,121 @@ test('SQL statement errors roll back every reservation and budget increment', as
   await assert.rejects(quota.reserve(req(id(12))), /no such table/i);
   const row = db.sqlite.prepare('SELECT count(*) AS total FROM monthly_budgets').get();
   assert.equal(row.total, 0);
+});
+
+test('single-flight pilot blocks additional paid requests while one is pending', async () => {
+  const { quota } = harness({ maxConcurrentReservations: 1 });
+  const first = await quota.reserve(req(id(25)));
+  assert.equal(first.status, 'reserved');
+  assert.equal((await quota.reserve(req(id(26)))).status, 'pending');
+  assert.deepEqual(await quota.usage(),
+    { limitCents: 16, reservedCents: 8, spentCents: 0 });
+  await quota.commit(first.reservationId, asset);
+  const second = await quota.reserve(req(id(26)));
+  assert.equal(second.status, 'reserved');
+  assert.equal((await quota.reserve(req(id(27)))).status, 'pending');
+  await quota.release(second.reservationId);
+  assert.equal((await quota.reserve(req(id(27)))).status, 'reserved');
+});
+
+test('unreconciled reservation blocks fresh month until operator resolves it', async () => {
+  const { quota, setTime } = harness({ maxConcurrentReservations: 1 });
+  const october = await quota.reserve(req(id(28)));
+  assert.equal(october.status, 'reserved');
+  setTime('2026-11-01T00:01:00Z');
+  assert.equal((await quota.reserve(req(id(29)))).status, 'pending');
+  assert.deepEqual(await quota.usage(),
+    { limitCents: 16, reservedCents: 0, spentCents: 0 });
+  await quota.commit(october.reservationId, asset);
+  assert.equal((await quota.reserve(req(id(29)))).status, 'reserved');
+});
+
+test('pending count spans calendar months, even when new-month balance appears full', async () => {
+  const { quota, setTime } = harness({ maxConcurrentReservations: 1 });
+  assert.equal(await quota.pendingCount(), 0);
+  const first = await quota.reserve(req(id(30)));
+  assert.equal(await quota.pendingCount(), 1);
+  setTime('2026-11-01T00:01:00Z');
+  assert.deepEqual(await quota.usage(), {
+    limitCents: 16, reservedCents: 0, spentCents: 0
+  });
+  assert.equal(await quota.pendingCount(), 1);
+  await quota.commit(first.reservationId, asset);
+  assert.equal(await quota.pendingCount(), 0);
+});
+
+test('read-only pending inventory includes month and amount but not owner or lyrics', async () => {
+  const { quota, db } = harness({ maxConcurrentReservations: 1 });
+  assert.deepEqual(await quota.pending(), []);
+  const ticket = await quota.reserve(req(id(31), 'private-owner-name'));
+  const rows = await quota.pending();
+  assert.deepEqual(rows, [{
+    reservationId: ticket.reservationId, month: '2026-10', reservedCents: 8
+  }]);
+  assert.equal(JSON.stringify(rows).includes('private-owner-name'), false);
+  assert.equal((await quota.pendingCount()), 1);
+  assert.equal(db.sqlite.prepare('SELECT count(*) AS total FROM reservations').get().total, 1);
+});
+test('verified paid generation with lost output consumes budget and opens single-flight safely', async () => {
+  const { quota, db } = harness({ maxConcurrentReservations: 1 });
+  const original = req(id(32));
+  const ticket = await quota.reserve(original);
+  await assert.rejects(quota.settleChargedWithoutAsset(ticket.reservationId, {
+    providerCharged: false, assetUnavailable: true, evidenceRef: 'audit_ticket_0001'
+  }), /PROOF_REQUIRED/);
+  assert.equal((await quota.pendingCount()), 1);
+  await quota.settleChargedWithoutAsset(ticket.reservationId, {
+    providerCharged: true, assetUnavailable: true, evidenceRef: 'audit_ticket_0001'
+  });
+  assert.equal((await quota.pendingCount()), 0);
+  assert.deepEqual(await quota.usage(), {
+    limitCents: 16, reservedCents: 0, spentCents: 8
+  });
+  const row = db.sqlite.prepare(
+    'SELECT state,asset_id,reconciliation_reference FROM reservations WHERE reservation_id=?'
+  ).get(ticket.reservationId);
+  assert.equal(row.state, 'charged_without_asset');
+  assert.equal(row.asset_id, null);
+  assert.equal(row.reconciliation_reference, 'audit_ticket_0001');
+  assert.equal((await quota.reserve(original)).status, 'denied');
+  assert.equal((await quota.reserve(req(id(33)))).status, 'reserved');
+  await assert.rejects(quota.release(ticket.reservationId), /RECONCILIATION/);
+  await assert.rejects(quota.settleChargedWithoutAsset(ticket.reservationId, {
+    providerCharged: true, assetUnavailable: true, evidenceRef: 'audit_ticket_0002'
+  }), /RECONCILIATION/);
+});
+
+test('invalid single-flight settings fail before any transaction', () => {
+  const { db } = harness();
+  assert.throws(() => createD1Quota({
+    db, maxConcurrentReservations: 0
+  }), TypeError);
+  assert.throws(() => createD1Quota({
+    db, maxConcurrentReservations: 1025
+  }), TypeError);
+});
+
+test('the $3 Lyria pilot permits only 37 eight-cent songs per UTC month', async () => {
+  const { quota, setTime } = harness({
+    monthlyLimitCents: 300, requestCostCents: 8,
+    maxConcurrentReservations: 1
+  });
+  for (let i = 1; i <= 37; i++) {
+    const reservation = await quota.reserve(req(id(1000 + i)));
+    assert.equal(reservation.status, 'reserved');
+    await quota.commit(reservation.reservationId, {
+      assetId: reservation.reservationId,
+      mimeType: 'audio/mpeg', durationSeconds: 170
+    });
+  }
+  assert.deepEqual(await quota.usage(), {
+    limitCents: 300, reservedCents: 0, spentCents: 296
+  });
+  assert.equal((await quota.reserve(req(id(2000)))).status, 'denied',
+    'four cents left cannot authorize another eight-cent generation');
+  setTime('2026-11-01T00:01:00Z');
+  assert.deepEqual(await quota.usage(), {
+    limitCents: 300, reservedCents: 0, spentCents: 0
+  });
+  assert.equal((await quota.reserve(req(id(2001)))).status, 'reserved');
 });

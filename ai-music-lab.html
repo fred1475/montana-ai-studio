@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0e19">
+<title>Montana AI Studio 2.0 · Laboratorio de música IA privada</title>
+<style>
+:root{color-scheme:dark;font:16px/1.52 system-ui,Arial,sans-serif;background:#090e19;color:#f3f6fc}
+*{box-sizing:border-box}
+body{max-width:1000px;margin:auto;padding:20px}
+a{color:#f7ce7c}header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+h1{font-size:clamp(1.75rem,4vw,2.65rem);line-height:1.12}
+h2{font-size:1.2rem}h1 span,.eyebrow{color:#f7ce7c}
+p,small{color:#c4ccdb}
+section{border:1px solid #485574;background:#172236;border-radius:16px;padding:20px;margin:20px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}body{padding:12px}}
+label{display:block;margin:12px 0 6px}
+input,textarea,select,button{font:inherit}
+input:not([type=checkbox]),textarea,select{width:100%;border:1px solid #66728b;border-radius:8px;padding:11px;background:#080e18;color:#f5f7fc}
+textarea{min-height:104px;resize:vertical}
+textarea#lyrics{min-height:220px}
+button{border:1px solid #967e4c;background:#f0c778;color:#1e1709;font-weight:750;border-radius:9px;padding:10px 15px;cursor:pointer}
+button.secondary{background:#24334b;color:#f5f7fc;border-color:#7a859b}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #ffd18a;outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.status{padding:12px;background:#0c1424;border:1px solid #475c75;border-radius:9px;white-space:pre-wrap}
+.check{display:flex;align-items:flex-start;gap:10px;padding:6px 0}.check input{width:18px;height:18px;flex:none;margin-top:5px}
+code{color:#f9de9f;word-break:break-all}
+audio{width:100%}
+.badge{border-radius:20px;border:1px solid #b19153;padding:5px 10px;color:#f7ce7c;font-size:.8rem}
+</style>
+</head><body>
+<header><a href="studio.html">← Regresar al Studio</a><span class="badge">Montana Music Production · Integración privada en desarrollo</span></header>
+<main>
+<div class="eyebrow">MONTANA AI STUDIO 2.0</div><h1>Composición musical con <span>IA real</span></h1>
+<p>Laboratorio de preparación para Lyria 3.5. Tu proyecto, las letras y el estilo se mantienen en el navegador hasta que tú pulses «Generar», aceptes el costo estimado y el servidor privado autorice la operación. No se introduce ninguna clave de Google aquí.</p>
+<section id="privateAiConfig" data-api-origin="" aria-label="Estado del proveedor privado">
+<h2>🔐 Conexión y presupuesto</h2>
+<p id="connectionStatus" role="status" class="status">Servidor privado no configurado. Generación y facturación desactivadas.</p>
+<div class="row"><button type="button" class="secondary" id="usageButton" disabled>Consultar presupuesto real</button><button type="button" class="secondary" id="pendingButton" disabled>Ver solicitudes sin conciliar</button></div>
+<p class="status"><output id="usageOutput">Límite interno propuesto: $3 al mes para música IA, dentro de un objetivo de $10 totales incluyendo alojamiento y un margen de seguridad. No habilitado: esto NO constituye un tope de factura externa.</output></p>
+<p class="status"><output id="pendingOutput">La revisión de reservas requiere tu acceso privado y no puede gastar ni liberar dinero.</output></p>
+<small>Esta página requiere Cloudflare Access y un Worker independiente, con verificación de propietario. La cuota de la aplicación no garantiza que Google u otros servicios detengan sus facturas. Nunca se habilita generación automáticamente.</small>
+</section>
+<form id="musicForm" autocomplete="off">
+<section>
+<h2>🎼 Dirección creativa</h2>
+<label for="prompt">Concepto y gancho de la canción (10–1400 caracteres)</label>
+<textarea id="prompt" name="prompt" maxlength="1400" minlength="10" required placeholder="Tema original 100 % boricua, coro inolvidable, cambios de flow, identidad de Montana Music Production..."></textarea>
+<label for="style">Producción, instrumentos, BPM y ambiente (máximo 1000 caracteres)</label>
+<textarea id="style" name="style" maxlength="1000" placeholder="Trap puertorriqueño oscuro, dembow, bajo 808, piano menor, efectos cinematográficos..."></textarea>
+<div class="grid">
+<div><label for="mode">Tipo de composición</label><select id="mode"><option value="vocal">Voces originales</option><option value="instrumental">Solo instrumental</option></select></div>
+<div><label for="language">Idioma principal</label><select id="language"><option value="es">Español boricua</option><option value="en">Inglés</option></select></div>
+<div><label for="duration">Duración objetivo (segundos)</label><input id="duration" type="number" min="15" max="180" step="1" value="170" required></div>
+<div><p>Meta orientativa: 2:50. El modelo puede entregar otra duración; no hay garantía de tiempo exacto.</p></div>
+</div>
+<label for="lyrics">Letra propia (máximo 5000 caracteres, opcional)</label>
+<textarea id="lyrics" name="lyrics" maxlength="5000" placeholder="[Intro]&#10;&#10;[Verso 1]&#10;&#10;[Coro]"></textarea>
+<p><small id="characterCount">Letra: 0/5000 · Estilo: 0/1000</small></p>
+</section>
+<section>
+<h2>🛡️ Autorizaciones antes de generar</h2>
+<label class="check"><input id="rights" type="checkbox"> Confirmo que tengo derechos sobre la letra y las instrucciones y que no pido copiar la voz de otra persona.</label>
+<label class="check"><input id="privacy" type="checkbox"> Autorizo enviar mi concepto, estilo y letra a Google Lyria exclusivamente para esta generación.</label>
+<label class="check"><input id="cost" type="checkbox"> Entiendo que esta acción puede cobrar aproximadamente $0.08 por canción al proveedor, sujeto a precios y condiciones vigentes, además de posibles costos de infraestructura. Autorizo únicamente esta solicitud.</label>
+<p><small>Una pulsación = una solicitud identificada. No hay reintentos automáticos. Si falla la red, la facturación puede quedar pendiente de conciliación. El proveedor indica que la música de Lyria contiene una marca de agua de audio SynthID imperceptible; revisar condiciones de distribución comercial antes de publicar las canciones. El backend no está activo hasta la revisión final.</small></p>
+<button id="generateButton" type="submit" disabled>Crear canción IA — desactivado</button>
+<p id="generationStatus" class="status" role="status" aria-live="polite">Prepara tu concepto sin gastar. Se habilitará después de la conexión privada y el control financiero.</p>
+</section>
+</form>
+<section aria-label="Resultado privado">
+<h2>🎧 Resultado y mezclador</h2>
+<p id="resultStatus" role="status">Ninguna canción generada desde esta página.</p>
+<label for="assetId">ID privado del audio confirmado</label><input id="assetId" type="text" readonly aria-readonly="true" placeholder="Aparecerá después de una generación confirmada">
+<div class="row" style="margin:13px 0">
+<button class="secondary" type="button" id="listenButton" disabled>▶ Escuchar MP3 privado</button>
+<button class="secondary" type="button" id="downloadButton" disabled>⬇ Descargar MP3</button>
+<button class="secondary" type="button" id="copyButton" disabled>Copiar ID para el mezclador</button>
+<a href="mixer-8.html">Abrir mezclador de ocho pistas →</a>
+</div>
+<audio id="privateAudio" controls preload="none" aria-label="Previsualización local del MP3 confirmado"></audio>
+<small>Tu audio se recupera solo después de verificar que pertenece a tu cuenta. Descarga una copia antes de limpiar el navegador. El mezclador aceptará el ID una vez que la ruta privada esté conectada.</small>
+</section>
+</main>
+<footer><p>Montana Music Production LLC · Borrador técnico privado · No publicado como generación funcional · Sin suscripciones activadas desde esta página.</p></footer>
+<script src="private-music-import.js"></script>
+<script src="private-music-generation.js"></script>
+<script src="ai-music-lab.js"></script>
+</body></html>

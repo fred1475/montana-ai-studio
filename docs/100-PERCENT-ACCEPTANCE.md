@@ -1,5 +1,5 @@
 # Montana AI Studio 2.0 — definición verificable del 100 %
-Fecha de revisión: 22 de octubre de 2026. Documento de **criterios**, no de certificación.
+Fecha de revisión: 23 de octubre de 2026. Documento de **criterios**, no de certificación.
 Propietario: Montana Music Production LLC. Implementación aislada en PR #2 (Draft);
 sin autorización del propietario no fusionar la rama con `main`.
 
@@ -23,7 +23,7 @@ Estados: `APROBADA` (evidencia requerida completa), `BETA AUTOMÁTICA`
 | 5. Mezcla/master de entrega | PARCIAL | WAV16/24, 44.1/48k, stems, limitador de pico de muestra, R128 orientativo y contraste con FFmpeg; sin certificación externa ni prueba auditiva |
 | 6. Sesiones y recuperación | BETA AUTOMÁTICA | JSON, restauración de fuentes, IndexedDB voluntario y casos corruptos; falta prueba de recuperación real de proyectos extensos |
 | 7. Composición musical MIDI | BETA AUTOMÁTICA | Beat Lab con secuenciador, MIDI y WAV sintetizado; no confundir con piano roll completo o VST; requiere aceptación de CI del nuevo commit |
-| 8. Generación musical por IA | PARCIAL | Contrato de servidor y tests simulados de autenticación, consentimiento, cuotas e idempotencia (`docs/AI-MUSIC-SERVER-CONTRACT.md`); siguen sin existir proveedor autorizado, backend desplegado, presupuesto ni flujo de licencias conectado. No llamar «IA generativa» al secuenciador ni a este contrato |
+| 8. Generación musical por IA | PARCIAL | Contrato, adaptador Lyria, ledger D1, gateway HTTP, recuperación privada de MP3, laboratorio de generación con triple consentimiento, importación al mezclador y una sola reserva activa para evitar cargos ambiguos **sin desplegar**, con pruebas simuladas y cerrado a gastos por defecto (PR #3–#5); todavía no existen cuenta/proveedor habilitado, almacenamiento verificado, cribado real, facturación protegida externamente, generación auténtica ni licencias verificadas. No anunciar IA generativa funcional |
 | 9. Calidad, seguridad y compatibilidad | PARCIAL | Tests Chromium CI, archivos locales y diagnósticos; faltan Windows Edge/Chrome con interfaz real, pruebas de estrés prolongadas, accesibilidad y revisión de privacidad |
 | 10. Aceptación final física | PENDIENTE | Una sola sesión final con micrófono/interfaz del propietario: permisos, rutas, latencia, ruido, escucha, fases, over­dubs y estabilidad |
 | 11. Publicación | PENDIENTE | Todas las puertas aprobadas, revisión de licencia/términos, archivo de versión, respaldo y autorización explícita antes de merge |

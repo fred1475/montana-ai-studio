@@ -14,12 +14,17 @@ const REQUEST = {
 };
 const CONTEXT = { userId: 'owner-1', reservationId: 'reservation_12345678' };
 const AUDIO = Buffer.from('ID3:synthetic-fixture-not-real-music');
-const success = () => new Response(JSON.stringify({
-  candidates: [{ content: { parts: [
-    { text: 'Lyrics generated' },
-    { inlineData: { mimeType: 'audio/mpeg', data: AUDIO.toString('base64') } }
-  ] } }]
-}), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+function responseWithAudio(audio = { type: 'audio', data: AUDIO.toString('base64') }) {
+  return new Response(JSON.stringify({
+    steps: [
+      { type: 'model_input', content: [{ type: 'text', text: 'non-audio' }] },
+      { type: 'model_output', content: [
+        { type: 'text', text: 'Lyrics generated' }, audio
+      ] }
+    ]
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+}
 
 test('prompt respects mode, boricua language, own lyrics and approximate duration', () => {
   const prompt = buildLyriaPrompt(REQUEST);
@@ -31,21 +36,22 @@ test('prompt respects mode, boricua language, own lyrics and approximate duratio
   assert.doesNotMatch(buildLyriaPrompt({ ...REQUEST, mode: 'instrumental', lyrics: '' }), /Lyrics:/);
 });
 
-test('uses official server endpoint, persists private audio, returns opaque descriptor', async () => {
+test('official Interactions REST endpoint persists private MP3 and returns opaque descriptor', async () => {
   let sent = 0, stored = 0;
   const asset = { assetId: 'asset_12345678', mimeType: 'audio/mpeg', durationSeconds: 169.2 };
   const adapter = createLyriaProvider({
     apiKey: 'server-secret-test-only',
     fetchImpl: async (url, init) => {
       sent++;
-      assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/lyria-3.5:generateContent');
+      assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/interactions');
       assert.equal(init.method, 'POST');
       assert.equal(init.headers['x-goog-api-key'], 'server-secret-test-only');
       assert.equal(init.signal.aborted, false);
       const input = JSON.parse(init.body);
-      assert.match(input.contents[0].parts[0].text, /puertorriqueño/);
-      assert.deepEqual(Object.keys(input), ['contents']);
-      return success();
+      assert.deepEqual(Object.keys(input).sort(), ['input', 'model']);
+      assert.equal(input.model, 'lyria-3.5');
+      assert.match(input.input, /puertorriqueño/);
+      return responseWithAudio();
     },
     storeAudio: async item => {
       stored++;
@@ -63,7 +69,7 @@ test('uses official server endpoint, persists private audio, returns opaque desc
 
 test('missing credentials or contradictory instrumental lyrics never call provider', async () => {
   let calls = 0;
-  const fakeFetch = async () => { calls++; return success(); };
+  const fakeFetch = async () => { calls++; return responseWithAudio(); };
   const storeAudio = async () => { calls++; };
   const noKey = createLyriaProvider({ storeAudio, fetchImpl: fakeFetch });
   await assert.rejects(noKey.generate(REQUEST, CONTEXT),
@@ -75,7 +81,7 @@ test('missing credentials or contradictory instrumental lyrics never call provid
   assert.equal(calls, 0);
 });
 
-test('any attempted provider request has ambiguous billing on failure', async () => {
+test('any provider attempt has ambiguous billing on failure, never silently refunds', async () => {
   let stored = 0;
   const make = fetchImpl => createLyriaProvider({
     apiKey: 'server-secret-test-only', fetchImpl,
@@ -83,11 +89,10 @@ test('any attempted provider request has ambiguous billing on failure', async ()
   });
   for (const response of [
     new Response('not authorized', { status: 401 }),
-    new Response('{"candidates":[]}', { status: 200 }),
+    new Response('{"steps":[]}', { status: 200 }),
+    new Response('{"candidates":[]}', { status: 200 }), // old generateContent shape
     new Response('{"broken"', { status: 200 }),
-    new Response(JSON.stringify({ candidates: [{ content: { parts: [{
-      inlineData: { mimeType: 'audio/mpeg', data: '!!!!' }
-    }] } }] }), { status: 200 })
+    responseWithAudio({ type: 'audio', data: '!!!!' })
   ]) {
     await assert.rejects(make(async () => response).generate(REQUEST, CONTEXT),
       err => err.noCharge !== true);
@@ -97,7 +102,7 @@ test('any attempted provider request has ambiguous billing on failure', async ()
   assert.equal(stored, 0);
 });
 
-test('bounded provider response and unexpected MIME fail before storage', async () => {
+test('bounded provider response, unexpected MIME and multiple blocks fail before storage', async () => {
   let stored = 0;
   const make = response => createLyriaProvider({
     apiKey: 'server-secret-test-only',
@@ -107,17 +112,21 @@ test('bounded provider response and unexpected MIME fail before storage', async 
   await assert.rejects(make(new Response('{}', {
     status: 200, headers: { 'content-length': String(40 * 1024 * 1024) }
   })).generate(REQUEST, CONTEXT), /LYRIA_RESPONSE_TOO_LARGE/);
+  await assert.rejects(make(responseWithAudio({
+    type: 'audio', mime_type: 'audio/wav', data: AUDIO.toString('base64')
+  })).generate(REQUEST, CONTEXT), /LYRIA_UNEXPECTED_FORMAT/);
   await assert.rejects(make(new Response(JSON.stringify({
-    candidates: [{ content: { parts: [{
-      inlineData: { mimeType: 'audio/wav', data: AUDIO.toString('base64') }
-    }] } }]
-  }), { status: 200 })).generate(REQUEST, CONTEXT), /LYRIA_UNEXPECTED_FORMAT/);
+    steps: [{ type: 'model_output', content: [
+      { type: 'audio', data: AUDIO.toString('base64') },
+      { type: 'audio', data: AUDIO.toString('base64') }
+    ] }]
+  }), { status: 200 })).generate(REQUEST, CONTEXT), /LYRIA_AUDIO_COUNT/);
   assert.equal(stored, 0);
 });
 
 test('trusted store failures must not be presented as free generations', async () => {
   const adapter = createLyriaProvider({
-    apiKey: 'server-secret-test-only', fetchImpl: async () => success(),
+    apiKey: 'server-secret-test-only', fetchImpl: async () => responseWithAudio(),
     storeAudio: async () => { throw new Error('durable storage unavailable'); }
   });
   await assert.rejects(adapter.generate(REQUEST, CONTEXT),

@@ -7,7 +7,7 @@ cuenta de proveedor, servicio desplegado ni gasto autorizado**.
 
 ## Entrada permitida
 
-Un backend futuro debe aceptar un objeto JSON con exactamente:
+El backend privado de desarrollo acepta un objeto JSON con exactamente:
 
 | Campo | Regla |
 |---|---|
@@ -20,6 +20,7 @@ Un backend futuro debe aceptar un objeto JSON con exactamente:
 | `language` | Opcional, `es` o `en` |
 | `confirmsRights` | Debe ser `true`; afirmación del solicitante, no verificación legal |
 | `consentToSendPrompt` | Debe ser `true`; consentimiento explícito antes de enviar al tercero |
+| `confirmsCost` | Debe ser `true` en **cada** solicitud; sin ello el servidor rechaza antes de reservar dinero |
 
 No se aceptan campos de identidad, proveedor, modelo, clave, precio, URL,
 cuenta de pago ni callback desde el cliente. El servidor autentica la sesión
@@ -31,7 +32,7 @@ específicas del proveedor se delegan a un `screen()` seguro, obligatorio.
 1. Autenticación y comprobación del permiso de generar.
 2. Validación estricta de la solicitud y consentimiento.
 3. Cribado de políticas sin invocar al proveedor si falla.
-4. Reserva **atómica y duradera**, implementada en un futuro backend, de cuota,
+4. Reserva **atómica y duradera** en el adaptador D1 aún sin desplegar, de cuota,
    presupuesto y clave de idempotencia por usuario. El hash SHA-256 del contenido
    ayuda a impedir que un `requestId` se reutilice para contenido distinto.
 5. Llamada al adaptador del proveedor solo tras obtener la reserva.
@@ -50,7 +51,7 @@ mismo usuario, UUID y huella del contenido.
 ## Decisión de producto — 23 octubre de 2026
 
 - **Candidato inicial:** Google Lyria 3.5 mediante Gemini API (sujeto a verificación de la cuenta, elegibilidad y licencia antes de desplegar).
-- **Control presupuestario propuesto y aceptado:** techo de **USD 10 por mes** para evaluación; no es una suscripción contratada y no se autoriza un cargo ni activación automática con este documento.
+- **Presupuesto total confirmado por Montana:** objetivo de **USD 10 por mes** para el piloto: **USD 5** de Workers Paid previsto, hasta **USD 3** de Lyria y **USD 2** de contingencia. No constituye un tope de factura del proveedor. No se ha contratado nada ni aprobado un cargo puntual.
 - **Precio público de referencia en la fecha de evaluación:** USD 0.08 por canción, sujeto a cambios y a facturación real. El techo debe aplicarse mediante reserva atómica en servidor, con persistencia, no mediante una etiqueta visual.
 - **Prioridades:** canciones originales en español puertorriqueño, letra hasta 5,000 caracteres, STYLE hasta 1,000, duración objetivo 170 segundos no garantizada por el modelo, salida que pueda importarse al mezclador.
 - **Claves:** exclusivamente del lado servidor. No introducir ningún secreto en GitHub, la aplicación estática ni los archivos de sesión.
@@ -58,7 +59,7 @@ mismo usuario, UUID y huella del contenido.
 
 ## Adaptador Lyria preparado en rama experimental
 
-El adaptador Node.js usa el endpoint oficial POST /v1beta/models/lyria-3.5:generateContent.
+El adaptador Node.js en la rama de integración #5 usa el endpoint oficial POST /v1beta/interactions con `model: lyria-3.5` y `input` como texto. La respuesta REST se lee desde los bloques de tipo `audio` en los pasos `model_output`. Se eligió Interactions para esta integración; la documentación separada de Google también presenta `generateContent` como opción *legacy*, pero ese endpoint no forma parte del adaptador ensayado.
 Prepara el prompt a partir de la entrada validada por el contrato del servidor. Recibe una
 clave exclusivamente mediante inyección en backend, nunca desde HTML ni GitHub Pages.
 El resultado MP3 se entrega como bytes a una función privada storeAudio, que deberá
@@ -70,9 +71,12 @@ No contiene claves reales. Las pruebas usan respuestas simuladas: no generan mú
 ni certifican acceso a Google. Cualquier fallo después de enviar al proveedor
 se trata como coste incierto y se reserva para conciliación, sin reintento automático.
 
-USD 0.08 es una tarifa **por canción**, no una cuota mensual fija. El techo
-aceptado de USD 10 permitiría 125 peticiones como máximo aritmético si se
-dedicara todo a esa tarifa; backend y almacenamiento tienen costes adicionales.
+USD 0.08 es una tarifa **por canción**, no una cuota mensual fija. La porción
+interna de **USD 3 para Lyria** permite como máximo **37 canciones de USD 0.08**
+(USD 2.96), siempre que no haya cargos adicionales ni cambios de tarifa.
+Los **USD 10 son el objetivo total**, no una autorización para consumir
+USD 10 solo en música. Un límite interno D1 no garantiza que Google o Cloudflare
+detengan todos los gastos externos.
 
 ## Pendiente antes de activar un solo usuario
 
@@ -97,3 +101,17 @@ cuota, reintento concurrente, idempotencia, respuesta insegura y fallas con
 coste ambiguo. Todos los adaptadores de pruebas son **simulados**; ninguno
 hace solicitudes externas ni genera audio real. Esta fase **no cierra** la
 puerta 8 del documento de aceptación.
+
+
+### Actualización de integración (23 octubre 2026)
+
+El adaptador utiliza la **Interactions API** documentada oficialmente, sin depender de la ruta legacy `generateContent`; la suite de pruebas en PR #5 ahora exige `POST /v1beta/interactions`, `model=lyria-3.5` y salida `steps[].content[]` con bloques `audio`.
+Fuente oficial: https://ai.google.dev/gemini-api/docs/music-generation
+
+Estas pruebas siguen siendo simuladas. **No se invocó Google** ni se validó la elegibilidad de la cuenta, precio cobrado o calidad del audio real.
+
+### Interfaz privada de preparación
+
+Se añadieron `ai-music-lab.html`, `ai-music-lab.js` y `private-music-generation.js` (PR #5). Son una interfaz con presupuesto consultado al backend, consentimiento para enviar datos a Google, confirmación de derechos y autorización de coste **por intento**. La comprobación del coste ahora también se ejecuta en `server/music-generation.js`, antes de reservar cuota. Los botones están desactivados hasta que se configure un servidor HTTPS privado revisado; no existe una generación activa ni una cuenta de pago. El audio confirmado se recuperaría mediante el endpoint autenticado `/v1/audio/{assetId}` y puede importarse al mezclador con el puente igualmente inactivo por defecto.
+
+Documentación del cierre: `docs/RELEASE-CANDIDATE-HANDOFF.md`. El proyecto no está listo para publicarse todavía.

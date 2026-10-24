@@ -1,0 +1,28 @@
+name: Montana AI Studio private preflight safety
+on:
+  pull_request:
+    paths:
+      - 'server/private-preflight.mjs'
+      - 'tests/private-preflight.test.mjs'
+      - 'wrangler.preflight.jsonc'
+      - '.github/workflows/private-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate offline private preflight
+        run: |
+          node --check server/private-preflight.mjs
+          node --check tests/private-preflight.test.mjs
+          node -e "JSON.parse(require('node:fs').readFileSync('wrangler.preflight.jsonc','utf8'))"
+          node --test tests/private-preflight.test.mjs
