@@ -89,6 +89,7 @@ function arrange(overrides = {}) {
       assert.deepEqual(Buffer.from(compressed), sampleBytes);
       return {
         complete: !overrides.badAudio,
+        consumedBytes: compressed.byteLength,
         sampleRate: 44100,
         errors: [],
         channelData: [new Float32Array(88200), new Float32Array(88200)]
@@ -223,7 +224,8 @@ test('runtime can require complete decoded PCM instead of trusting MP3 metadata'
       decoded++;
       assert.deepEqual(Buffer.from(compressed), bytes);
       return {
-        complete: true, sampleRate: 44100, errors: [],
+        complete: true, consumedBytes: compressed.byteLength,
+        sampleRate: 44100, errors: [],
         channelData: [new Float32Array(88200), new Float32Array(88200)]
       };
     },
