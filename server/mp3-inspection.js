@@ -60,10 +60,11 @@ function createDecodedMp3Inspector({ decodeMp3, maxSeconds = 190 } = {}) {
 // Lower-memory path for a reviewed decoder that yields bounded PCM chunks.
 // The decoder must attest that it consumed every compressed byte; this code
 // cannot manufacture that attestation. No MP3 codec is bundled by this module.
-function createStreamingMp3Inspector({ decodeMp3Chunks, maxSeconds = 190 } = {}) {
+function createStreamingMp3Inspector({ decodeMp3Chunks, maxSeconds = 190, maxChunks = 32768 } = {}) {
   if (typeof decodeMp3Chunks !== 'function' || !Number.isFinite(maxSeconds) ||
-      maxSeconds < 1 || maxSeconds > 190) {
-    throw new TypeError('A complete streaming MP3 decoder is mandatory');
+      maxSeconds < 1 || maxSeconds > 190 ||
+      !Number.isSafeInteger(maxChunks) || maxChunks < 1 || maxChunks > 65536) {
+    throw new TypeError('A complete streaming MP3 decoder with bounded chunks is mandatory');
   }
 
   return async function inspectMp3(bytes) {
@@ -101,6 +102,8 @@ function createStreamingMp3Inspector({ decodeMp3Chunks, maxSeconds = 190 } = {})
           });
         }
         const chunk = step.value;
+        // A defective decoder yielding tiny chunks must not monopolize Worker CPU.
+        if (++chunks > maxChunks) throw new Error('TOO_MANY_PCM_CHUNKS');
         if (!chunk || !Number.isInteger(chunk.sampleRate) ||
             chunk.sampleRate < 8000 || chunk.sampleRate > 96000 ||
             !Array.isArray(chunk.channelData) ||
@@ -131,7 +134,6 @@ function createStreamingMp3Inspector({ decodeMp3Chunks, maxSeconds = 190 } = {})
           }
         }
         frames += count;
-        chunks++;
       }
     } catch (_) {
       throw new Error('MP3_STREAM_VALIDATION_FAILED');
