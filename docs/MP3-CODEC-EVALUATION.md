@@ -17,6 +17,13 @@ El adaptador de `server/mp3-inspection.js` ofrece dos contratos: PCM completo y 
 
 No basta escoger la licencia más permisiva si el códec no puede certificar el contenido. Tampoco basta una librería que se pueda instalar en Node: debe ejecutar en Cloudflare Workers o exigir arquitectura distinta dentro del techo de costos.
 
+## Defensas ya implementadas en la frontera (rama Draft)
+
+- La ruta de PCM completo exige un recibo `consumedBytes` igual al tamaño del MP3 de entrada y `complete: true`; un decodificador que procese solo una parte del archivo no es aceptado aunque produzca PCM plausible.
+- La ruta de PCM por fragmentos exige el recibo final exacto, cierra el iterador incluso al fallar y limita a **32.768 fragmentos por defecto** (máximo configurable: 65.536) para evitar consumo de CPU sin fin ante un decodificador defectuoso.
+- Hay pruebas negativas de consumos incompletos, recuentos inválidos y limpieza del iterador. Estas pruebas usan PCM simulado; **no constituyen una decodificación MP3 auténtica, ni una validación de Lyria o del Worker en producción**.
+- La elección de códec WASM real, validación de consumo de recursos bajo el límite del Worker y revisión de licencias siguen siendo puertas de publicación abiertas.
+
 ## Plan de validación sin facturación musical
 
 1. Preparar audios MP3 de prueba localmente con FFmpeg (no Lyria): silencio, tono, voz autorizada, estéreo antifase, VBR, CBR, ID3, truncados, encabezados falsos y basura añadida.
